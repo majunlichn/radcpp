@@ -1,0 +1,67 @@
+set(RAD_SOURCE_FILES
+    Core/Platform.h
+    Core/Integer.h
+    Core/Integer.cpp
+    Core/Float.h
+    Core/Float.cpp
+    Core/Numeric.h
+    Core/Numeric.cpp
+    Core/TypeTraits.h
+    Core/Memory.h
+    Core/Memory.cpp
+    Core/RefCounted.h
+    Core/String.h
+    Core/String.cpp
+    Core/Format.h
+    Core/Format.cpp
+    Core/Flags.h
+    Core/Sort.h
+    Container/Span.h
+    Container/SmallVector.h
+    IO/File.h
+    IO/File.cpp
+    IO/FileSystem.h
+    IO/FileSystem.cpp
+    IO/Json.h
+    IO/Json.cpp
+    IO/Logging.h
+    IO/Logging.cpp
+    System/Application.h
+    System/Application.cpp
+    System/Time.h
+    System/Time.cpp
+    System/CpuInfo.h
+    System/CpuInfo.cpp
+)
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_SOURCE_FILES})
+
+add_library(rad ${RAD_SOURCE_FILES})
+
+find_package(Boost REQUIRED json)
+find_package(fmt CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(Backward CONFIG REQUIRED)
+find_package(CpuFeatures CONFIG REQUIRED)
+
+target_include_directories(rad
+    PUBLIC ${Boost_INCLUDE_DIRS}
+)
+
+target_link_libraries(rad
+    PUBLIC ${Boost_LIBRARIES}
+    PUBLIC fmt::fmt
+    PUBLIC spdlog::spdlog
+    PUBLIC Backward::Backward
+    PUBLIC CpuFeatures::cpu_features
+)
+
+if (WIN32)
+target_compile_definitions(rad
+    PRIVATE NOMINMAX=1
+    PRIVATE WIN32_LEAN_AND_MEAN=1
+)
+target_compile_options(rad
+    PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
+)
+endif()
