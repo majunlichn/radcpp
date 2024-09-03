@@ -36,7 +36,7 @@ set(RAD_SOURCE_FILES
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_SOURCE_FILES})
 
-add_library(rad ${RAD_SOURCE_FILES})
+add_library(rad STATIC ${RAD_SOURCE_FILES})
 
 find_package(Boost REQUIRED json)
 find_package(fmt CONFIG REQUIRED)
