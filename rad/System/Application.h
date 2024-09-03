@@ -11,7 +11,7 @@ class Application : public RefCounted<Application>
 {
 public:
     Application();
-    ~Application();
+    virtual ~Application();
 
     bool Init(int argc, char** argv);
 
