@@ -32,6 +32,8 @@ set(RAD_SOURCE_FILES
     System/Time.cpp
     System/CpuInfo.h
     System/CpuInfo.cpp
+    System/OS.h
+    System/OS.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_SOURCE_FILES})
