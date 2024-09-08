@@ -28,6 +28,8 @@ set(RAD_SOURCE_FILES
     IO/Logging.cpp
     System/Application.h
     System/Application.cpp
+    System/Process.h
+    System/Process.cpp
     System/Time.h
     System/Time.cpp
     System/CpuInfo.h
