@@ -7,6 +7,8 @@ message("CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
 
 project(radcpp)
 
+option(RAD_BUILD_TESTS "Build tests." ON)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
@@ -19,4 +21,7 @@ include_directories(
 )
 
 add_subdirectory(rad)
-add_subdirectory(tests)
+
+if (RAD_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
