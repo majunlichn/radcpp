@@ -4,6 +4,8 @@ set(RAD_SOURCE_FILES
     Core/Integer.cpp
     Core/Float.h
     Core/Float.cpp
+    Core/Float16.h
+    Core/Float16.cpp
     Core/Numeric.h
     Core/Numeric.cpp
     Core/TypeTraits.h
