@@ -83,4 +83,35 @@ public:
     }
 };
 
+/*
+ * Convert a 16-bit floating-point number in IEEE half-precision format, in bit
+ * representation, to a 32-bit floating-point number in IEEE single-precision
+ * format, in bit representation.
+ *
+ * @note The implementation doesn't use any floating-point operations.
+ */
+uint32_t fp16_ieee_to_fp32_bits(uint16_t h);
+
+/*
+ * Convert a 16-bit floating-point number in IEEE half-precision format, in bit
+ * representation, to a 32-bit floating-point number in IEEE single-precision
+ * format.
+ *
+ * @note The implementation relies on IEEE-like (no assumption about rounding
+ * mode and no operations on denormals) floating-point operations and bitcasts
+ * between integer and floating-point variables.
+ */
+float fp16_ieee_to_fp32_value(uint16_t h);
+
+/*
+ * Convert a 32-bit floating-point number in IEEE single-precision format to a
+ * 16-bit floating-point number in IEEE half-precision format, in bit
+ * representation.
+ *
+ * @note The implementation relies on IEEE-like (no assumption about rounding
+ * mode and no operations on denormals) floating-point operations and bitcasts
+ * between integer and floating-point variables.
+ */
+uint16_t fp16_ieee_from_fp32_value(float f);
+
 } // namespace rad
