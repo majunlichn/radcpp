@@ -20,6 +20,8 @@ set(RAD_SOURCE_FILES
     Core/Format.cpp
     Core/Flags.h
     Core/Sort.h
+    Core/Math.h
+    Core/Math.cpp
     Container/Span.h
     Container/SmallVector.h
     IO/File.h
