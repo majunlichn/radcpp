@@ -16,6 +16,8 @@ set(RAD_SOURCE_FILES
     Core/RefCounted.h
     Core/String.h
     Core/String.cpp
+    Core/pystring.h
+    Core/pystring.cpp
     Core/Format.h
     Core/Format.cpp
     Core/Flags.h

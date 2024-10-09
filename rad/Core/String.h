@@ -1,11 +1,8 @@
 #pragma once
 
 #include <rad/Core/Platform.h>
-#include <clocale>
-#include <cstring>
-#include <string>
+#include <rad/Core/pystring.h>
 #include <string_view>
-#include <vector>
 
 #include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
