@@ -14,6 +14,9 @@ public:
     virtual ~Application();
 
     bool Init(int argc, char** argv);
+    int GetArgc() const { return m_argc; }
+    // Retrieves UTF-16 arguments from the Windows API, converts them to UTF-8.
+    const std::vector<std::string>& GetArgv() { return m_argv; }
 
     void PrintStackTrace(int depth = 32);
 
@@ -33,6 +36,9 @@ public:
 private:
     bool InstallDefaultSignalHandlers();
     bool LogSystemInfo();
+
+    int m_argc = 0;
+    std::vector<std::string> m_argv;
 
 }; // Application
 

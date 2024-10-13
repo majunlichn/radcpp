@@ -4,6 +4,9 @@
 #include <rad/IO/Logging.h>
 #include <backward.hpp>
 
+#include <boost/nowide/args.hpp>
+#include <boost/nowide/cstdlib.hpp>
+
 namespace rad
 {
 
@@ -31,6 +34,14 @@ bool Application::Init(int argc, char** argv)
 #if defined(_DEBUG)
     ::_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
+    boost::nowide::args nowideArgs(argc, argv);
+    m_argc = argc;
+    for (int i = 0; i < argc; ++i)
+    {
+        m_argv.resize(argc);
+        m_argv[i] = argv[i];
+    }
+    std::setlocale(LC_ALL, ".UTF-8");
     ::SetConsoleCP(CP_UTF8);
     ::SetConsoleOutputCP(CP_UTF8);
 #endif
