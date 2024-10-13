@@ -15,7 +15,8 @@ endif()
 # AddressSanitizer
 if(ENABLE_ASAN)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        add_compile_options("/fsanitize=address /INCREMENTAL:NO")
+        add_compile_options("/fsanitize=address")
+        add_link_options("/INCREMENTAL:NO")
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         # https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html
         add_compile_options("-fsanitize=address -fno-omit-frame-pointer fno-optimize-sibling-calls -fno-ipa-icf")
