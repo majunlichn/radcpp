@@ -25,23 +25,23 @@ bool StrCaseEqual(std::string_view str1, std::string_view str2)
 std::string StrUpper(std::string_view s)
 {
     std::string buffer(s);
-    StrUpperInplace(buffer);
+    StrUpperInSitu(buffer);
     return buffer;
 }
 
 std::string StrLower(std::string_view s)
 {
     std::string buffer(s);
-    StrLowerInplace(buffer);
+    StrLowerInSitu(buffer);
     return buffer;
 }
 
-void StrUpperInplace(std::string& s)
+void StrUpperInSitu(std::string& s)
 {
     boost::algorithm::to_upper(s, g_locale);
 }
 
-void StrLowerInplace(std::string& s)
+void StrLowerInSitu(std::string& s)
 {
     boost::algorithm::to_lower(s, g_locale);
 }
@@ -194,7 +194,7 @@ bool StrIsNumeric(std::string_view str)
 std::vector<std::string> StrSplit(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr)
 {
-    std::vector<std::string> substrs;
+    std::vector<std::string> tokens;
 
     std::string::size_type pos = 0;
     std::string::size_type offset = 0;
@@ -208,16 +208,21 @@ std::vector<std::string> StrSplit(
         }
         if (pos != offset || !skipEmptySubStr)
         {
-            substrs.push_back(std::string(str.data() + offset, pos - offset));
+            tokens.push_back(std::string(str.data() + offset, pos - offset));
         }
         offset = pos + 1;
     }
 
-    return substrs;
+    return tokens;
 }
 
-std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew)
+std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew, int count)
 {
+    if (subOld.empty() || (count == 0))
+    {
+        return std::string(str);
+    }
+
     std::string newStr;
     newStr.reserve(str.size());
     std::string::size_type offset = 0u;
@@ -227,23 +232,109 @@ std::string StrReplace(std::string_view str, std::string_view subOld, std::strin
         newStr.append(str, offset, pos - offset);
         newStr.append(subNew);
         offset = pos + subOld.size();
+        if (count > 0)
+        {
+            count = count - 1;
+            if (count == 0)
+            {
+                break;
+            }
+        }
     }
+
     if (offset < str.size())
     {
         pos = str.size();
         newStr.append(str, offset, pos - offset);
     }
+
     return newStr;
 }
 
-void StrReplaceInPlace(std::string& str, std::string_view subOld, std::string_view subNew)
+void StrReplaceInSitu(std::string& str, std::string_view subOld, std::string_view subNew, int count)
 {
+    if (subOld.empty() || (count == 0))
+    {
+        return;
+    }
+
     std::string::size_type pos = 0u;
     while ((pos = str.find(subOld, pos)) != std::string::npos)
     {
         str.replace(pos, subOld.length(), subNew);
         pos += subNew.length();
+        if (count > 0)
+        {
+            count = count - 1;
+            if (count == 0)
+            {
+                break;
+            }
+        }
     }
+}
+
+size_t StrReplaceAll(std::string& s, std::string_view from, std::string_view to) {
+    if (from.empty()) {
+        return 0;
+    }
+
+    size_t numReplaced = 0;
+    std::string::size_type last_pos = 0u;
+    std::string::size_type cur_pos = 0u;
+    std::string::size_type write_pos = 0u;
+    const std::string_view input(s);
+
+    if (from.size() >= to.size()) {
+        // If the replacement string is not larger than the original, we
+        // can do the replacement in-place without allocating new storage.
+        char* s_data = &s[0];
+
+        while ((cur_pos = s.find(from.data(), last_pos, from.size())) !=
+            std::string::npos) {
+            ++numReplaced;
+            // Append input between replaced sub-strings
+            if (write_pos != last_pos) {
+                std::copy(s_data + last_pos, s_data + cur_pos, s_data + write_pos);
+            }
+            write_pos += cur_pos - last_pos;
+            // Append the replacement sub-string
+            std::copy(to.begin(), to.end(), s_data + write_pos);
+            write_pos += to.size();
+            // Start search from next character after `from`
+            last_pos = cur_pos + from.size();
+        }
+
+        // Append any remaining input after replaced sub-strings
+        if (write_pos != last_pos) {
+            std::copy(s_data + last_pos, s_data + input.size(), s_data + write_pos);
+            write_pos += input.size() - last_pos;
+            s.resize(write_pos);
+        }
+        return numReplaced;
+    }
+
+    // Otherwise, do an out-of-place replacement in a temporary buffer
+    std::string buffer;
+
+    while ((cur_pos = s.find(from.data(), last_pos, from.size())) !=
+        std::string::npos) {
+        ++numReplaced;
+        // Append input between replaced sub-strings
+        buffer.append(input.begin() + last_pos, input.begin() + cur_pos);
+        // Append the replacement sub-string
+        buffer.append(to.begin(), to.end());
+        // Start search from next character after `from`
+        last_pos = cur_pos + from.size();
+    }
+    if (numReplaced == 0) {
+        // If nothing was replaced, don't modify the input
+        return 0;
+    }
+    // Append any remaining input after replaced sub-strings
+    buffer.append(input.begin() + last_pos, input.end());
+    s = std::move(buffer);
+    return numReplaced;
 }
 
 } // namespace rad

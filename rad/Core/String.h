@@ -27,8 +27,8 @@ bool StrCaseEqual(std::string_view str1, std::string_view str2);
 
 std::string StrUpper(std::string_view s);
 std::string StrLower(std::string_view s);
-void StrUpperInplace(std::string& s);
-void StrLowerInplace(std::string& s);
+void StrUpperInSitu(std::string& s);
+void StrLowerInSitu(std::string& s);
 
 std::string StrTrim(std::string_view str, std::string_view charlist = " \t\n\v\f\r");
 void StrTrimInPlace(std::string& str, std::string_view charlist = " \t\n\v\f\r");
@@ -47,8 +47,11 @@ bool StrIsNumeric(std::string_view str);
 std::vector<std::string> StrSplit(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr = true);
 
-std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew);
-void StrReplaceInPlace(std::string& str, std::string_view subOld, std::string_view subNew);
+std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew, int count = -1);
+void StrReplaceInSitu(std::string& str, std::string_view subOld, std::string_view subNew, int count = -1);
+// PyTorch version: returns the replaced count.
+// https://github.com/pytorch/pytorch/blob/main/c10/util/StringUtil.cpp
+size_t StrReplaceAll(std::string& s, std::string_view from, std::string_view to);
 
 struct StringLess
 {
