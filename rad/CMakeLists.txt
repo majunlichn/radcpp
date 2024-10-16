@@ -34,6 +34,8 @@ set(RAD_SOURCE_FILES
     IO/Json.cpp
     IO/Logging.h
     IO/Logging.cpp
+    IO/Compression.h
+    IO/Compression.cpp
     System/Application.h
     System/Application.cpp
     System/Process.h
@@ -55,6 +57,8 @@ find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Backward CONFIG REQUIRED)
 find_package(CpuFeatures CONFIG REQUIRED)
+# vcpkg install minizip-ng[zlib,bzip2,lzma,zstd]:x64-windows
+find_package(minizip-ng CONFIG REQUIRED)
 
 target_include_directories(rad
     PUBLIC ${Boost_INCLUDE_DIRS}
@@ -66,6 +70,7 @@ target_link_libraries(rad
     PUBLIC spdlog::spdlog
     PUBLIC Backward::Backward
     PUBLIC CpuFeatures::cpu_features
+    PUBLIC MINIZIP::minizip-ng
 )
 
 if (WIN32)
