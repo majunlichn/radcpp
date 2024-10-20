@@ -12,11 +12,42 @@
 namespace rad
 {
 
+const char* mz_get_error_string(int32_t err)
+{
+    switch (err)
+    {
+    case MZ_OK: return "MZ_OK";
+    case MZ_STREAM_ERROR: return "MZ_STREAM_ERROR";
+    case MZ_DATA_ERROR: return "MZ_DATA_ERROR";
+    case MZ_MEM_ERROR: return "MZ_MEM_ERROR";
+    case MZ_BUF_ERROR: return "MZ_BUF_ERROR";
+    case MZ_VERSION_ERROR: return "MZ_VERSION_ERROR";
+    case MZ_PARAM_ERROR: return "MZ_PARAM_ERROR";
+    case MZ_FORMAT_ERROR: return "MZ_FORMAT_ERROR";
+    case MZ_INTERNAL_ERROR: return "MZ_INTERNAL_ERROR";
+    case MZ_CRC_ERROR: return "MZ_CRC_ERROR";
+    case MZ_CRYPT_ERROR: return "MZ_CRYPT_ERROR";
+    case MZ_EXIST_ERROR: return "MZ_EXIST_ERROR";
+    case MZ_PASSWORD_ERROR: return "MZ_PASSWORD_ERROR";
+    case MZ_SUPPORT_ERROR: return "MZ_SUPPORT_ERROR";
+    case MZ_HASH_ERROR: return "MZ_HASH_ERROR";
+    case MZ_OPEN_ERROR: return "MZ_OPEN_ERROR";
+    case MZ_CLOSE_ERROR: return "MZ_CLOSE_ERROR";
+    case MZ_SEEK_ERROR: return "MZ_SEEK_ERROR";
+    case MZ_TELL_ERROR: return "MZ_TELL_ERROR";
+    case MZ_READ_ERROR: return "MZ_READ_ERROR";
+    case MZ_WRITE_ERROR: return "MZ_WRITE_ERROR";
+    case MZ_SIGN_ERROR: return "MZ_SIGN_ERROR";
+    case MZ_SYMLINK_ERROR: return "MZ_SYMLINK_ERROR";
+    }
+    return "MZ_UNKNOWN";
+}
+
 // https://github.com/zlib-ng/minizip-ng/blob/develop/minizip.c
 bool ZipCompress(const char* path, const char* password, ZipOptions* options, Span<std::string> args) {
     void* writer = NULL;
+    bool result = true;
     int32_t err = MZ_OK;
-    int32_t err_close = MZ_OK;
     int32_t i = 0;
     const char* filename_in_zip = NULL;
 
@@ -56,28 +87,35 @@ bool ZipCompress(const char* path, const char* password, ZipOptions* options, Sp
             /* Add file system path to archive */
             err = mz_zip_writer_add_path(writer, filename_in_zip, NULL, options->include_path, 1);
             if (err != MZ_OK)
-                RAD_LOG_DEFAULT(err, "ZipCompress: Error {} adding path to archive {}", err, filename_in_zip);
+            {
+                RAD_LOG_DEFAULT(err, "ZipCompress: Error {} adding path to archive {}",
+                    mz_get_error_string(err), filename_in_zip);
+                result = false;
+            }
         }
     }
     else {
-        RAD_LOG_DEFAULT(err, "ZipCompress: Error {} opening archive for writing", err);
+        RAD_LOG_DEFAULT(err, "ZipCompress: Error {} opening archive for writing",
+            mz_get_error_string(err));
+        result = false;
     }
 
-    err_close = mz_zip_writer_close(writer);
-    if (err_close != MZ_OK) {
-        RAD_LOG_DEFAULT(err, "ZipCompress: Error {} closing archive for writing {}", err_close, path);
-        err = err_close;
+    err = mz_zip_writer_close(writer);
+    if (err != MZ_OK) {
+        RAD_LOG_DEFAULT(err, "ZipCompress: Error {} closing archive for writing {}",
+            mz_get_error_string(err), path);
+        result = false;
     }
 
     mz_zip_writer_delete(&writer);
-    return (err == MZ_OK);
+    return result;
 }
 
 // https://github.com/zlib-ng/minizip-ng/blob/develop/minizip.c
 bool ZipDecompress(const char* path, const char* pattern, const char* destination, const char* password, ZipOptions* options) {
     void* reader = NULL;
+    bool result = true;
     int32_t err = MZ_OK;
-    int32_t err_close = MZ_OK;
 
     RAD_LOG_DEFAULT(info, "ZipDecompress: {}", path);
 
@@ -98,7 +136,9 @@ bool ZipDecompress(const char* path, const char* pattern, const char* destinatio
     err = mz_zip_reader_open_file(reader, path);
 
     if (err != MZ_OK) {
-        RAD_LOG_DEFAULT(err, "ZipDecompress: Error {} opening archive {}", err, path);
+        RAD_LOG_DEFAULT(err, "ZipDecompress: Error {} opening archive {}",
+            mz_get_error_string(err), path);
+        result = false;
     }
     else {
         /* Save all entries in archive to destination directory */
@@ -106,7 +146,8 @@ bool ZipDecompress(const char* path, const char* pattern, const char* destinatio
 
         if (err == MZ_END_OF_LIST) {
             if (pattern) {
-                RAD_LOG_DEFAULT(warn, "ZipDecompress: Files matching {} not found in archive!", pattern);
+                RAD_LOG_DEFAULT(warn,
+                    "ZipDecompress: Files matching \"{}\" not found in archive!", pattern);
             }
             else {
                 RAD_LOG_DEFAULT(warn, "ZipDecompress: No files in archive!");
@@ -114,18 +155,21 @@ bool ZipDecompress(const char* path, const char* pattern, const char* destinatio
             }
         }
         else if (err != MZ_OK) {
-            RAD_LOG_DEFAULT(err, "ZipDecompress: Error {} saving entries to disk {}", err, path);
+            RAD_LOG_DEFAULT(err, "ZipDecompress: Error {} saving entries to disk {}",
+                mz_get_error_string(err), path);
+            result = false;
         }
     }
 
-    err_close = mz_zip_reader_close(reader);
-    if (err_close != MZ_OK) {
-        RAD_LOG_DEFAULT(err, "ZipDecompress: Error {} closing archive for reading!", err_close);
-        err = err_close;
+    err = mz_zip_reader_close(reader);
+    if (err != MZ_OK) {
+        RAD_LOG_DEFAULT(err, "ZipDecompress: Error {} closing archive for reading!",
+            mz_get_error_string(err));
+        result = false;
     }
 
     mz_zip_reader_delete(&reader);
-    return (err == MZ_OK);
+    return result;
 }
 
 } // namespace rad
