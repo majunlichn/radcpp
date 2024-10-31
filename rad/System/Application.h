@@ -17,6 +17,7 @@ public:
     int GetArgc() const { return m_argc; }
     // Retrieves UTF-16 arguments from the Windows API, converts them to UTF-8.
     const std::vector<std::string>& GetArgv() { return m_argv; }
+    const char* GetArgv(size_t index) { return m_argv[index].c_str(); }
 
     void PrintStackTrace(int depth = 32);
 

@@ -60,6 +60,8 @@ find_package(CpuFeatures CONFIG REQUIRED)
 # vcpkg install minizip-ng[zlib,bzip2,lzma,zstd]:x64-windows
 find_package(minizip-ng CONFIG REQUIRED)
 
+find_package (Python3 COMPONENTS Development)
+
 target_include_directories(rad
     PUBLIC ${Boost_INCLUDE_DIRS}
 )
@@ -71,6 +73,7 @@ target_link_libraries(rad
     PUBLIC Backward::Backward
     PUBLIC CpuFeatures::cpu_features
     PUBLIC MINIZIP::minizip-ng
+    PUBLIC Python3::Python
 )
 
 if (WIN32)
