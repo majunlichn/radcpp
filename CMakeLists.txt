@@ -1,13 +1,17 @@
 cmake_minimum_required(VERSION 3.10)
 
-if (DEFINED ENV{VCPKG_ROOT})
+if ((NOT DEFINED CMAKE_TOOLCHAIN_FILE) AND (DEFINED ENV{VCPKG_ROOT}))
     list(APPEND CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 endif()
 message("CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
 
 project(radcpp)
 
-option(RAD_BUILD_TESTS "Build tests." ON)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(RADCPP_SUBPROJECT OFF)
+else()
+    set(RADCPP_SUBPROJECT ON)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -24,6 +28,6 @@ include_directories(
 
 add_subdirectory(rad)
 
-if (RAD_BUILD_TESTS)
+if (NOT ${RADCPP_SUBPROJECT})
     add_subdirectory(tests)
 endif()

@@ -63,6 +63,7 @@ find_package(minizip-ng CONFIG REQUIRED)
 find_package (Python3 COMPONENTS Development)
 
 target_include_directories(rad
+    PUBLIC ${RADCPP_ROOT}
     PUBLIC ${Boost_INCLUDE_DIRS}
 )
 
