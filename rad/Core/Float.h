@@ -7,6 +7,8 @@
 #include <cmath>
 #include <limits>
 
+#include <boost/math/special_functions/relative_difference.hpp>
+
 namespace rad
 {
 
@@ -44,6 +46,29 @@ inline uint32_t fp32_to_bits(float f)
     } fp32 = { f };
     return fp32.as_bits;
 #endif
+}
+
+// E = fabs((a - b) / min(a,b));
+template <typename T, typename U>
+auto relative_difference(T a, U b)
+{
+    return boost::math::relative_difference(a, b);
+}
+
+// returns relative_difference(a, b) / eps where eps is the machine epsilon for the result type.
+template <typename T, typename U>
+auto epsilon_difference(T a, U b)
+{
+    return boost::math::epsilon_difference(a, b);
+}
+
+// https://entity-toolkit.github.io/wiki/useful/float-comparison/#the-simpler-way
+template <class T>
+auto AlmostEqual(T a, T b, T eps = std::numeric_limits<T>::epsilon()) -> bool
+{
+    static_assert(std::is_floating_point_v<T>, "T must be a floating point type!");
+    return (a == b) ||
+        (std::fabs(a - b) <= std::min(std::fabs(a), std::fabs(b)) * eps);
 }
 
 float Normalize(float value, float min, float max);
