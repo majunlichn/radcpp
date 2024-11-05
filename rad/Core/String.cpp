@@ -25,23 +25,23 @@ bool StrCaseEqual(std::string_view str1, std::string_view str2)
 std::string StrUpper(std::string_view s)
 {
     std::string buffer(s);
-    StrUpperInSitu(buffer);
+    StrUpperInPlace(buffer);
     return buffer;
 }
 
 std::string StrLower(std::string_view s)
 {
     std::string buffer(s);
-    StrLowerInSitu(buffer);
+    StrLowerInPlace(buffer);
     return buffer;
 }
 
-void StrUpperInSitu(std::string& s)
+void StrUpperInPlace(std::string& s)
 {
     boost::algorithm::to_upper(s, g_locale);
 }
 
-void StrLowerInSitu(std::string& s)
+void StrLowerInPlace(std::string& s)
 {
     boost::algorithm::to_lower(s, g_locale);
 }
@@ -59,7 +59,7 @@ void StrTrimInPlace(std::string& str, std::string_view charlist)
     str.erase(0, str.find_first_not_of(charlist));
 }
 
-std::string StrFromWide(std::wstring_view wstr)
+std::string ToString(std::wstring_view wstr)
 {
 #if defined(RAD_OS_WINDOWS)
     std::string str;
@@ -77,7 +77,7 @@ std::string StrFromWide(std::wstring_view wstr)
 #endif
 }
 
-std::wstring StrToWide(std::string_view str)
+std::wstring ToWideString(std::string_view str)
 {
 #if defined(RAD_OS_WINDOWS)
     std::wstring wstr;
@@ -251,7 +251,7 @@ std::string StrReplace(std::string_view str, std::string_view subOld, std::strin
     return newStr;
 }
 
-void StrReplaceInSitu(std::string& str, std::string_view subOld, std::string_view subNew, int count)
+void StrReplaceInPlace(std::string& str, std::string_view subOld, std::string_view subNew, int count)
 {
     if (subOld.empty() || (count == 0))
     {

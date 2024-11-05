@@ -102,7 +102,7 @@ std::string getlogin()
     unsigned long count = static_cast<unsigned long>(buffer.size());
     if (::GetUserNameW(buffer.data(), &count))
     {
-        return StrFromWide(buffer);
+        return ToString(buffer);
     }
     else
     {

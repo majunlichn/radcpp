@@ -1,0 +1,3 @@
+[submodule "imported/utfcpp"]
+	path = imported/utfcpp
+	url = https://github.com/nemtrif/utfcpp.git

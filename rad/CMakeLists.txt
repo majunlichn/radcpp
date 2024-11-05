@@ -65,6 +65,7 @@ find_package (Python3 COMPONENTS Development)
 target_include_directories(rad
     PUBLIC ${RADCPP_ROOT}
     PUBLIC ${Boost_INCLUDE_DIRS}
+    PUBLIC ${RADCPP_ROOT}/imported/utfcpp/source
 )
 
 target_link_libraries(rad
