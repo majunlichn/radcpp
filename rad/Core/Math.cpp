@@ -4,7 +4,7 @@ namespace rad
 {
 
 // https://pbr-book.org/3ed-2018/Utilities/Mathematical_Routines
-bool SolveQuadraticEquation(float a, float b, float c, float& t0, float& t1)
+bool SolveQuadratic(float a, float b, float c, float& t0, float& t1)
 {
     // b^2 - 4ac
     double discrim = (double)b * (double)b - 4 * (double)a * (double)c;
