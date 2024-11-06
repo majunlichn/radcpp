@@ -7,6 +7,8 @@
 #include <VersionHelpers.h>
 #else
 #include <unistd.h>
+#include <limits.h>
+#include <pwd.h>
 #endif
 
 namespace rad
@@ -108,6 +110,29 @@ std::string getlogin()
     {
         return {};
     }
+#elif defined(RAD_OS_LINUX)
+    std::string username = getenv("LOGNAME");
+    if (!username.empty())
+    {
+        return username;
+    }
+    username = getenv("USERNAME");
+    if (!username.empty())
+    {
+        return username;
+    }
+    const passwd* pw = getpwuid(geteuid());
+    if (pw != nullptr)
+    {
+        return pw->pw_name;
+    }
+    username.resize(LOGIN_NAME_MAX);
+    int err = getlogin_r(username.data(), username.size());
+    if (err == 0)
+    {
+        return username;
+    }
+    return {};
 #endif
 }
 

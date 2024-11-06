@@ -19,7 +19,7 @@ if(ENABLE_ASAN)
         add_link_options("/INCREMENTAL:NO")
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         # https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html
-        add_compile_options("-fsanitize=address -fno-omit-frame-pointer fno-optimize-sibling-calls -fno-ipa-icf")
+        string(APPEND CMAKE_C_FLAGS_DEBUG "-fsanitize=address -fno-omit-frame-pointer fno-optimize-sibling-calls -fno-ipa-icf")
         add_link_options("-fsanitize=address")
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         # https://clang.llvm.org/docs/AddressSanitizer.html

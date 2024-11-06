@@ -15,7 +15,12 @@ Great C++ collections.
    - backward-cpp
    - cpu-features
    - minizip-ng[core,zstd,zlib,wzaes,pkcrypt,lzma,bzip2]
+   - gtest
 
-3. Call cmake to generate project files:
+3. Make sure all submodules updated:
+
+   `git submodule update --init --recursive`
+
+4. Call cmake to generate project files:
 
    `cmake -S . -B build -DENABLE_ASAN=ON`

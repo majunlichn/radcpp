@@ -6,8 +6,6 @@
 namespace rad
 {
 
-static std::locale g_locale(".UTF-8");
-
 bool StrEqual(std::string_view str1, std::string_view str2)
 {
     return (str1 == str2);
@@ -38,12 +36,12 @@ std::string StrLower(std::string_view s)
 
 void StrUpperInPlace(std::string& s)
 {
-    boost::algorithm::to_upper(s, g_locale);
+    boost::algorithm::to_upper(s);
 }
 
 void StrLowerInPlace(std::string& s)
 {
-    boost::algorithm::to_lower(s, g_locale);
+    boost::algorithm::to_lower(s);
 }
 
 std::string StrTrim(std::string_view str, std::string_view charlist)
