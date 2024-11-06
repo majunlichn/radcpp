@@ -36,6 +36,8 @@ set(RAD_SOURCE_FILES
     IO/Logging.cpp
     IO/Compression.h
     IO/Compression.cpp
+    IO/Image.h
+    IO/Image.cpp
     System/Application.h
     System/Application.cpp
     System/Process.h

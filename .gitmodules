@@ -1,3 +1,6 @@
 [submodule "imported/utfcpp"]
 	path = imported/utfcpp
 	url = https://github.com/nemtrif/utfcpp.git
+[submodule "imported/stb"]
+	path = imported/stb
+	url = https://github.com/nothings/stb.git
