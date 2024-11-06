@@ -28,7 +28,38 @@ inline constexpr T Sqr(T x)
 }
 
 // Finds solutions of the quadratic equation at^2 + bt + c = 0; return true if solutions were found.
-bool SolveQuadratic(float a, float b, float c, float& t0, float& t1);
+// https://pbr-book.org/3ed-2018/Utilities/Mathematical_Routines
+// https://github.com/mmp/pbrt-v4/blob/master/src/pbrt/util/math.h
+template<typename Float>
+inline bool SolveQuadratic(Float a, Float b, Float c, Float& t0, Float& t1)
+{
+    // Handle case of $a=0$ for quadratic solution
+    if (a == 0) [[unlikely]]
+    {
+        if (b == 0) [[unlikely]]
+        {
+            return false;
+        }
+        t0 = t1 = -c / b;
+        return true;
+    }
+    // Find quadratic discriminant: b^2 - 4ac
+    Float discrim = b * b - 4 * a * c;
+    if (discrim < 0)
+    {
+        return false;
+    }
+    Float rootDiscrim = std::sqrt(discrim);
+    // Compute quadratic _t_ values
+    Float q = -0.5f * (b + std::copysign(rootDiscrim, b));
+    t0 = q / a;
+    t1 = c / q;
+    if (t0 > t1)
+    {
+        std::swap(t0, t1);
+    }
+    return true;
+}
 
 // The Right Way to Calculate Stuff: https://www.plunk.org/~hatch/rightway.html
 template<typename T>
