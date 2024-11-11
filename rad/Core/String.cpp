@@ -57,6 +57,42 @@ void StrTrimInPlace(std::string& str, std::string_view charlist)
     str.erase(0, str.find_first_not_of(charlist));
 }
 
+std::string StrRemovePrefix(std::string_view str, std::string_view prefix)
+{
+    if (str.starts_with(prefix))
+    {
+        return std::string(str.substr(prefix.size()));
+    }
+    return std::string(str);
+}
+
+std::string StrRemoveSuffix(std::string_view str, std::string_view suffix)
+{
+    if (str.ends_with(suffix))
+    {
+        return std::string(str.substr(0, str.size() - suffix.size()));
+    }
+    return std::string(str);
+}
+
+std::string StrRemoveTokenFront(std::string_view str, std::string_view delimiters)
+{
+    std::string_view::size_type pos = str.find_first_of(delimiters);
+    if (pos != str.npos)
+    {
+        return std::string(str.substr(pos + 1));
+    }
+    else
+    {
+        return std::string(str);
+    }
+}
+
+std::string StrRemoveTokenBack(std::string_view str, std::string_view delimiters)
+{
+    return std::string(str.substr(0, str.find_last_of(delimiters)));
+}
+
 std::string ToString(std::wstring_view wstr)
 {
 #if defined(RAD_OS_WINDOWS)

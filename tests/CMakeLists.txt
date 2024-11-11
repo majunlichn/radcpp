@@ -1,5 +1,6 @@
 set(RAD_TESTS_SOURCE_FILES
-    Core/Integer.cpp
+    Core/IntegerTest.cpp
+    Core/StringTest.cpp
     main.cpp
 )
 
