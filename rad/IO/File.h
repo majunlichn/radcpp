@@ -55,9 +55,12 @@ public:
     bool GetStat(FileStat* pStatus);
     uint64_t GetSize();
     int64_t Tell();
+    bool IsEndReached();
 
     static std::string ReadAll(std::string_view path);
     static std::vector<std::string> ReadLines(std::string_view path);
+
+    static uint32_t GetCrc32(std::string_view path);
 
 private:
     std::string m_path;

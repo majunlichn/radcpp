@@ -5,6 +5,7 @@
 #include <ctime>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <boost/crc.hpp>
 
 namespace rad
 {
@@ -188,6 +189,11 @@ int64_t File::Tell()
     return ftell(m_handle);
 }
 
+bool File::IsEndReached()
+{
+    return (feof(m_handle) != 0);
+}
+
 std::string File::ReadAll(std::string_view path)
 {
     File file;
@@ -228,6 +234,36 @@ std::vector<std::string> File::ReadLines(std::string_view path)
         }
     }
     return lines;
+}
+
+uint32_t File::GetCrc32(std::string_view path)
+{
+    boost::crc_32_type result;
+    File file;
+    if (file.Open(path, "rb"))
+    {
+        constexpr size_t bufferSize = 4096;
+        std::vector<char> buffer(bufferSize);
+        while (true)
+        {
+            size_t bytesRead = file.Read(buffer.data(), 1, bufferSize);
+            result.process_bytes(buffer.data(), bytesRead);
+            if (bytesRead != bufferSize)
+            {
+                break;
+            }
+        }
+        if (file.IsEndReached())
+        {
+            return result.checksum();
+        }
+        else
+        {
+            // error occurs
+            return 0;
+        }
+    }
+    return 0;
 }
 
 } // namespace rad
