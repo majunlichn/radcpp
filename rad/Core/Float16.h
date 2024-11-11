@@ -2,6 +2,8 @@
 
 #include <rad/Core/Platform.h>
 #include <rad/Core/Float.h>
+// https://rocm.docs.amd.com/projects/half/en/latest/index.html
+#include <rad/Core/half.hpp>
 
 namespace rad
 {
