@@ -24,6 +24,7 @@ set(RAD_SOURCE_FILES
     Core/Sort.h
     Core/Math.h
     Core/Math.cpp
+    Core/Literals.h
     Container/Span.h
     Container/SmallVector.h
     IO/File.h
