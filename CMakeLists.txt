@@ -16,6 +16,11 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+if (MSVC)
+    # Build with multiple processes: https://learn.microsoft.com/en-us/cpp/build/reference/mp-build-with-multiple-processes
+    add_compile_options(/MP)
+endif()
+
 include(cmake/Sanitizers.cmake)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
