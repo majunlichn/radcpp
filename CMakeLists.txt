@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
+# find_package(Boost): without the CONFIG or NO_MODULE options, find the upstream BoostConfig.cmake directly.
+# https://cmake.org/cmake/help/latest/policy/CMP0167.html
+cmake_policy(SET CMP0167 NEW)
+
 if ((NOT DEFINED CMAKE_TOOLCHAIN_FILE) AND (DEFINED ENV{VCPKG_ROOT}))
     list(APPEND CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 endif()
