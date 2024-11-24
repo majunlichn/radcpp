@@ -1,5 +1,8 @@
+include_guard(GLOBAL)
+
 if(WIN32 AND MSVC)
-    option(USE_STATIC_CRT "Link against the static runtime libraries." ON)
+    # If use static crt, remember to install vcpkg packages with triplet that sets VCPKG_CRT_LINKAGE=static, or there will be link errors.
+    option(USE_STATIC_CRT "Link against the static runtime libraries." OFF)
     if (${USE_STATIC_CRT})
         add_compile_options(
             $<$<CONFIG:>:/MT>
