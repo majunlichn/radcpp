@@ -1,6 +1,7 @@
 set(RAD_TESTS_SOURCE_FILES
     Core/IntegerTest.cpp
     Core/StringTest.cpp
+    Core/ReflectionTest.cpp
     main.cpp
 )
 
@@ -12,4 +13,5 @@ find_package(GTest CONFIG REQUIRED)
 target_link_libraries(rad-tests
     PRIVATE rad
     PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main
+    PRIVATE reflect-cpp
 )

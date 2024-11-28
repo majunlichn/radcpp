@@ -35,6 +35,7 @@ include_directories(
     ${RADCPP_ROOT}
 )
 
+add_subdirectory(imported/reflect-cpp)
 add_subdirectory(rad)
 
 if(NOT ${RADCPP_SUBPROJECT})
