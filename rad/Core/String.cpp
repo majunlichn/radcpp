@@ -105,6 +105,7 @@ std::string ToString(std::wstring_view wstr)
         ::WideCharToMultiByte(CP_UTF8,
             0, wstr.data(), static_cast<int>(wstr.length()), &str[0], charCount, NULL, NULL);
     }
+    str.resize(strlen(str.data()));
     return str;
 #else
     return utf_to_utf<char>(wstr.data());
@@ -123,6 +124,7 @@ std::wstring ToWideString(std::string_view str)
         ::MultiByteToWideChar(CP_UTF8,
             0, str.data(), static_cast<int>(str.length()), &wstr[0], charCount);
     }
+    wstr.resize(wcsnlen_s(wstr.data(), wstr.size()));
     return wstr;
 #else
     return utf_to_utf<wchar_t>(str.data());
