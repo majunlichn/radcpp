@@ -2,6 +2,7 @@
 #include <rfl.hpp>
 
 #include <rad/Core/TypeTraits.h>
+#include <rad/Core/String.h>
 
 #include <gtest/gtest.h>
 
@@ -84,18 +85,30 @@ TEST(Core, Reflection)
     EXPECT_EQ(homer2.last_name(), "Simpson");
 }
 
-template<rad::Enumeration T>
-constexpr auto operator|(const T lhs, const T rhs)
+// You cannot have more than 128 values and if you explicitly assign values, they must be between 0 and 127.
+enum class Shape { square, circle };
+
+// Flag enums: the important colors must be 1 or 2^N
+enum class Color : int
 {
-    return static_cast<T>(rad::ToUnderlying(lhs) | rad::ToUnderlying(rhs));
+    black = 0,
+    red = 256,
+    green = 512,
+    blue = 1024,
+    yellow = (256 | 512),
+    purple = (256 | 1024),
+    cyan = (512 | 1024),
+    white = (256 | 512 | 1024),
+};
+
+// The bitwise OR operator must be defined - this is how reflect-cpp knows that
+// this is a flag enum.
+inline Color operator|(Color c1, Color c2) {
+    return static_cast<Color>(static_cast<int>(c1) | static_cast<int>(c2));
 }
 
 TEST(Core, EnumReflection)
 {
-    enum class Shape { circle, square, rectangle };
-
-    enum class Color { red = 256, green = 512, blue = 1024, yellow = 2048 };
-
     struct Item {
         float pos_x;
         float pos_y;
@@ -103,11 +116,24 @@ TEST(Core, EnumReflection)
         Color color;
     };
 
-    const auto item = Item{ .pos_x = 2.0,
-                           .pos_y = 3.0,
-                           .shape = Shape::square,
-                           .color = Color::red | Color::blue };
+    const auto item = Item{
+        .pos_x = 2.0f,
+        .pos_y = 3.0f,
+        .shape = Shape::square,
+        .color = Color::white
+    };
 
     std::string str = rfl::json::write(item);
-    EXPECT_EQ(str, R"({"pos_x":2.0,"pos_y":3.0,"shape":"square","color":"red|blue"})");
+    EXPECT_EQ(str, R"({"pos_x":2.0,"pos_y":3.0,"shape":"square","color":"red|green|blue"})");
+
+    auto item2 = rfl::json::read<Item>(str).value();
+    EXPECT_EQ(item2.pos_x, 2.0f);
+    EXPECT_EQ(item2.pos_y, 3.0f);
+    EXPECT_EQ(item2.shape, Shape::square);
+    EXPECT_EQ(item2.color, Color::white);
+
+    auto name = rfl::enum_to_string(Color::red);        // "red"
+    EXPECT_EQ(name, "red");
+    auto value = rfl::string_to_enum<Color>("red|green").value();
+    EXPECT_EQ(value, Color::yellow);
 }
