@@ -3,12 +3,12 @@
 
 TEST(Core, String)
 {
-    EXPECT_EQ(rad::StrRemovePrefix("prefix.string.suffix", "prefix."), "string.suffix");
-    EXPECT_EQ(rad::StrRemovePrefix("prefix.string.suffix", "string"), "prefix.string.suffix");
-    EXPECT_EQ(rad::StrRemoveSuffix("prefix.string.suffix", ".suffix"), "prefix.string");
-    EXPECT_EQ(rad::StrRemoveSuffix("prefix.string.suffix", "string"), "prefix.string.suffix");
-    EXPECT_EQ(rad::StrRemoveTokenFront("prefix.string.suffix", "."), "string.suffix");
-    EXPECT_EQ(rad::StrRemoveTokenFront("prefix.string.suffix", "-"), "prefix.string.suffix");
-    EXPECT_EQ(rad::StrRemoveTokenBack("prefix.string.suffix", "."), "prefix.string");
-    EXPECT_EQ(rad::StrRemoveTokenBack("prefix.string.suffix", "-"), "prefix.string.suffix");
+    EXPECT_EQ(rad::StrRemovePrefix("prefix.name.suffix", "prefix."), "name.suffix");
+    EXPECT_EQ(rad::StrRemovePrefix("prefix.name.suffix", "name"), "prefix.name.suffix");
+    EXPECT_EQ(rad::StrRemoveSuffix("prefix.name.suffix", ".suffix"), "prefix.name");
+    EXPECT_EQ(rad::StrRemoveSuffix("prefix.name.suffix", "name"), "prefix.name.suffix");
+    EXPECT_EQ(rad::StrRemovePrefixDelimited("prefix.name.suffix", "."), "name.suffix");
+    EXPECT_EQ(rad::StrRemovePrefixDelimited("prefix.name.suffix", "#"), "prefix.name.suffix");
+    EXPECT_EQ(rad::StrRemoveSuffixDelimited("prefix.name.suffix", "."), "prefix.name");
+    EXPECT_EQ(rad::StrRemoveSuffixDelimited("prefix.name.suffix", "#"), "prefix.name.suffix");
 }

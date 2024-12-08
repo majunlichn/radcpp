@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rad/Core/Platform.h>
+#include <cstring>
 #include <concepts>
 
 namespace rad

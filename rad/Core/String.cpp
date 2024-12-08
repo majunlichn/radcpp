@@ -13,10 +13,14 @@ bool StrEqual(std::string_view str1, std::string_view str2)
 
 bool StrCaseEqual(std::string_view str1, std::string_view str2)
 {
+    if (str1.size() != str2.size())
+    {
+        return false;
+    }
 #if defined(RAD_COMPILER_MSVC)
-    return (_stricmp(str1.data(), str2.data()) == 0);
+    return (_strnicmp(str1.data(), str2.data(), str1.size()) == 0);
 #else
-    return (strcasecmp(str1.data(), str2.data()) == 0);
+    return (strncasecmp(str1.data(), str2.data(), str1.size()) == 0);
 #endif
 }
 
@@ -75,7 +79,23 @@ std::string StrRemoveSuffix(std::string_view str, std::string_view suffix)
     return std::string(str);
 }
 
-std::string StrRemoveTokenFront(std::string_view str, std::string_view delimiters)
+void StrRemovePrefixInPlace(std::string& str, std::string_view prefix)
+{
+    if (str.starts_with(prefix))
+    {
+        str.erase(0, prefix.size());
+    }
+}
+
+void StrRemoveSuffixInPlace(std::string& str, std::string_view suffix)
+{
+    if (str.ends_with(suffix))
+    {
+        str.erase(str.size() - suffix.size());
+    }
+}
+
+std::string StrRemovePrefixDelimited(std::string_view str, std::string_view delimiters)
 {
     std::string_view::size_type pos = str.find_first_of(delimiters);
     if (pos != str.npos)
@@ -88,9 +108,17 @@ std::string StrRemoveTokenFront(std::string_view str, std::string_view delimiter
     }
 }
 
-std::string StrRemoveTokenBack(std::string_view str, std::string_view delimiters)
+std::string StrRemoveSuffixDelimited(std::string_view str, std::string_view delimiters)
 {
-    return std::string(str.substr(0, str.find_last_of(delimiters)));
+    std::string_view::size_type pos = str.find_last_of(delimiters);
+    if (pos != str.npos)
+    {
+        return std::string(str.substr(0, pos));
+    }
+    else
+    {
+        return std::string(str);
+    }
 }
 
 std::string ToString(std::wstring_view wstr)
@@ -245,6 +273,31 @@ std::vector<std::string> StrSplit(
         if (pos != offset || !skipEmptySubStr)
         {
             tokens.push_back(std::string(str.data() + offset, pos - offset));
+        }
+        offset = pos + 1;
+    }
+
+    return tokens;
+}
+
+std::vector<std::string_view> StrSplitView(
+    std::string_view str, std::string_view delimiters, bool skipEmptySubStr)
+{
+    std::vector<std::string_view> tokens;
+
+    std::string_view::size_type pos = 0;
+    std::string_view::size_type offset = 0;
+
+    while (offset < str.length() + 1)
+    {
+        pos = str.find_first_of(delimiters, offset);
+        if (pos == std::string_view::npos)
+        {
+            pos = str.length();
+        }
+        if (pos != offset || !skipEmptySubStr)
+        {
+            tokens.push_back(std::string_view(str.data() + offset, pos - offset));
         }
         offset = pos + 1;
     }

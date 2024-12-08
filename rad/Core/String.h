@@ -38,8 +38,10 @@ void StrTrimInPlace(std::string& str, std::string_view charlist = " \t\n\v\f\r")
 
 std::string StrRemovePrefix(std::string_view str, std::string_view prefix);
 std::string StrRemoveSuffix(std::string_view str, std::string_view suffix);
-std::string StrRemoveTokenFront(std::string_view str, std::string_view delimiters);
-std::string StrRemoveTokenBack(std::string_view str, std::string_view delimiters);
+void StrRemovePrefixInPlace(std::string& str, std::string_view prefix);
+void StrRemoveSuffixInPlace(std::string& str, std::string_view suffix);
+std::string StrRemovePrefixDelimited(std::string_view str, std::string_view delimiters);
+std::string StrRemoveSuffixDelimited(std::string_view str, std::string_view delimiters);
 
 std::string ToString(std::wstring_view wstr);
 std::wstring ToWideString(std::string_view str);
@@ -58,6 +60,8 @@ bool StrIsBin(std::string_view str);
 bool StrIsNumeric(std::string_view str);
 
 std::vector<std::string> StrSplit(
+    std::string_view str, std::string_view delimiters, bool skipEmptySubStr = true);
+std::vector<std::string_view> StrSplitView(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr = true);
 
 std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew, int count = -1);
