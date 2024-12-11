@@ -150,4 +150,40 @@ int system(std::string_view command)
     return std::system(command.data());
 }
 
+namespace path
+{
+
+std::string GetFileName(std::string_view path)
+{
+    auto pos = path.find_last_of("/\\");
+    if (pos != path.npos)
+    {
+        return std::string(path.substr(pos + 1));
+    }
+    else
+    {
+        return std::string(path);
+    }
+}
+
+std::string GetFileNameNoExt(std::string_view path)
+{
+    auto pos = path.find_last_of("/\\");
+    if (pos != path.npos)
+    {
+        path = path.substr(pos + 1);
+    }
+    pos = path.find_last_of(".");
+    if (pos != path.npos)
+    {
+        return std::string(path.substr(0, pos));
+    }
+    else
+    {
+        return std::string(path);
+    }
+}
+
+} // namespace path
+
 } // namespace rad

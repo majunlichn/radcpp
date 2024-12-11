@@ -1,5 +1,6 @@
 #include <rad/System/Application.h>
 #include <rad/System/CpuInfo.h>
+#include <rad/System/OS.h>
 #include <rad/IO/FileSystem.h>
 #include <rad/IO/Logging.h>
 #include <backward.hpp>
@@ -47,7 +48,7 @@ bool Application::Init(int argc, char** argv)
 #endif
 
     InstallDefaultSignalHandlers();
-    InitLogging(std::string(argv[0]) + ".log", true);
+    InitLogging(path::GetFileName(argv[0]) + ".log", true);
 
     RAD_LOG_DEFAULT(info, "Program: {}", argv[0]);
     RAD_LOG_DEFAULT(info, "Working Dir: {}",

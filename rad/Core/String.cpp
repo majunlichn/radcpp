@@ -95,32 +95,6 @@ void StrRemoveSuffixInPlace(std::string& str, std::string_view suffix)
     }
 }
 
-std::string StrRemovePrefixDelimited(std::string_view str, std::string_view delimiters)
-{
-    std::string_view::size_type pos = str.find_first_of(delimiters);
-    if (pos != str.npos)
-    {
-        return std::string(str.substr(pos + 1));
-    }
-    else
-    {
-        return std::string(str);
-    }
-}
-
-std::string StrRemoveSuffixDelimited(std::string_view str, std::string_view delimiters)
-{
-    std::string_view::size_type pos = str.find_last_of(delimiters);
-    if (pos != str.npos)
-    {
-        return std::string(str.substr(0, pos));
-    }
-    else
-    {
-        return std::string(str);
-    }
-}
-
 std::string ToString(std::wstring_view wstr)
 {
 #if defined(RAD_OS_WINDOWS)
@@ -280,8 +254,7 @@ std::vector<std::string> StrSplit(
     return tokens;
 }
 
-std::vector<std::string_view> StrSplitView(
-    std::string_view str, std::string_view delimiters, bool skipEmptySubStr)
+std::vector<std::string_view> ViewSplit(std::string_view str, std::string_view delimiters, bool skipEmptySubStr)
 {
     std::vector<std::string_view> tokens;
 

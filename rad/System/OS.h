@@ -29,4 +29,14 @@ int getpid();
 
 int system(std::string_view command);
 
+namespace path
+{
+
+using namespace pystring::os::path;
+
+std::string GetFileName(std::string_view path);
+std::string GetFileNameNoExt(std::string_view path);
+
+} // namespace path
+
 } // namespace rad

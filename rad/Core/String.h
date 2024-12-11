@@ -40,8 +40,6 @@ std::string StrRemovePrefix(std::string_view str, std::string_view prefix);
 std::string StrRemoveSuffix(std::string_view str, std::string_view suffix);
 void StrRemovePrefixInPlace(std::string& str, std::string_view prefix);
 void StrRemoveSuffixInPlace(std::string& str, std::string_view suffix);
-std::string StrRemovePrefixDelimited(std::string_view str, std::string_view delimiters);
-std::string StrRemoveSuffixDelimited(std::string_view str, std::string_view delimiters);
 
 std::string ToString(std::wstring_view wstr);
 std::wstring ToWideString(std::string_view str);
@@ -61,7 +59,7 @@ bool StrIsNumeric(std::string_view str);
 
 std::vector<std::string> StrSplit(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr = true);
-std::vector<std::string_view> StrSplitView(
+std::vector<std::string_view> ViewSplit(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr = true);
 
 std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew, int count = -1);
