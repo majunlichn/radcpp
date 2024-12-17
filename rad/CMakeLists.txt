@@ -21,12 +21,13 @@ set(RAD_SOURCE_FILES
     Core/Format.h
     Core/Format.cpp
     Core/Flags.h
-    Core/Sort.h
     Core/Math.h
     Core/Math.cpp
     Core/Literals.h
+    Algorithm/Sort.h
     Container/Span.h
     Container/SmallVector.h
+    Container/Vector.h
     IO/File.h
     IO/File.cpp
     IO/FileSystem.h
@@ -56,6 +57,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_SOURCE_FILES})
 add_library(rad STATIC ${RAD_SOURCE_FILES})
 
 find_package(Boost REQUIRED json)
+find_package(Eigen3 CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Backward CONFIG REQUIRED)
@@ -73,6 +75,7 @@ target_include_directories(rad
 
 target_link_libraries(rad
     PUBLIC ${Boost_LIBRARIES}
+    PUBLIC Eigen3::Eigen
     PUBLIC fmt::fmt
     PUBLIC spdlog::spdlog
     PUBLIC Backward::Backward

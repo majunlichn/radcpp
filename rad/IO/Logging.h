@@ -2,6 +2,10 @@
 
 #include <rad/Core/Platform.h>
 #include <spdlog/spdlog.h>
+// https://fmt.dev/dev/api/
+#include <fmt/ranges.h>
+#include <fmt/chrono.h>
+#include <fmt/std.h>
 
 namespace rad
 {
