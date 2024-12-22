@@ -1,41 +1,43 @@
 # radcpp
+
 Great C++ collections.
 
 ## Build
 
-1. Setup [microsoft/vcpkg: C++ Library Manager for Windows, Linux, and MacOS](https://github.com/microsoft/vcpkg)
+1. Make sure all submodules are updated:
 
-   - Set environment variable "VKPKG_ROOT" as the absolute path of vcpkg repository.
+    ```powershell
+    git submodule update --init --recursive
+    ```
 
-2. Install the following packages:
+2. Setup [microsoft/vcpkg](https://github.com/microsoft/vcpkg):
 
-   - boost
-   - fmt
-   - spdlog
-   - backward-cpp
-   - cpu-features
-   - minizip-ng[core,zstd,zlib,wzaes,pkcrypt,lzma,bzip2]
-   - gtest
-   - eigen3
+    ```powershell
+    # Clone vcpkg into a folder you like, which can also be shared by other projects:
+    git clone https://github.com/microsoft/vcpkg.git
+    # Run the bootstrap script:
+    cd vcpkg
+    .\bootstrap-vcpkg.bat # Linux: ./bootstrap-vcpkg.sh
+    # Configure the VCPKG_ROOT environment variable for convenience:
+    $env:VCPKG_ROOT="C:\path\to\vcpkg" # Linux: export VCPKG_ROOT="/path/to/vcpkg"
+    ```
 
-3. Make sure all submodules updated:
+3. Install the following vcpkg packages:
 
-   `git submodule update --init --recursive`
+    - boost
+    - fmt
+    - spdlog
+    - backward-cpp
+    - cpu-features
+    - minizip-ng[core,zstd,zlib,wzaes,pkcrypt,lzma,bzip2]
+    - gtest
+    - eigen3
+    
+    For example, in vcpkg folder call `.\vcpkg.exe install boost:x64-windows` to install boost on Windows (classic mode).
+    You can also add the dependencies to your `vcpkg.json` (manifest mode, please refer to: https://learn.microsoft.com/en-us/vcpkg/consume/manifest-mode).
 
-4. Call cmake to generate project files:
+4. Call CMake to generate project files and build:
 
-   `cmake -S . -B build -DENABLE_ASAN=ON`
-
-Optionally, you can use [radsdk](https://github.com/majunlichn/radsdk) to setup dependencies:
-
-```powershell
-# Clone radsdk (requires Git LFS support):
-git clone https://github.com/majunlichn/radsdk.git
-$RADSDK_PATH="/path/to/radsdk"
-# Execute setup.py to download and build additional libraries:
-cd /path/to/radsdk
-python setup.py
-# Generate project files and build:
-cd /path/to/radcpp
-cmake -S . -B build -D VCPKG_MANIFEST_DIR=$RADSDK_PATH -D VCPKG_INSTALLED_DIR=$RADSDK_PATH/vcpkg_installed
-```
+    ```powershell
+    cmake -S . -B build -D ENABLE_ASAN=ON
+    ```
