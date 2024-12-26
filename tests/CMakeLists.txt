@@ -2,6 +2,7 @@ set(RAD_TESTS_SOURCE_FILES
     Core/IntegerTest.cpp
     Core/StringTest.cpp
     Core/ReflectionTest.cpp
+    Core/ExecutionTest.cpp
     main.cpp
 )
 

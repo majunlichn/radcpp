@@ -36,6 +36,9 @@ include_directories(
 )
 
 add_subdirectory(imported/reflect-cpp)
+set(STDEXEC_BUILD_TESTS OFF)
+set(STDEXEC_BUILD_EXAMPLES OFF)
+add_subdirectory(imported/stdexec)
 add_subdirectory(rad)
 
 if(NOT ${RADCPP_SUBPROJECT})
