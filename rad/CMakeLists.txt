@@ -24,6 +24,8 @@ set(RAD_SOURCE_FILES
     Core/Math.h
     Core/Math.cpp
     Core/Literals.h
+    Core/Random.h
+    Core/Random.cpp
     Algorithm/Sort.h
     Container/Span.h
     Container/SmallVector.h
