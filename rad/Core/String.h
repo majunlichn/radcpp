@@ -10,6 +10,9 @@
 // https://github.com/nemtrif/utfcpp
 #include <utf8.h>
 
+#include <regex>
+#include <sstream>
+
 #if defined(RAD_COMPILER_MSVC)
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
@@ -64,9 +67,42 @@ std::vector<std::string_view> ViewSplit(
 
 std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew, int count = -1);
 void StrReplaceInPlace(std::string& str, std::string_view subOld, std::string_view subNew, int count = -1);
+bool ReplaceFirst(std::string& str, std::string_view target, std::string_view rep);
+bool ReplaceLast(std::string& str, std::string_view target, std::string_view rep);
 // PyTorch version: returns the replaced count.
 // https://github.com/pytorch/pytorch/blob/main/c10/util/StringUtil.cpp
 size_t StrReplaceAll(std::string& s, std::string_view from, std::string_view to);
+
+static inline bool Contains(std::string_view str, std::string_view sub)
+{
+    return (str.find(sub) != std::string::npos);
+}
+
+static inline bool Contains(std::string_view str, const char ch)
+{
+    return (str.find(ch) != std::string::npos);
+}
+
+static inline void Reverse(std::string& str)
+{
+    std::reverse(str.begin(), str.end());
+}
+
+static inline std::string ReverseCopy(std::string str)
+{
+    std::reverse(str.begin(), str.end());
+    return str;
+}
+
+static inline std::string Repeat(const std::string& str, size_t n)
+{
+    std::string result;
+    for (size_t i = 0; i < n; ++i)
+    {
+        result += str;
+    }
+    return result;
+}
 
 struct StringLess
 {
@@ -86,5 +122,29 @@ struct StringLessCaseInsensitive
         return (strcasecmp(left.data(), right.data()) < 0);
     }
 };
+
+bool RegexMatch(const std::string& str, const std::regex& expr);
+std::vector<std::string> RegexSplit(const std::string& str, const std::regex& expr);
+
+template<typename Container>
+static inline std::string Join(const Container& tokens, const std::string& delim)
+{
+    std::ostringstream result;
+    for (auto it = tokens.begin(); it != tokens.end(); ++it)
+    {
+        if (it != tokens.begin())
+        {
+            result << delim;
+        }
+        result << *it;
+    }
+    return result.str();
+}
+
+template<std::ranges::range Range>
+auto RemoveEmpty(Range r)
+{
+    return std::ranges::remove_if(r, std::ranges::empty(r));
+}
 
 } // namespace rad

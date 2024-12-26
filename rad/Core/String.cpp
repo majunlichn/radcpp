@@ -336,6 +336,28 @@ void StrReplaceInPlace(std::string& str, std::string_view subOld, std::string_vi
     }
 }
 
+bool ReplaceFirst(std::string& str, std::string_view target, std::string_view rep)
+{
+    const size_t startPos = str.find(target);
+    if (startPos == std::string::npos)
+    {
+        return false;
+    }
+    str.replace(startPos, target.length(), rep);
+    return true;
+}
+
+bool ReplaceLast(std::string& str, std::string_view target, std::string_view rep)
+{
+    size_t startPos = str.rfind(target);
+    if (startPos == std::string::npos)
+    {
+        return false;
+    }
+    str.replace(startPos, target.length(), rep);
+    return true;
+}
+
 size_t StrReplaceAll(std::string& s, std::string_view from, std::string_view to) {
     if (from.empty()) {
         return 0;
@@ -397,6 +419,24 @@ size_t StrReplaceAll(std::string& s, std::string_view from, std::string_view to)
     buffer.append(input.begin() + last_pos, input.end());
     s = std::move(buffer);
     return numReplaced;
+}
+
+bool RegexMatch(const std::string& str, const std::regex& expr)
+{
+    return std::regex_match(str, expr);
+}
+
+std::vector<std::string> RegexSplit(const std::string& str, const std::regex& expr)
+{
+    std::vector<std::string> tokens;
+    std::sregex_token_iterator iter(str.begin(), str.end(), expr, -1);
+    std::sregex_token_iterator end;
+    while (iter != end)
+    {
+        tokens.push_back(*iter);
+        ++iter;
+    }
+    return tokens;
 }
 
 } // namespace rad

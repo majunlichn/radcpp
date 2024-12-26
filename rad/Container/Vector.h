@@ -19,4 +19,12 @@ std::vector<T> ToVec(Range r)
     return vec;
 }
 
+template<typename T>
+static inline void RemoveDuplicated(std::vector<T>& elems)
+{
+    std::sort(std::execution::par_unseq, elems.begin(), elems.end());
+    auto iter = std::unique(elems.begin(), elems.end());
+    elems.erase(iter, elems.end());
+}
+
 } // namespace rad

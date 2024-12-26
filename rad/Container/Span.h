@@ -245,6 +245,16 @@ public:
         return std::vector<T>(m_data, m_data + m_count);
     }
 
+    [[nodiscard]] Span<std::byte> ToBytes() noexcept
+    {
+        return Span<std::byte>(reinterpret_cast<std::byte*>(m_data), m_count * sizeof(T));
+    }
+
+    [[nodiscard]] Span<const std::byte> ToBytes() const noexcept
+    {
+        return Span<const std::byte>(reinterpret_cast<std::byte*>(m_data), m_count * sizeof(T));
+    }
+
     /// @}
 }; // class Span
 

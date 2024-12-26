@@ -19,4 +19,16 @@ std::vector<size_t> SortIndices(const Range& r, Compare comp = {})
     return indices;
 }
 
+template<std::ranges::random_access_range R>
+static inline void SortAscending(R r)
+{
+    std::sort(std::execution::par_unseq, strs.begin(), strs.end());
+}
+
+template<std::ranges::random_access_range R>
+static inline void SortDescending(R r)
+{
+    std::sort(std::execution::par_unseq, strs.begin(), strs.end(), std::greater<T>());
+}
+
 } // namespace rad

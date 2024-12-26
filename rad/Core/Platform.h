@@ -358,16 +358,19 @@
 #define RAD_ASSUME(expr) __assume(expr)
 #define RAD_UNREACHABLE() __assume(0)
 #define RAD_DEPRECATED(message) __declspec(deprecated(message))
-#elif defined(RAD_COMPILER_CLANG) || defined(RAD_COMPILER_GCC)
+#define RAD_RESTRICT __restrict
+#elif  defined(RAD_COMPILER_GCC) || defined(RAD_COMPILER_CLANG)
 #define RAD_FORCE_INLINE __attribute__((always_inline)) inline
 #define RAD_ASSUME(expr) __attribute__((assume(expr)))
 #define RAD_UNREACHABLE() __builtin_unreachable()
 #define RAD_DEPRECATED(message) __attribute__((deprecated(message)))
+#define RAD_RESTRICT __restrict
 #else
 #define RAD_FORCE_INLINE
 #define RAD_ASSUME(expr)
 #define RAD_UNREACHABLE()
 #define RAD_DEPRECATED(message)
+#define RAD_RESTRICT
 #endif
 
 #define RAD_DISABLE_COPY_AND_MOVE(ClassName) \
