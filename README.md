@@ -24,20 +24,32 @@ Great C++ collections.
 
 3. Install the following vcpkg packages:
 
-    - boost
-    - fmt
-    - spdlog
     - backward-cpp
+    - boost
     - cpu-features
-    - minizip-ng[core,zstd,zlib,wzaes,pkcrypt,lzma,bzip2]
-    - gtest
     - eigen3
-    
-    For example, in vcpkg folder call `.\vcpkg.exe install boost:x64-windows` to install boost on Windows (classic mode).
-    You can also add the dependencies to your `vcpkg.json` (manifest mode, please refer to: https://learn.microsoft.com/en-us/vcpkg/consume/manifest-mode).
+    - fmt
+    - glm
+    - gtest
+    - minizip-ng
+    - spdlog
+
+    For example, to install boost on Windows (classic mode):
+
+    ```powershell
+    # At the root of vcpkg repository:
+    .\vcpkg.exe install boost:x64-windows # Linux: ./vcpkg install boost
+    ```
+
+    You can also add the packages to your `vcpkg.json` (manifest mode), please refer to https://learn.microsoft.com/en-us/vcpkg/get_started/get-started.
 
 4. Call CMake to generate project files and build:
 
     ```powershell
-    cmake -S . -B build -D ENABLE_ASAN=ON
+    # To enable address sanitizer: -D ENABLE_ASAN=ON
+    cmake -S . -B build
+    # Note that CMake will add the vcpkg toolchain file automatically if you set environment variable VCPKG_ROOT. If you want to set it explicitly:
+    cmake -S . -B build -D CMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+    # To build with radsdk (https://github.com/majunlichn/radsdk):
+    cmake -S . -B build -D VCPKG_MANIFEST_DIR="$env:RADSDK_ROOT" -D VCPKG_INSTALLED_DIR="$env:RADSDK_ROOT/vcpkg_installed"
     ```
