@@ -20,7 +20,7 @@
  SOFTWARE.
  *============================================================================*/
 
-#include "rfl/thirdparty/yyjson.h"
+#include "yyjson.h"
 
 #include <math.h>
 

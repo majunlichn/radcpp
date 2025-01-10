@@ -12,6 +12,7 @@ add_library(reflect-cpp STATIC
 
 target_include_directories(reflect-cpp
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rfl/thirdparty
 )
 
 set_target_properties(reflect-cpp PROPERTIES
