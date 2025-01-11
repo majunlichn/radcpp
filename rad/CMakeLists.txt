@@ -1,62 +1,71 @@
-set(RAD_SOURCE_FILES
-    Core/Platform.h
-    Core/Integer.h
-    Core/Integer.cpp
-    Core/Float.h
-    Core/Float.cpp
-    Core/Float16.h
-    Core/Float16.cpp
+set(RAD_HEADERS
+    Algorithm/Sort.h
+    Container/SmallVector.h
+    Container/Span.h
+    Container/Vector.h
     Core/BFloat16.h
-    Core/BFloat16.cpp
-    Core/Numeric.h
-    Core/Numeric.cpp
-    Core/TypeTraits.h
+    Core/Flags.h
+    Core/Float.h
+    Core/Float16.h
+    Core/Format.h
+    Core/Integer.h
+    Core/Literals.h
+    Core/Math.h
     Core/Memory.h
-    Core/Memory.cpp
+    Core/Numeric.h
+    Core/Platform.h
+    Core/pystring.h
+    Core/Random.h
     Core/RefCounted.h
     Core/String.h
-    Core/String.cpp
-    Core/pystring.h
-    Core/pystring.cpp
-    Core/Format.h
-    Core/Format.cpp
-    Core/Flags.h
-    Core/Math.h
-    Core/Math.cpp
-    Core/Literals.h
-    Core/Random.h
-    Core/Random.cpp
-    Algorithm/Sort.h
-    Container/Span.h
-    Container/SmallVector.h
-    Container/Vector.h
-    IO/File.h
-    IO/File.cpp
-    IO/FileSystem.h
-    IO/FileSystem.cpp
-    IO/Json.h
-    IO/Json.cpp
-    IO/Logging.h
-    IO/Logging.cpp
+    Core/TypeTraits.h
     IO/Compression.h
-    IO/Compression.cpp
+    IO/File.h
+    IO/FileSystem.h
     IO/Image.h
-    IO/Image.cpp
+    IO/Json.h
+    IO/Logging.h
     System/Application.h
-    System/Application.cpp
-    System/Process.h
-    System/Process.cpp
-    System/Time.h
-    System/Time.cpp
     System/CpuInfo.h
-    System/CpuInfo.cpp
     System/OS.h
-    System/OS.cpp
+    System/Process.h
+    System/Time.h
 )
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_SOURCE_FILES})
+set(RAD_SOURCES
+    ${RAD_HEADERS}
+    Core/BFloat16.cpp
+    Core/Float.cpp
+    Core/Float16.cpp
+    Core/Format.cpp
+    Core/Integer.cpp
+    Core/Math.cpp
+    Core/Memory.cpp
+    Core/Numeric.cpp
+    Core/pystring.cpp
+    Core/Random.cpp
+    Core/String.cpp
+    IO/Compression.cpp
+    IO/File.cpp
+    IO/FileSystem.cpp
+    IO/Image.cpp
+    IO/Json.cpp
+    IO/Logging.cpp
+    System/Application.cpp
+    System/CpuInfo.cpp
+    System/OS.cpp
+    System/Process.cpp
+    System/Time.cpp
+)
 
-add_library(rad STATIC ${RAD_SOURCE_FILES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_SOURCES})
+
+add_library(rad STATIC ${RAD_SOURCES})
+
+target_sources(rad PUBLIC
+    FILE_SET HEADERS
+    FILES ${RAD_HEADERS}
+)
 
 find_package(Boost REQUIRED json)
 find_package(Eigen3 CONFIG REQUIRED)
@@ -96,3 +105,10 @@ target_compile_options(rad
     PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
 )
 endif()
+
+install(TARGETS rad
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        FILE_SET HEADERS DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rad
+)
