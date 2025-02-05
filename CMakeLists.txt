@@ -61,7 +61,3 @@ set_target_properties(system_context PROPERTIES
     FOLDER "imported"
 )
 add_subdirectory(rad)
-
-if(RADCPP_BUILD_TESTS AND (NOT RADCPP_IS_SUBPROJECT))
-    add_subdirectory(tests)
-endif()

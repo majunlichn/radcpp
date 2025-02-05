@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+// https://github.com/NVIDIA/stdexec
 TEST(Core, StaticThreadPool)
 {
     // Declare a pool of 3 worker threads:
