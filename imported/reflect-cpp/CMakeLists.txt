@@ -4,6 +4,8 @@ set(REFLECT_CPP_SOURCES
     src/yyjson.c
 )
 
+set_source_files_properties(src/yyjson.c PROPERTIES LANGUAGE CXX)
+
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${REFLECT_CPP_SOURCES})
 
 add_library(reflect-cpp STATIC

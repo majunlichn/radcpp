@@ -1,4 +1,4 @@
-set(RAD_HEADERS
+list(APPEND RAD_HEADERS
     Algorithm/Sort.h
     Container/SmallVector.h
     Container/Span.h
@@ -32,7 +32,7 @@ set(RAD_HEADERS
     System/Time.h
 )
 
-set(RAD_SOURCES
+list(APPEND RAD_SOURCES
     ${RAD_HEADERS}
     Core/BFloat16.cpp
     Core/Float.cpp
@@ -63,8 +63,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_SOURCES})
 add_library(rad STATIC ${RAD_SOURCES})
 
 target_sources(rad PUBLIC
-    FILE_SET HEADERS
-    FILES ${RAD_HEADERS}
+    FILE_SET HEADERS FILES ${RAD_HEADERS}
 )
 
 find_package(Boost REQUIRED json)
@@ -106,9 +105,11 @@ target_compile_options(rad
 )
 endif()
 
-install(TARGETS rad
-        ARCHIVE DESTINATION lib
-        LIBRARY DESTINATION lib
-        RUNTIME DESTINATION bin
+if (RADCPP_INSTALL)
+    install(TARGETS rad
         FILE_SET HEADERS DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rad
-)
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+    )
+endif()
