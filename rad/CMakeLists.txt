@@ -115,14 +115,14 @@ if (RADCPP_INSTALL)
 endif()
 
 if(RADCPP_BUILD_TESTS)
-    set(RAD_TEST_SOURCES
+    set(TEST_SOURCES
         Core/IntegerTest.cpp
         Core/ExecutionTest.cpp
         test.cpp
     )
-    source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_TEST_SOURCES})
+    source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${TEST_SOURCES})
 
-    add_executable(rad-test ${RAD_TEST_SOURCES})
+    add_executable(rad-test ${TEST_SOURCES})
 
     find_package(GTest CONFIG REQUIRED)
     target_link_libraries(rad-test

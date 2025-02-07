@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.23)
 
 project(hipx LANGUAGES CXX)
 
+set(HIPX_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+
 if(WIN32)
     set(ROCM_ROOT
         "$ENV{HIP_PATH}"
@@ -31,6 +33,27 @@ set(CMAKE_${GPU_RUNTIME}_EXTENSIONS OFF)
 
 find_package(hip REQUIRED PATHS ${ROCM_ROOT})
 
+list(APPEND HIPX_SOURCES
+    hipx/Core/HipError.h
+    hipx/Core/HipContext.h
+    hipx/Core/HipContext.cpp
+    hipx/Core/HipDevice.h
+    hipx/Core/HipDevice.cpp
+)
+
+set_source_files_properties(${HIPX_SOURCES} PROPERTIES LANGUAGE ${GPU_RUNTIME})
+
+list(APPEND TEST_SOURCES
+    ${HIPX_SOURCES}
+    hipx/test.cpp
+)
+
+set_source_files_properties(${TEST_SOURCES} PROPERTIES LANGUAGE ${GPU_RUNTIME})
+
 add_executable(hipx-test
-    test.hip
+    ${TEST_SOURCES}
+)
+
+target_include_directories(hipx-test
+    PUBLIC ${HIPX_ROOT}
 )
