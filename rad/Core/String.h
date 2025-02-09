@@ -1,6 +1,8 @@
 #pragma once
 
 #include <rad/Core/Platform.h>
+// Pystring is a collection of C++ functions which match the interface
+// and behavior of python's string class methods using std::string.
 #include <rad/Core/pystring.h>
 #include <string_view>
 
@@ -21,7 +23,7 @@
 namespace rad
 {
 
-// Use std::string as UTF-8 encoded.
+// Treat std::string as UTF-8 encoded.
 
 // Character Set Conversions:
 using boost::locale::conv::to_utf;
@@ -47,7 +49,7 @@ void StrRemoveSuffixInPlace(std::string& str, std::string_view suffix);
 std::string ToString(std::wstring_view wstr);
 std::wstring ToWideString(std::string_view str);
 
-inline const char8_t* ToU8Chars(std::string_view str)
+inline const char8_t* UTF8Cast(std::string_view str)
 {
     return (const char8_t*)str.data();
 }
@@ -67,8 +69,8 @@ std::vector<std::string_view> ViewSplit(
 
 std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew, int count = -1);
 void StrReplaceInPlace(std::string& str, std::string_view subOld, std::string_view subNew, int count = -1);
-bool ReplaceFirst(std::string& str, std::string_view target, std::string_view rep);
-bool ReplaceLast(std::string& str, std::string_view target, std::string_view rep);
+bool StrReplaceFirst(std::string& str, std::string_view target, std::string_view rep);
+bool StrReplaceLast(std::string& str, std::string_view target, std::string_view rep);
 // PyTorch version: returns the replaced count.
 // https://github.com/pytorch/pytorch/blob/main/c10/util/StringUtil.cpp
 size_t StrReplaceAll(std::string& s, std::string_view from, std::string_view to);
@@ -127,10 +129,10 @@ bool RegexMatch(const std::string& str, const std::regex& expr);
 std::vector<std::string> RegexSplit(const std::string& str, const std::regex& expr);
 
 template<typename Container>
-static inline std::string Join(const Container& tokens, const std::string& delim)
+inline std::string JoinIntoString(const Container& tokens, const std::string& delim)
 {
     std::ostringstream result;
-    for (auto it = tokens.begin(); it != tokens.end(); ++it)
+    for (auto it = tokens.begin(); it != tokens.end(); it++)
     {
         if (it != tokens.begin())
         {
@@ -139,12 +141,6 @@ static inline std::string Join(const Container& tokens, const std::string& delim
         result << *it;
     }
     return result.str();
-}
-
-template<std::ranges::range Range>
-auto RemoveEmpty(Range r)
-{
-    return std::ranges::remove_if(r, std::ranges::empty(r));
 }
 
 } // namespace rad

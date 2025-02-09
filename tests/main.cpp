@@ -1,5 +1,5 @@
 #include <rad/System/Application.h>
-
+#include <rad/IO/Logging.h>
 #include <gtest/gtest.h>
 
 int main(int argc, char* argv[])
@@ -7,6 +7,7 @@ int main(int argc, char* argv[])
     rad::Application app;
     if (!app.Init(argc, argv))
     {
+        SPDLOG_ERROR("rad::Application::Init failed!");
         return -1;
     }
     testing::InitGoogleTest(&argc, argv);

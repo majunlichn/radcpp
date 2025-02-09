@@ -336,7 +336,7 @@ void StrReplaceInPlace(std::string& str, std::string_view subOld, std::string_vi
     }
 }
 
-bool ReplaceFirst(std::string& str, std::string_view target, std::string_view rep)
+bool StrReplaceFirst(std::string& str, std::string_view target, std::string_view rep)
 {
     const size_t startPos = str.find(target);
     if (startPos == std::string::npos)
@@ -347,7 +347,7 @@ bool ReplaceFirst(std::string& str, std::string_view target, std::string_view re
     return true;
 }
 
-bool ReplaceLast(std::string& str, std::string_view target, std::string_view rep)
+bool StrReplaceLast(std::string& str, std::string_view target, std::string_view rep)
 {
     size_t startPos = str.rfind(target);
     if (startPos == std::string::npos)
