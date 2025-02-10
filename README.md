@@ -18,8 +18,8 @@ Great C++ collections.
     # Run the bootstrap script:
     cd vcpkg
     .\bootstrap-vcpkg.bat # Linux: ./bootstrap-vcpkg.sh
-    # Configure the VCPKG_ROOT environment variable for convenience:
-    $env:VCPKG_ROOT="C:\path\to\vcpkg" # Linux: export VCPKG_ROOT="/path/to/vcpkg"
+    # Configure the VCPKG_ROOT environment variable for convenience (use "/" as the directory separator):
+    $env:VCPKG_ROOT="C:/path/to/vcpkg" # Linux: export VCPKG_ROOT="/path/to/vcpkg"
     ```
 
 3. Install the following vcpkg packages:
