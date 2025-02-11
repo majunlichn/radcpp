@@ -64,7 +64,7 @@ bool StrIsNumeric(std::string_view str);
 
 std::vector<std::string> StrSplit(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr = true);
-std::vector<std::string_view> ViewSplit(
+std::vector<std::string_view> StrSplitViews(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr = true);
 
 std::string StrReplace(std::string_view str, std::string_view subOld, std::string_view subNew, int count = -1);

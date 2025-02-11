@@ -1,5 +1,6 @@
 set(TEST_SOURCES
     IntegerTest.cpp
+    StringTest.cpp
     ExecutionTest.cpp
     main.cpp
 )

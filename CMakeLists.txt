@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.23)
 
-message("Configuring radcpp ...")
-message("CMake Version: ${CMAKE_VERSION}")
-message("CMake Generator: ${CMAKE_GENERATOR} (${CMAKE_GENERATOR_PLATFORM})")
+message(STATUS "Configuring radcpp ...")
+message(STATUS "CMake Version: ${CMAKE_VERSION}")
+message(STATUS "CMake Generator: ${CMAKE_GENERATOR}")
 
 if(POLICY CMP0167)
     # find_package(Boost): without the CONFIG or NO_MODULE options, find the upstream BoostConfig.cmake directly.
@@ -35,10 +35,11 @@ set(RADCPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 option(RADCPP_BUILD_TESTS "Build radcpp tests." ON)
 option(RADCPP_INSTALL "Enable radcpp intall." ON)
 
+# PROJECT_IS_TOP_LEVEL
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    set(RADCPP_IS_SUBPROJECT False)
+    set(RADCPP_IS_TOP_LEVEL False)
 else()
-    set(RADCPP_IS_SUBPROJECT True)
+    set(RADCPP_IS_TOP_LEVEL True)
 endif()
 
 include(cmake/CompilerOptions.cmake)

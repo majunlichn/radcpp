@@ -50,9 +50,20 @@ void StrLowerInPlace(std::string& s)
 
 std::string StrTrim(std::string_view str, std::string_view charlist)
 {
+    if (str.empty())
+    {
+        return {};
+    }
     size_t beg = str.find_first_not_of(charlist);
     size_t end = str.find_last_not_of(charlist) + 1;
-    return std::string(str.substr(beg, end - beg));
+    if (beg < end)
+    {
+        return std::string(str.substr(beg, end - beg));
+    }
+    else
+    {
+        return {};
+    }
 }
 
 void StrTrimInPlace(std::string& str, std::string_view charlist)
@@ -254,7 +265,7 @@ std::vector<std::string> StrSplit(
     return tokens;
 }
 
-std::vector<std::string_view> ViewSplit(std::string_view str, std::string_view delimiters, bool skipEmptySubStr)
+std::vector<std::string_view> StrSplitViews(std::string_view str, std::string_view delimiters, bool skipEmptySubStr)
 {
     std::vector<std::string_view> tokens;
 
