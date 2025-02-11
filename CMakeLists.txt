@@ -142,6 +142,7 @@ target_include_directories(radcpp
     PUBLIC $<BUILD_INTERFACE:${RADCPP_ROOT}>
     PUBLIC $<BUILD_INTERFACE:${RADCPP_ROOT}/imported/utfcpp/source>
     PUBLIC $<INSTALL_INTERFACE:include>
+    PUBLIC $<INSTALL_INTERFACE:include/utfcpp/source>
     PUBLIC ${Boost_INCLUDE_DIRS}
 )
 
@@ -169,6 +170,7 @@ endif()
 
 if (RADCPP_INSTALL)
     set(RADCPP_INSTALL_CMAKEDIR "share/radcpp")
+    install(DIRECTORY "${RADCPP_ROOT}/imported/utfcpp" DESTINATION include)
     install(TARGETS radcpp EXPORT radcppTargets
         FILE_SET HEADERS DESTINATION include
         RUNTIME DESTINATION bin
