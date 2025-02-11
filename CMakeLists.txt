@@ -68,6 +68,7 @@ list(APPEND RADCPP_HEADERS
     ${RADCPP_ROOT}/radcpp/Core/BFloat16.h
     ${RADCPP_ROOT}/radcpp/Core/Flags.h
     ${RADCPP_ROOT}/radcpp/Core/Float.h
+    ${RADCPP_ROOT}/radcpp/Core/Float8.h
     ${RADCPP_ROOT}/radcpp/Core/Float16.h
     ${RADCPP_ROOT}/radcpp/Core/Format.h
     ${RADCPP_ROOT}/radcpp/Core/Integer.h
@@ -98,6 +99,7 @@ list(APPEND RADCPP_SOURCES
     ${RADCPP_HEADERS}
     ${RADCPP_ROOT}/radcpp/Core/BFloat16.cpp
     ${RADCPP_ROOT}/radcpp/Core/Float.cpp
+    ${RADCPP_ROOT}/radcpp/Core/Float8.cpp
     ${RADCPP_ROOT}/radcpp/Core/Float16.cpp
     ${RADCPP_ROOT}/radcpp/Core/Format.cpp
     ${RADCPP_ROOT}/radcpp/Core/Integer.cpp
