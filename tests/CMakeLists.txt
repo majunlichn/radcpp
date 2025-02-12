@@ -1,7 +1,8 @@
 set(TEST_SOURCES
+    ExecutionTest.cpp
     IntegerTest.cpp
     StringTest.cpp
-    ExecutionTest.cpp
+    TimeTest.cpp
     main.cpp
 )
 
