@@ -92,6 +92,7 @@ list(APPEND RADCPP_HEADERS
     ${RADCPP_ROOT}/radcpp/System/CpuInfo.h
     ${RADCPP_ROOT}/radcpp/System/OS.h
     ${RADCPP_ROOT}/radcpp/System/Process.h
+    ${RADCPP_ROOT}/radcpp/System/Thread.h
     ${RADCPP_ROOT}/radcpp/System/Time.h
 )
 
@@ -119,6 +120,7 @@ list(APPEND RADCPP_SOURCES
     ${RADCPP_ROOT}/radcpp/System/CpuInfo.cpp
     ${RADCPP_ROOT}/radcpp/System/OS.cpp
     ${RADCPP_ROOT}/radcpp/System/Process.cpp
+    ${RADCPP_ROOT}/radcpp/System/Thread.cpp
     ${RADCPP_ROOT}/radcpp/System/Time.cpp
 )
 
