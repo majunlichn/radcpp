@@ -50,8 +50,8 @@ bool Application::Init(int argc, char** argv)
     InstallDefaultSignalHandlers();
     InitLogging(path::GetFileName(argv[0]) + ".log", true);
 
-    RAD_LOG_DEFAULT(info, "Program: {}", argv[0]);
-    RAD_LOG_DEFAULT(info, "Working Dir: {}",
+    LOG_DEFAULT(info, "Program: {}", argv[0]);
+    LOG_DEFAULT(info, "Working Dir: {}",
         (const char*)rad::GetWorkingDirectory().u8string().c_str());
 
     LogSystemInfo();

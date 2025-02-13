@@ -32,6 +32,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(RADCPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
+option(RADCPP_ENABLE_VULKAN "Enable radcpp Vulkan support." ON)
+if (RADCPP_ENABLE_VULKAN AND (NOT DEFINED ENV{VULKAN_SDK}))
+    message("ENV{VULKAN_SDK} is not defined, build with no Vulkan support.")
+    set(RADCPP_ENABLE_VULKAN OFF)
+endif()
 option(RADCPP_BUILD_TESTS "Build radcpp tests." ON)
 option(RADCPP_INSTALL "Enable radcpp intall." ON)
 
@@ -97,7 +102,6 @@ list(APPEND RADCPP_HEADERS
 )
 
 list(APPEND RADCPP_SOURCES
-    ${RADCPP_HEADERS}
     ${RADCPP_ROOT}/radcpp/Core/BFloat16.cpp
     ${RADCPP_ROOT}/radcpp/Core/Float.cpp
     ${RADCPP_ROOT}/radcpp/Core/Float8.cpp
@@ -123,6 +127,20 @@ list(APPEND RADCPP_SOURCES
     ${RADCPP_ROOT}/radcpp/System/Thread.cpp
     ${RADCPP_ROOT}/radcpp/System/Time.cpp
 )
+
+message("RADCPP_ENABLE_VULKAN=${RADCPP_ENABLE_VULKAN}")
+if (RADCPP_ENABLE_VULKAN)
+    list(APPEND RADCPP_HEADERS
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanCommon.h
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanContext.h
+    )
+    list(APPEND RADCPP_SOURCES
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanCommon.cpp
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanContext.cpp
+    )
+endif()
+
+set(RADCPP_SOURCES ${RADCPP_HEADERS} ${RADCPP_SOURCES})
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/radcpp FILES ${RADCPP_SOURCES})
 
@@ -150,6 +168,15 @@ target_include_directories(radcpp
     PUBLIC $<INSTALL_INTERFACE:include/utfcpp/source>
     PUBLIC ${Boost_INCLUDE_DIRS}
 )
+
+if (RADCPP_ENABLE_VULKAN)
+    target_include_directories(radcpp
+        PUBLIC $ENV{VULKAN_SDK}/Include
+    )
+    target_compile_definitions(radcpp
+        PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
+    )
+endif()
 
 target_link_libraries(radcpp
     PUBLIC ${Boost_LIBRARIES}

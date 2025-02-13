@@ -20,9 +20,9 @@ std::shared_ptr<spdlog::logger> CreateLogger(const std::string& name);
 } // namespace rad
 
 #if !defined(RAD_NO_LOGGING)
-#define RAD_LOG(Logger, LogLevel, ...) SPDLOG_LOGGER_CALL(Logger, spdlog::level::LogLevel, __VA_ARGS__)
+    #define RAD_LOGGER_CALL(Logger, LogLevel, ...) SPDLOG_LOGGER_CALL(Logger, spdlog::level::LogLevel, __VA_ARGS__)
 #else
-#define RAD_LOG(Logger, LogLevel, ...)
+    #define RAD_LOGGER_CALL(Logger, LogLevel, ...)
 #endif
 
-#define RAD_LOG_DEFAULT(LogLevel, ...) RAD_LOG(rad::GetDefaultLogger(), LogLevel, __VA_ARGS__)
+#define LOG_DEFAULT(LogLevel, ...) RAD_LOGGER_CALL(rad::GetDefaultLogger(), LogLevel, __VA_ARGS__)

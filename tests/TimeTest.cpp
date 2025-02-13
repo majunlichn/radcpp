@@ -6,8 +6,8 @@
 
 TEST(System, Time)
 {
-    RAD_LOG_DEFAULT(info, "Time UTC: {}", rad::GetTimeStringUTC());
-    RAD_LOG_DEFAULT(info, "Time ISO8601: {}", rad::GetTimeStringISO8601());
+    LOG_DEFAULT(info, "Time UTC: {}", rad::GetTimeStringUTC());
+    LOG_DEFAULT(info, "Time ISO8601: {}", rad::GetTimeStringISO8601());
 
     rad::Stopwatch watch;
     watch.Start();

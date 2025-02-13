@@ -6,6 +6,12 @@ set(TEST_SOURCES
     main.cpp
 )
 
+if (RADCPP_ENABLE_VULKAN)
+    list(APPEND TEST_SOURCES
+        VulkanTest.cpp
+    )
+endif()
+
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${TEST_SOURCES})
 
 add_executable(radcpp-tests ${TEST_SOURCES})

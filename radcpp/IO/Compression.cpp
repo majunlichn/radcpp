@@ -111,7 +111,7 @@ bool ZipWriter::Open(std::string_view fileName, int64_t diskSize, bool append)
     }
     else
     {
-        RAD_LOG_DEFAULT(err, "mz_zip_writer_open_file(path=\"{}\"): {}",
+        LOG_DEFAULT(err, "mz_zip_writer_open_file(path=\"{}\"): {}",
             fileName, mz_get_error_string(err));
         return false;
     }
@@ -123,7 +123,7 @@ void ZipWriter::Close()
     {
         int32_t err = mz_zip_writer_close(m_handle);
         if (err != MZ_OK) {
-            RAD_LOG_DEFAULT(err, "mz_zip_writer_close: {}",
+            LOG_DEFAULT(err, "mz_zip_writer_close: {}",
                 mz_get_error_string(err));
         }
     }
@@ -138,7 +138,7 @@ bool ZipWriter::AddToArchive(Span<std::string> paths)
             nullptr, 0, 1);
         if (err != MZ_OK)
         {
-            RAD_LOG_DEFAULT(err, "mz_zip_writer_add_path(path=\"{}\"): {}",
+            LOG_DEFAULT(err, "mz_zip_writer_add_path(path=\"{}\"): {}",
                 path, mz_get_error_string(err));
             result = false;
         }
@@ -186,7 +186,7 @@ bool ZipReader::OpenFile(std::string_view fileName)
     }
     else
     {
-        RAD_LOG_DEFAULT(err, "mz_zip_reader_open_file(path=\"{}\"): {}",
+        LOG_DEFAULT(err, "mz_zip_reader_open_file(path=\"{}\"): {}",
             fileName, mz_get_error_string(err));
         return false;
     }
@@ -202,7 +202,7 @@ bool ZipReader::OpenFileInMemory(std::string_view fileName)
     }
     else
     {
-        RAD_LOG_DEFAULT(err, "mz_zip_reader_open_file_in_memory(path=\"{}\"): {}",
+        LOG_DEFAULT(err, "mz_zip_reader_open_file_in_memory(path=\"{}\"): {}",
             fileName, mz_get_error_string(err));
         return false;
     }
@@ -217,7 +217,7 @@ bool ZipReader::OpenBuffer(uint8_t* buffer, int32_t sizeInBytes, bool copy)
     }
     else
     {
-        RAD_LOG_DEFAULT(err, "mz_zip_reader_open_buffer: {}",
+        LOG_DEFAULT(err, "mz_zip_reader_open_buffer: {}",
             mz_get_error_string(err));
         return false;
     }
@@ -230,7 +230,7 @@ void ZipReader::Close()
         int32_t err = mz_zip_reader_close(m_handle);
         if (err != MZ_OK)
         {
-            RAD_LOG_DEFAULT(err, "mz_zip_reader_close: {}",
+            LOG_DEFAULT(err, "mz_zip_reader_close: {}",
                 mz_get_error_string(err));
         }
     }
@@ -331,7 +331,7 @@ bool ZipReader::ExtractAll(std::string_view destination)
     }
     else
     {
-        RAD_LOG_DEFAULT(err, "mz_zip_reader_save_all: {}", mz_get_error_string(err));
+        LOG_DEFAULT(err, "mz_zip_reader_save_all: {}", mz_get_error_string(err));
         return false;
     }
 }
