@@ -1,3 +1,4 @@
+#define VMA_IMPLEMENTATION 1
 #include <radcpp/GPU/VulkanCommon.h>
 
 #include <set>

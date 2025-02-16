@@ -6,7 +6,10 @@
 
 #include <radcpp/Core/Platform.h>
 #include <radcpp/Core/Integer.h>
+#include <radcpp/Core/Memory.h>
+#include <radcpp/Core/RefCounted.h>
 #include <radcpp/Core/String.h>
+#include <radcpp/Core/TypeTraits.h>
 #include <radcpp/Container/SmallVector.h>
 #include <radcpp/Container/Span.h>
 #include <radcpp/IO/Logging.h>
@@ -14,10 +17,18 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vk_enum_string_helper.h>
 
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#include <vma/vk_mem_alloc.h>
+
 #include <cmath>
 
 namespace vkpp
 {
+
+#define VK_STRUCTURE_CHAIN_BEGIN(Head) auto Head##ChainNext = &Head.pNext;
+#define VK_STRUCTURE_CHAIN_ADD(Head, Next) do { *Head##ChainNext = &Next; Head##ChainNext = &Next.pNext; } while(0)
+#define VK_STRUCTURE_CHAIN_END(Head) do { *Head##ChainNext = nullptr; } while(0)
 
 inline bool IsVersionMatchOrGreater(uint32_t version, uint32_t major, uint32_t minor, uint32_t patch)
 {
@@ -74,6 +85,14 @@ inline uint32_t GetMaxMipLevel(uint32_t width, uint32_t height, uint32_t depth)
 
 namespace rad
 {
+
+enum class VulkanQueueFamily
+{
+    Graphics,
+    Compute,    // Async Compute Engine (ACE)
+    Transfer,   // DMA
+    Count
+};
 
 spdlog::logger* GetVulkanLogger();
 #define LOG_VULKAN(LogLevel, ...) RAD_LOGGER_CALL(rad::GetVulkanLogger(), LogLevel, __VA_ARGS__)

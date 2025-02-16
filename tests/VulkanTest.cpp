@@ -1,4 +1,5 @@
-#include <radcpp/GPU/VulkanContext.h>
+#include <radcpp/GPU/VulkanInstance.h>
+#include <radcpp/GPU/VulkanDevice.h>
 #include <radcpp/IO/Logging.h>
 
 #include <gtest/gtest.h>
@@ -7,9 +8,9 @@ TEST(GPU, Vulkan)
 {
     try
     {
-        rad::VulkanContext vulkan;
-        vulkan.Init("VulkanTest", VK_MAKE_VERSION(0, 0, 0));
-        if (vulkan.m_physicalDevices.empty())
+        rad::Ref<rad::VulkanInstance> vulkan = RAD_NEW rad::VulkanInstance();
+        vulkan->Init("VulkanTest", VK_MAKE_VERSION(0, 0, 0));
+        if (vulkan->m_physicalDevices.empty())
         {
             LOG_VULKAN(err, "No Vulkan device available!");
             return;
@@ -23,6 +24,13 @@ TEST(GPU, Vulkan)
         EXPECT_EQ(levelCount, 9);
         levelCount = vkpp::GetMaxMipLevel(256, 128, 64);
         EXPECT_EQ(levelCount, 9);
+
+        rad::Ref<rad::VulkanDevice> device = vulkan->CreateDevice();
+        LOG_VULKAN(info, "Device created on {}", device->GetName());
+        for (const std::string& extension : device->m_enabledExtensions)
+        {
+            LOG_VULKAN(info, "Device extension enabled: {}", extension);
+        }
     }
     catch (vk::SystemError& err)
     {

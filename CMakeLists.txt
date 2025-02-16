@@ -37,7 +37,7 @@ if (RADCPP_ENABLE_VULKAN AND (NOT DEFINED ENV{VULKAN_SDK}))
     message("ENV{VULKAN_SDK} is not defined, build with no Vulkan support.")
     set(RADCPP_ENABLE_VULKAN OFF)
 endif()
-option(RADCPP_BUILD_TESTS "Build radcpp tests." ON)
+option(RADCPP_BUILD_TESTS "Build radcpp tests." ${PROJECT_IS_TOP_LEVEL})
 option(RADCPP_INSTALL "Enable radcpp intall." ON)
 
 # PROJECT_IS_TOP_LEVEL
@@ -132,11 +132,13 @@ message("RADCPP_ENABLE_VULKAN=${RADCPP_ENABLE_VULKAN}")
 if (RADCPP_ENABLE_VULKAN)
     list(APPEND RADCPP_HEADERS
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommon.h
-        ${RADCPP_ROOT}/radcpp/GPU/VulkanContext.h
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanInstance.h
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanDevice.h
     )
     list(APPEND RADCPP_SOURCES
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommon.cpp
-        ${RADCPP_ROOT}/radcpp/GPU/VulkanContext.cpp
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanInstance.cpp
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanDevice.cpp
     )
 endif()
 
