@@ -13,7 +13,7 @@ public:
     VulkanInstance();
     ~VulkanInstance();
 
-    VkInstance GetHandle() const { return static_cast<vk::Instance>(m_handle); }
+    vk::Instance GetHandle() const { return static_cast<vk::Instance>(m_handle); }
 
     std::vector<VkLayerProperties> EnumerateInstanceLayers();
     std::vector<VkExtensionProperties> EnumerateInstanceExtensions(const char* layerName);

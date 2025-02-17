@@ -16,7 +16,7 @@ public:
         const std::set<std::string>& requiredExtensions);
     ~VulkanDevice();
 
-    VkDevice GetHandle() const { return static_cast<vk::Device>(m_handle); }
+    vk::Device GetHandle() const { return static_cast<vk::Device>(m_handle); }
     const char* GetName() const { return m_properties.deviceName; }
 
     Ref<VulkanInstance> m_instance;
