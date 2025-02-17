@@ -16,12 +16,13 @@ public:
         const std::set<std::string>& requiredExtensions);
     ~VulkanDevice();
 
+    VkDevice GetHandle() const { return static_cast<vk::Device>(m_handle); }
     const char* GetName() const { return m_properties.deviceName; }
 
     Ref<VulkanInstance> m_instance;
     vk::raii::PhysicalDevice m_physicalDevice;
-    vk::raii::Device m_device = { nullptr };
-    uint32_t m_queueFamilyIndices[size_t(VulkanQueueFamily::Count)] = { VK_QUEUE_FAMILY_IGNORED };
+    vk::raii::Device m_handle = { nullptr };
+    std::array<uint32_t, size_t(VulkanQueueFamily::Count)> m_queueFamilyIndices;
     uint32_t GetQueueFamilyIndex(VulkanQueueFamily queueFamily)
     {
         return m_queueFamilyIndices[size_t(queueFamily)];
@@ -57,6 +58,8 @@ public:
     vk::PhysicalDeviceVulkan13Features m_Vulkan13Features;
 
     VmaAllocator m_allocator = nullptr;
+
+    vk::Queue m_queues[size_t(VulkanQueueFamily::Count)];
 
 }; // class VulkanDevice
 

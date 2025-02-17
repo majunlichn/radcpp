@@ -15,6 +15,7 @@ TEST(GPU, Vulkan)
             LOG_VULKAN(err, "No Vulkan device available!");
             return;
         }
+
         uint32_t levelCount = 0;
         levelCount = vkpp::GetMaxMipLevel(1024, 2048);
         EXPECT_EQ(levelCount, 12);

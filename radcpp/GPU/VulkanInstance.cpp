@@ -114,7 +114,7 @@ bool VulkanInstance::Init(std::string_view appName, uint32_t appVersion, std::st
         debugUtilsMessengerCreateInfo,
     };
 #endif
-    m_instance = vk::raii::Instance(m_context, instanceCreateInfoChain.get());
+    m_handle = vk::raii::Instance(m_context, instanceCreateInfoChain.get());
     for (const std::string& layer : m_enabledLayers)
     {
         LOG_VULKAN(info, "Instance layer enabled: {}", layer);
@@ -125,9 +125,9 @@ bool VulkanInstance::Init(std::string_view appName, uint32_t appVersion, std::st
     }
 
 #if defined(_DEBUG)
-    vk::raii::DebugUtilsMessengerEXT debugUtilsMessenger(m_instance, debugUtilsMessengerCreateInfo);
+    vk::raii::DebugUtilsMessengerEXT debugUtilsMessenger(m_handle, debugUtilsMessengerCreateInfo);
 #endif
-    m_physicalDevices = vk::raii::PhysicalDevices(m_instance);
+    m_physicalDevices = vk::raii::PhysicalDevices(m_handle);
     for (size_t physicalDeviceIndex = 0; physicalDeviceIndex < m_physicalDevices.size(); physicalDeviceIndex++)
     {
         auto& physicalDevice = m_physicalDevices[physicalDeviceIndex];

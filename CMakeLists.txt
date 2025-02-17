@@ -134,11 +134,13 @@ if (RADCPP_ENABLE_VULKAN)
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommon.h
         ${RADCPP_ROOT}/radcpp/GPU/VulkanInstance.h
         ${RADCPP_ROOT}/radcpp/GPU/VulkanDevice.h
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanCommand.h
     )
     list(APPEND RADCPP_SOURCES
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommon.cpp
         ${RADCPP_ROOT}/radcpp/GPU/VulkanInstance.cpp
         ${RADCPP_ROOT}/radcpp/GPU/VulkanDevice.cpp
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanCommand.cpp
     )
 endif()
 

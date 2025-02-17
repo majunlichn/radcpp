@@ -59,6 +59,7 @@ VulkanDevice::VulkanDevice(Ref<VulkanInstance> instance, vk::raii::PhysicalDevic
 
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
     m_queueFamilies = m_physicalDevice.getQueueFamilyProperties();
+    m_queueFamilyIndices.fill(VK_QUEUE_FAMILY_IGNORED);
     float priority = 1.0f;
     for (uint32_t i = 0; i < m_queueFamilies.size(); i++)
     {
@@ -71,9 +72,10 @@ VulkanDevice::VulkanDevice(Ref<VulkanInstance> instance, vk::raii::PhysicalDevic
             queueInfo.queueCount = 1;
             queueInfo.pQueuePriorities = &priority;
             queueCreateInfos.emplace_back(queueInfo);
+            m_queueFamilyIndices[size_t(VulkanQueueFamily::Graphics)] = i;
         }
         // Async Compute Engine (ACE): no graphics bit, has compute bit.
-        if (!HasQueueFamily(VulkanQueueFamily::Compute) &&
+        else if (!HasQueueFamily(VulkanQueueFamily::Compute) &&
             !(m_queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
             (m_queueFamilies[i].queueFlags & vk::QueueFlagBits::eCompute))
         {
@@ -83,9 +85,10 @@ VulkanDevice::VulkanDevice(Ref<VulkanInstance> instance, vk::raii::PhysicalDevic
             queueInfo.queueCount = 1;
             queueInfo.pQueuePriorities = &priority;
             queueCreateInfos.emplace_back(queueInfo);
+            m_queueFamilyIndices[size_t(VulkanQueueFamily::Compute)] = i;
         }
         // DMA: no graphics or compute bit, has transfer bit.
-        if (!HasQueueFamily(VulkanQueueFamily::Transfer) &&
+        else if (!HasQueueFamily(VulkanQueueFamily::Transfer) &&
             !(m_queueFamilies[i].queueFlags &
                 (vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute)) &&
             (m_queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer))
@@ -96,8 +99,11 @@ VulkanDevice::VulkanDevice(Ref<VulkanInstance> instance, vk::raii::PhysicalDevic
             queueInfo.queueCount = 1;
             queueInfo.pQueuePriorities = &priority;
             queueCreateInfos.emplace_back(queueInfo);
+            m_queueFamilyIndices[size_t(VulkanQueueFamily::Transfer)] = i;
         }
     }
+
+    assert(queueCreateInfos.size() == m_queueFamilyIndices.size());
 
     const auto& supportedExtensions = m_physicalDevice.enumerateDeviceExtensionProperties();
     std::vector<const char*> enabledExtensions;
@@ -116,15 +122,20 @@ VulkanDevice::VulkanDevice(Ref<VulkanInstance> instance, vk::raii::PhysicalDevic
     createInfo.setQueueCreateInfos(queueCreateInfos);
     createInfo.setPEnabledExtensionNames(enabledExtensions);
     createInfo.pEnabledFeatures;
-    m_device = vk::raii::Device(m_physicalDevice, createInfo);
+    m_handle = vk::raii::Device(m_physicalDevice, createInfo);
+
+    for (int i = 0; i < ToUnderlying(VulkanQueueFamily::Count); i++)
+    {
+        m_queues[i] = m_handle.getQueue(m_queueFamilyIndices[i], 0);
+    }
 
     // Vma Initialization
     // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html#quick_start_initialization
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
     allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-    allocatorCreateInfo.instance = static_cast<vk::Instance>(m_instance->m_instance);
+    allocatorCreateInfo.instance = static_cast<vk::Instance>(m_instance->m_handle);
     allocatorCreateInfo.physicalDevice = static_cast<vk::PhysicalDevice>(m_physicalDevice);
-    allocatorCreateInfo.device = static_cast<vk::Device>(m_device);
+    allocatorCreateInfo.device = static_cast<vk::Device>(m_handle);
     VmaVulkanFunctions vmaFunctions = {};
     vmaFunctions.vkGetInstanceProcAddr = m_physicalDevice.getDispatcher()->vkGetInstanceProcAddr;
     vmaFunctions.vkGetDeviceProcAddr = m_physicalDevice.getDispatcher()->vkGetDeviceProcAddr;

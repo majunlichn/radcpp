@@ -13,6 +13,7 @@ public:
     VulkanInstance();
     ~VulkanInstance();
 
+    VkInstance GetHandle() const { return static_cast<vk::Instance>(m_handle); }
 
     std::vector<VkLayerProperties> EnumerateInstanceLayers();
     std::vector<VkExtensionProperties> EnumerateInstanceExtensions(const char* layerName);
@@ -49,7 +50,7 @@ public:
     uint32_t m_apiVersion = 0;
     std::set<std::string, rad::StringLess> m_enabledLayers;
     std::set<std::string, rad::StringLess> m_enabledExtensions;
-    vk::raii::Instance m_instance = { nullptr };
+    vk::raii::Instance m_handle = { nullptr };
     vk::raii::DebugUtilsMessengerEXT m_debugUtilsMessenger = { nullptr };
     vk::raii::PhysicalDevices m_physicalDevices = { nullptr };
 
