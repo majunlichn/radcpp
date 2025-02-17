@@ -133,6 +133,9 @@ bool VulkanInstance::Init(std::string_view appName, uint32_t appVersion, std::st
         auto& physicalDevice = m_physicalDevices[physicalDeviceIndex];
         LOG_VULKAN(info, "PhysicalDevice#{}: {}", physicalDeviceIndex, physicalDevice.getProperties().deviceName.data());
         auto queueFamilies = physicalDevice.getQueueFamilyProperties();
+        const uint32_t& apiVersion = physicalDevice.getProperties().apiVersion;
+        LOG_VULKAN(info, "API Version: {}.{}.{}",
+            VK_VERSION_MAJOR(apiVersion), VK_VERSION_MINOR(apiVersion), VK_VERSION_PATCH(apiVersion));
         for (size_t queueFamilyIndex = 0; queueFamilyIndex < queueFamilies.size(); ++queueFamilyIndex)
         {
             const auto& queueFamily = queueFamilies[queueFamilyIndex];

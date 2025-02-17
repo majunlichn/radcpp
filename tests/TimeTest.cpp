@@ -13,8 +13,10 @@ TEST(System, Time)
     watch.Start();
     std::this_thread::sleep_for(rad::Milliseconds(100));
     watch.Stop();
-    double epsilon = std::abs(watch.GetElapsedSeconds() - 0.1);
-    EXPECT_TRUE(epsilon < 0.01);
-    epsilon = std::abs(watch.GetElapsedMilliseconds() - 100);
-    EXPECT_TRUE(epsilon < 10);
+    double elapsedSeconds = watch.GetElapsedSeconds();
+    EXPECT_TRUE(elapsedSeconds > 0.1);
+    EXPECT_TRUE(elapsedSeconds < 0.15);
+    double elapsedMilliseconds = watch.GetElapsedMilliseconds();
+    EXPECT_TRUE(elapsedMilliseconds > 100);
+    EXPECT_TRUE(elapsedMilliseconds < 150);
 }

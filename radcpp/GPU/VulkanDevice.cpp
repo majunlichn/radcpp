@@ -121,7 +121,7 @@ VulkanDevice::VulkanDevice(Ref<VulkanInstance> instance, vk::raii::PhysicalDevic
     // Vma Initialization
     // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html#quick_start_initialization
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
-    allocatorCreateInfo.vulkanApiVersion = m_instance->GetApiVersion();
+    allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
     allocatorCreateInfo.instance = static_cast<vk::Instance>(m_instance->m_instance);
     allocatorCreateInfo.physicalDevice = static_cast<vk::PhysicalDevice>(m_physicalDevice);
     allocatorCreateInfo.device = static_cast<vk::Device>(m_device);
