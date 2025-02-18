@@ -15,7 +15,7 @@ if((NOT DEFINED CMAKE_TOOLCHAIN_FILE) AND (DEFINED ENV{VCPKG_ROOT}))
 endif()
 cmake_path(CONVERT ${CMAKE_TOOLCHAIN_FILE} TO_CMAKE_PATH_LIST ${CMAKE_TOOLCHAIN_FILE} NORMALIZE)
 list(REMOVE_DUPLICATES ${CMAKE_TOOLCHAIN_FILE})
-message("CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+message(STATUS "CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
 
 set(RADCPP_VERSION_MAJOR 0)
 set(RADCPP_VERSION_MINOR 0)
@@ -34,7 +34,7 @@ set(RADCPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 option(RADCPP_ENABLE_VULKAN "Enable radcpp Vulkan support." ON)
 if (RADCPP_ENABLE_VULKAN AND (NOT DEFINED ENV{VULKAN_SDK}))
-    message("ENV{VULKAN_SDK} is not defined, build with no Vulkan support.")
+    message(STATUS "ENV{VULKAN_SDK} is not defined, build with no Vulkan support.")
     set(RADCPP_ENABLE_VULKAN OFF)
 endif()
 option(RADCPP_BUILD_TESTS "Build radcpp tests." ${PROJECT_IS_TOP_LEVEL})
@@ -128,7 +128,7 @@ list(APPEND RADCPP_SOURCES
     ${RADCPP_ROOT}/radcpp/System/Time.cpp
 )
 
-message("RADCPP_ENABLE_VULKAN=${RADCPP_ENABLE_VULKAN}")
+message(STATUS "RADCPP_ENABLE_VULKAN=${RADCPP_ENABLE_VULKAN}")
 if (RADCPP_ENABLE_VULKAN)
     list(APPEND RADCPP_HEADERS
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommon.h
@@ -176,7 +176,7 @@ target_include_directories(radcpp
 )
 
 if (RADCPP_ENABLE_VULKAN)
-    target_include_directories(radcpp
+    target_include_directories(radcpp AFTER
         PUBLIC $ENV{VULKAN_SDK}/Include
     )
     target_compile_definitions(radcpp
