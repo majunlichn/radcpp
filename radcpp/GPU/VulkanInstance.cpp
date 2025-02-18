@@ -27,12 +27,12 @@ std::vector<VkLayerProperties> VulkanInstance::EnumerateInstanceLayers()
 {
     std::vector<VkLayerProperties> layers;
     uint32_t count = 0;
-    VK_CHECK_RETURN(m_context.getDispatcher()->
+    VK_CHECK(m_context.getDispatcher()->
         vkEnumerateInstanceLayerProperties(&count, nullptr));
     if (count > 0)
     {
         layers.resize(count);
-        VK_CHECK_RETURN(m_context.getDispatcher()->
+        VK_CHECK(m_context.getDispatcher()->
             vkEnumerateInstanceLayerProperties(&count, layers.data()));
     }
     return layers;
@@ -42,12 +42,12 @@ std::vector<VkExtensionProperties> VulkanInstance::EnumerateInstanceExtensions(c
 {
     std::vector<VkExtensionProperties> extensions;
     uint32_t count = 0;
-    VK_CHECK_RETURN(m_context.getDispatcher()->
+    VK_CHECK(m_context.getDispatcher()->
         vkEnumerateInstanceExtensionProperties(layerName, &count, nullptr));
     if (count > 0)
     {
         extensions.resize(count);
-        VK_CHECK_RETURN(m_context.getDispatcher()->
+        VK_CHECK(m_context.getDispatcher()->
             vkEnumerateInstanceExtensionProperties(layerName, &count, extensions.data()));
     }
     return extensions;

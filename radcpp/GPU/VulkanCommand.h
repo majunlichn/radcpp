@@ -75,6 +75,9 @@ public:
     // This is a WAR hazard, only requires layout transition.
     void SetImageBarrier_FragmentSampleToColorAttachment(vk::Image image, const vk::ImageSubresourceRange& range);
 
+    // CPU read back of data written by a compute shader.
+    void SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlagBits2 stage);
+
 }; // class VulkanCommandRecorder
 
 } // namespace rad

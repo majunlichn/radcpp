@@ -1,5 +1,6 @@
 #include <radcpp/GPU/VulkanInstance.h>
 #include <radcpp/GPU/VulkanDevice.h>
+#include <radcpp/GPU/VulkanBuffer.h>
 #include <radcpp/IO/Logging.h>
 
 #include <gtest/gtest.h>

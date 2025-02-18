@@ -3,6 +3,7 @@
 #define VK_NO_PROTOTYPES 1
 #define VK_ENABLE_BETA_EXTENSIONS 1
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#define VULKAN_HPP_FLAGS_MASK_TYPE_AS_PUBLIC 1
 
 #include <radcpp/Core/Platform.h>
 #include <radcpp/Core/Integer.h>
@@ -22,6 +23,7 @@
 #include <vma/vk_mem_alloc.h>
 
 #include <cmath>
+#include <source_location>
 
 namespace vkpp
 {
@@ -96,8 +98,8 @@ enum class VulkanQueueFamily
 
 spdlog::logger* GetVulkanLogger();
 #define LOG_VULKAN(LogLevel, ...) RAD_LOGGER_CALL(rad::GetVulkanLogger(), LogLevel, __VA_ARGS__)
-void ReportVulkanError(VkResult result, const char* function, const char* file, uint32_t line);
-#define VK_CHECK_RETURN(Function) \
-    do { const VkResult result = Function; if (result < 0) { ReportVulkanError(result, #Function, __FILE__, __LINE__); } } while(0)
+void ReportVulkanError(VkResult result, const char* expr, std::source_location sourceLoc = std::source_location::current());
+#define VK_CHECK(Expr) \
+    do { const VkResult result = Expr; if (result < 0) { ReportVulkanError(result, #Expr); } } while(0)
 
 } // namespace rad

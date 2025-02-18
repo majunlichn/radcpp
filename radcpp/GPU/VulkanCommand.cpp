@@ -205,4 +205,17 @@ void VulkanCommandRecorder::SetImageBarrier_FragmentSampleToColorAttachment(
     m_cmdBuffer.pipelineBarrier2(dependency);
 }
 
+void VulkanCommandRecorder::SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlagBits2 stage)
+{
+    vk::MemoryBarrier2 barrier;
+    barrier.srcStageMask = stage;
+    barrier.srcAccessMask = vk::AccessFlagBits2::eShaderWrite;
+    barrier.dstStageMask = vk::PipelineStageFlagBits2::eHost;
+    barrier.dstAccessMask = vk::AccessFlagBits2::eHostRead;
+
+    vk::DependencyInfo dependency;
+    dependency.setMemoryBarriers(barrier);
+    m_cmdBuffer.pipelineBarrier2(dependency);
+}
+
 } // namespace rad

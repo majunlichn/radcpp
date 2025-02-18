@@ -51,12 +51,13 @@ spdlog::logger* GetVulkanLogger()
     return VulkanLogger.get();
 }
 
-void ReportVulkanError(VkResult result, const char* function, const char* file, uint32_t line)
+void ReportVulkanError(VkResult result, const char* expr, std::source_location sourceLoc)
 {
     if (result < 0)
     {
-        LOG_VULKAN(err, "{} failed with VkResult={} in {} ({}, line {}).",
-            function, string_VkResult(result), function, file, line);
+        LOG_VULKAN(err, "{} failed with {} ({}, line {}, function {}).",
+            expr, string_VkResult(result),
+            sourceLoc.file_name(), sourceLoc.line(), sourceLoc.function_name());
         throw vk::SystemError(std::error_code(static_cast<int>(result), vk::errorCategory()), string_VkResult(result));
     }
 }
