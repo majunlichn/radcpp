@@ -42,6 +42,11 @@ public:
         return m_enabledExtensions.contains(name);
     }
 
+    vk::Format FindFormat(Span<const vk::Format> candidates,
+        vk::FormatFeatureFlags linearTilingFeatures,
+        vk::FormatFeatureFlags optimalTilingFeatures,
+        vk::FormatFeatureFlags bufferFeatures);
+
     vk::PhysicalDeviceProperties m_properties;
     vk::PhysicalDeviceProperties2 m_properties2;
     vk::PhysicalDeviceVulkan11Properties m_vk11Properties;

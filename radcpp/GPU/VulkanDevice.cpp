@@ -156,4 +156,23 @@ VulkanDevice::~VulkanDevice()
     }
 }
 
+vk::Format VulkanDevice::FindFormat(
+    Span<const vk::Format> candidates,
+    vk::FormatFeatureFlags linearTilingFeatures,
+    vk::FormatFeatureFlags optimalTilingFeatures,
+    vk::FormatFeatureFlags bufferFeatures)
+{
+    for (const auto& candidate : candidates)
+    {
+        vk::FormatProperties props = m_physicalDevice.getFormatProperties(candidate);
+        if (((linearTilingFeatures & props.linearTilingFeatures) == linearTilingFeatures) &&
+            ((optimalTilingFeatures & props.optimalTilingFeatures) == optimalTilingFeatures) &&
+            ((bufferFeatures & props.bufferFeatures) == bufferFeatures))
+        {
+            return candidate;
+        }
+    }
+    return vk::Format::eUndefined;
+}
+
 } // namespace rad
