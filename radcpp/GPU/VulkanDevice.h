@@ -8,8 +8,9 @@ namespace rad
 {
 
 class VulkanInstance;
-class VulkanBuffer;
 class VulkanCommandPool;
+class VulkanBuffer;
+class VulkanBufferView;
 class VulkanImage;
 class VulkanImageView;
 

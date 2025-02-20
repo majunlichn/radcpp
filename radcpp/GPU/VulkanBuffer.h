@@ -6,6 +6,7 @@ namespace rad
 {
 
 class VulkanDevice;
+class VulkanBufferView;
 
 class VulkanBuffer : public RefCounted<VulkanBuffer>
 {
@@ -58,9 +59,29 @@ public:
     void* MapMemory();
     void UnmapMemory();
 
+    Ref<VulkanBufferView> CreateView(
+        vk::Format format,
+        vk::DeviceSize offset = 0,
+        vk::DeviceSize range = vk::WholeSize,
+        vk::BufferViewCreateFlags flags = {});
+
     void Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
     void Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
 
 }; // class VulkanBuffer
+
+class VulkanBufferView : public RefCounted<VulkanBufferView>
+{
+public:
+    VulkanBufferView(Ref<VulkanBuffer> buffer, const vk::BufferViewCreateInfo& createInfo);
+    ~VulkanBufferView();
+
+    Ref<VulkanBuffer> m_buffer;
+    vk::raii::BufferView m_handle = { nullptr };
+    vk::Format m_format = vk::Format::eUndefined;
+    vk::DeviceSize m_offset = 0;
+    vk::DeviceSize m_range = 0;
+
+}; // class VulkanBufferView
 
 } // namespace rad

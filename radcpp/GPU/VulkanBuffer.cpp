@@ -59,6 +59,17 @@ void VulkanBuffer::UnmapMemory()
     vmaUnmapMemory(m_device->m_allocator, m_alloc);
 }
 
+Ref<VulkanBufferView> VulkanBuffer::CreateView(
+    vk::Format format, vk::DeviceSize offset, vk::DeviceSize range, vk::BufferViewCreateFlags flags)
+{
+    vk::BufferViewCreateInfo viewInfo;
+    viewInfo.buffer = m_handle;
+    viewInfo.format = format;
+    viewInfo.offset = offset;
+    viewInfo.range = range;
+    return RAD_NEW VulkanBufferView(this, viewInfo);
+}
+
 void VulkanBuffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
 {
     assert(m_memPropFlags & vk::MemoryPropertyFlagBits::eHostVisible);
@@ -109,6 +120,25 @@ void VulkanBuffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize
             UnmapMemory();
         }
     }
+}
+
+VulkanBufferView::VulkanBufferView(
+    Ref<VulkanBuffer> buffer, const vk::BufferViewCreateInfo& createInfo) :
+    m_buffer(std::move(buffer))
+{
+    static_assert(sizeof(vk::BufferView) == sizeof(VkBufferView));
+    static_assert(sizeof(vk::BufferViewCreateInfo) == sizeof(VkBufferViewCreateInfo));
+    m_handle = m_buffer->m_device->m_handle.createBufferView(createInfo);
+    if (static_cast<vk::BufferView>(m_handle))
+    {
+        m_format = createInfo.format;
+        m_offset = createInfo.offset;
+        m_range = createInfo.range;
+    }
+}
+
+VulkanBufferView::~VulkanBufferView()
+{
 }
 
 } // namespace rad
