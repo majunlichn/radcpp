@@ -8,6 +8,10 @@ namespace rad
 {
 
 class VulkanInstance;
+class VulkanBuffer;
+class VulkanCommandPool;
+class VulkanImage;
+class VulkanImageView;
 
 class VulkanDevice : public RefCounted<VulkanDevice>
 {
@@ -46,6 +50,11 @@ public:
         vk::FormatFeatureFlags linearTilingFeatures,
         vk::FormatFeatureFlags optimalTilingFeatures,
         vk::FormatFeatureFlags bufferFeatures);
+
+    Ref<VulkanImage> CreateImage2DColorAttachment(vk::Format format, uint32_t width, uint32_t height,
+        vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eColorAttachment);
+    Ref<VulkanImage> CreateImage2DDepthStencilAttachment(vk::Format format, uint32_t width, uint32_t height,
+        vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eDepthStencilAttachment);
 
     vk::PhysicalDeviceProperties m_properties;
     vk::PhysicalDeviceProperties2 m_properties2;

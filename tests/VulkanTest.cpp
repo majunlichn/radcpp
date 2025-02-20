@@ -39,47 +39,23 @@ TEST(GPU, Vulkan)
             {}, { vk::FormatFeatureFlagBits::eSampledImage | vk::FormatFeatureFlagBits::eColorAttachment }, {});
 
         rad::Ref<rad::VulkanImage> colorImage;
+        rad::Ref<rad::VulkanImageView> colorView;
         if (colorFormat != vk::Format::eUndefined)
         {
             LOG_VULKAN(info, "Color format: {}", vk::to_string(colorFormat));
-            vk::ImageCreateInfo imageInfo;
-            imageInfo.imageType = vk::ImageType::e2D;
-            imageInfo.format = colorFormat;
-            imageInfo.extent.width = 1920;
-            imageInfo.extent.height = 1080;
-            imageInfo.extent.depth = 1;
-            imageInfo.mipLevels = 1;
-            imageInfo.arrayLayers = 1;
-            imageInfo.samples = vk::SampleCountFlagBits::e1;
-            imageInfo.tiling = vk::ImageTiling::eOptimal;
-            imageInfo.usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment;
-            imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-            VmaAllocationCreateInfo allocCreateInfo = {};
-            allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-            colorImage = RAD_NEW rad::VulkanImage(device, imageInfo, allocCreateInfo);
+            colorImage = device->CreateImage2DColorAttachment(colorFormat, 1920, 1080);
+            colorView = colorImage->CreateView();
         }
 
         vk::Format dsFormat = device->FindFormat({ vk::Format::eD24UnormS8Uint, vk::Format::eD32SfloatS8Uint },
             {}, { vk::FormatFeatureFlagBits::eSampledImage | vk::FormatFeatureFlagBits::eDepthStencilAttachment }, {});
         rad::Ref<rad::VulkanImage> dsImage;
+        rad::Ref<rad::VulkanImageView> dsView;
         if (dsFormat != vk::Format::eUndefined)
         {
             LOG_VULKAN(info, "DepthStencil format: {}", vk::to_string(dsFormat));
-            vk::ImageCreateInfo imageInfo;
-            imageInfo.imageType = vk::ImageType::e2D;
-            imageInfo.format = dsFormat;
-            imageInfo.extent.width = 1920;
-            imageInfo.extent.height = 1080;
-            imageInfo.extent.depth = 1;
-            imageInfo.mipLevels = 1;
-            imageInfo.arrayLayers = 1;
-            imageInfo.samples = vk::SampleCountFlagBits::e1;
-            imageInfo.tiling = vk::ImageTiling::eOptimal;
-            imageInfo.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-            imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-            VmaAllocationCreateInfo allocCreateInfo = {};
-            allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-            dsImage = RAD_NEW rad::VulkanImage(device, imageInfo, allocCreateInfo);
+            dsImage = device->CreateImage2DDepthStencilAttachment(dsFormat, 1920, 1080);
+            dsView = dsImage->CreateView();
         }
     }
     catch (vk::SystemError& err)

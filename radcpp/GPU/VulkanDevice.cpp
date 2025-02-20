@@ -1,5 +1,8 @@
 #include <radcpp/GPU/VulkanDevice.h>
 #include <radcpp/GPU/VulkanInstance.h>
+#include <radcpp/GPU/VulkanCommand.h>
+#include <radcpp/GPU/VulkanBuffer.h>
+#include <radcpp/GPU/VulkanImage.h>
 
 namespace rad
 {
@@ -173,6 +176,46 @@ vk::Format VulkanDevice::FindFormat(
         }
     }
     return vk::Format::eUndefined;
+}
+
+Ref<VulkanImage> VulkanDevice::CreateImage2DColorAttachment(
+    vk::Format format, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
+{
+    vk::ImageCreateInfo imageInfo;
+    imageInfo.imageType = vk::ImageType::e2D;
+    imageInfo.format = format;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = vk::SampleCountFlagBits::e1;
+    imageInfo.tiling = vk::ImageTiling::eOptimal;
+    imageInfo.usage = usage;
+    imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+    VmaAllocationCreateInfo allocCreateInfo = {};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    return RAD_NEW rad::VulkanImage(this, imageInfo, allocCreateInfo);
+}
+
+Ref<VulkanImage> VulkanDevice::CreateImage2DDepthStencilAttachment(
+    vk::Format format, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
+{
+    vk::ImageCreateInfo imageInfo;
+    imageInfo.imageType = vk::ImageType::e2D;
+    imageInfo.format = format;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = vk::SampleCountFlagBits::e1;
+    imageInfo.tiling = vk::ImageTiling::eOptimal;
+    imageInfo.usage = usage;
+    imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+    VmaAllocationCreateInfo allocCreateInfo = {};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    return RAD_NEW rad::VulkanImage(this, imageInfo, allocCreateInfo);
 }
 
 } // namespace rad

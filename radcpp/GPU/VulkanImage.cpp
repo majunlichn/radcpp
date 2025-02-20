@@ -29,6 +29,8 @@ VulkanImage::VulkanImage(
         m_sharingMode = imageInfo.sharingMode;
         vmaGetAllocationMemoryProperties(m_device->m_allocator, m_alloc,
             reinterpret_cast<VkMemoryPropertyFlags*>(&m_memPropFlags));
+
+
     }
 }
 
@@ -40,6 +42,62 @@ VulkanImage::~VulkanImage()
         m_handle = nullptr;
         m_alloc = nullptr;
     }
+}
+
+Ref<VulkanImageView> VulkanImage::CreateView(
+    vk::ImageViewType type, vk::Format format, const vk::ImageSubresourceRange& range,
+    vk::ComponentMapping components)
+{
+    vk::ImageViewCreateInfo viewInfo;
+    viewInfo.image = m_handle;
+    viewInfo.viewType = type;
+    viewInfo.format = format;
+    viewInfo.components = components;
+    viewInfo.subresourceRange = range;
+    return RAD_NEW VulkanImageView(this, viewInfo);
+}
+
+Ref<VulkanImageView> VulkanImage::CreateView(vk::ImageViewType type, vk::Format format)
+{
+    vk::ImageSubresourceRange range;
+    range.aspectMask = vkpp::GetDefaultImageAspectFlags(m_format);
+    range.baseMipLevel = 0;
+    range.levelCount = m_mipLevels;
+    range.baseArrayLayer = 0;
+    range.layerCount = m_arrayLayers;
+    return CreateView(type, format, range);
+}
+
+Ref<VulkanImageView> VulkanImage::CreateView()
+{
+    vk::ImageViewType viewType;
+    if (m_imageType == vk::ImageType::e1D)
+    {
+        viewType = vk::ImageViewType::e1D;
+    }
+    else if (m_imageType == vk::ImageType::e2D)
+    {
+        viewType = vk::ImageViewType::e2D;
+    }
+    else if (m_imageType == vk::ImageType::e3D)
+    {
+        viewType = vk::ImageViewType::e3D;
+    }
+    return CreateView(viewType, m_format);
+}
+
+VulkanImageView::VulkanImageView(Ref<VulkanImage> image, const vk::ImageViewCreateInfo& createInfo) :
+    m_image(std::move(image))
+{
+    m_handle = m_image->m_device->m_handle.createImageView(createInfo);
+    m_type = createInfo.viewType;
+    m_format = createInfo.format;
+    m_range = createInfo.subresourceRange;
+    m_components = createInfo.components;
+}
+
+VulkanImageView::~VulkanImageView()
+{
 }
 
 } // namespace rad

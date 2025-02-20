@@ -32,6 +32,34 @@ namespace vkpp
 #define VK_STRUCTURE_CHAIN_ADD(Head, Next) do { *Head##ChainNext = &Next; Head##ChainNext = &Next.pNext; } while(0)
 #define VK_STRUCTURE_CHAIN_END(Head) do { *Head##ChainNext = nullptr; } while(0)
 
+template<typename T, typename Head, typename = std::enable_if_t<std::is_const_v<Head>>>
+const T* GetFromStructureChain(Head& head, vk::StructureType type)
+{
+    const vk::BaseInStructure* pStructure = reinterpret_cast<const vk::BaseInStructure*>(&head);
+    do {
+        if (pStructure->sType == type)
+        {
+            return reinterpret_cast<const T*>(pStructure);
+        }
+        pStructure = pStructure->pNext;
+    } while (pStructure != nullptr);
+    return nullptr;
+}
+
+template<typename T, typename Head, typename = std::enable_if_t<!std::is_const_v<Head>>>
+T* GetFromStructureChain(Head& head, vk::StructureType type)
+{
+    vk::BaseOutStructure* pStructure = reinterpret_cast<vk::BaseOutStructure*>(&head);
+    do {
+        if (pStructure->sType == type)
+        {
+            return reinterpret_cast<T*>(pStructure);
+        }
+        pStructure = pStructure->pNext;
+    } while (pStructure != nullptr);
+    return nullptr;
+}
+
 inline bool IsVersionMatchOrGreater(uint32_t version, uint32_t major, uint32_t minor, uint32_t patch)
 {
     return (VK_VERSION_MAJOR(version) >= major) &&
@@ -82,6 +110,8 @@ inline uint32_t GetMaxMipLevel(uint32_t width, uint32_t height, uint32_t depth)
     uint32_t maxExtent = std::max(std::max(width, height), depth);
     return (uint32_t)std::log2f(float(maxExtent)) + 1;
 }
+
+vk::ImageAspectFlags GetDefaultImageAspectFlags(vk::Format format);
 
 } // namespace vkpp
 

@@ -1,6 +1,6 @@
 #define VMA_IMPLEMENTATION 1
 #include <radcpp/GPU/VulkanCommon.h>
-
+#include <vulkan/utility/vk_format_utils.h>
 #include <set>
 
 namespace vkpp
@@ -38,6 +38,26 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(
     }
 
     return VK_FALSE;
+}
+
+vk::ImageAspectFlags GetDefaultImageAspectFlags(vk::Format format)
+{
+    if (vkuFormatIsColor(VkFormat(format))) [[likely]]
+    {
+        return vk::ImageAspectFlagBits::eColor;
+    }
+    else if (vkuFormatIsDepthOnly(VkFormat(format)))
+    {
+        return vk::ImageAspectFlagBits::eDepth;
+    }
+    else if (vkuFormatIsDepthAndStencil(VkFormat(format)))
+    {
+        return (vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil);
+    }
+    else
+    {
+        return vk::ImageAspectFlagBits::eNone;
+    }
 }
 
 } // namespace vkpp
