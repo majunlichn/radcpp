@@ -2,6 +2,8 @@
 #include <radcpp/GPU/VulkanDevice.h>
 #include <radcpp/GPU/VulkanBuffer.h>
 #include <radcpp/GPU/VulkanImage.h>
+#include <radcpp/GPU/GLSLCompiler.h>
+#include <radcpp/IO/File.h>
 #include <radcpp/IO/Logging.h>
 
 #include <gtest/gtest.h>
@@ -56,6 +58,29 @@ TEST(GPU, Vulkan)
             LOG_VULKAN(info, "DepthStencil format: {}", vk::to_string(dsFormat));
             dsImage = device->CreateImage2DDepthStencilAttachment(dsFormat, 1920, 1080);
             dsView = dsImage->CreateView();
+        }
+
+        rad::GLSLCompiler compiler;
+        std::string fragSource = R"(
+#version 450 core
+#extension GL_EXT_fragment_shader_barycentric  : require
+layout(location = 0) out vec4 FragColor;
+void FragMain()
+{
+    FragColor = vec4(gl_BaryCoordEXT, ALPHA);
+}
+)";
+        std::vector<rad::ShaderMacro> macros = {
+            { "ALPHA", 1.0f }
+        };
+        std::vector<uint32_t> fragBinary = compiler.Compile(vk::ShaderStageFlagBits::eFragment, "barycentric", fragSource, "FragMain", macros);
+        EXPECT_FALSE(fragBinary.empty());
+        std::string fragAssembly = compiler.CompileToAssembly(vk::ShaderStageFlagBits::eFragment, "barycentric", fragSource, "FragMain", macros);
+        rad::File file;
+        if (file.Open("barycentric.spv.txt", "w"))
+        {
+            file.Write(fragAssembly.data(), fragAssembly.size());
+            file.Close();
         }
     }
     catch (vk::SystemError& err)

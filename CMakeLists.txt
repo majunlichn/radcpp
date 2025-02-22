@@ -137,6 +137,9 @@ if (RADCPP_ENABLE_VULKAN)
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommand.h
         ${RADCPP_ROOT}/radcpp/GPU/VulkanBuffer.h
         ${RADCPP_ROOT}/radcpp/GPU/VulkanImage.h
+        ${RADCPP_ROOT}/radcpp/GPU/ShaderMacro.h
+        ${RADCPP_ROOT}/radcpp/GPU/ShaderIncluder.h
+        ${RADCPP_ROOT}/radcpp/GPU/GLSLCompiler.h
     )
     list(APPEND RADCPP_SOURCES
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommon.cpp
@@ -145,6 +148,7 @@ if (RADCPP_ENABLE_VULKAN)
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommand.cpp
         ${RADCPP_ROOT}/radcpp/GPU/VulkanBuffer.cpp
         ${RADCPP_ROOT}/radcpp/GPU/VulkanImage.cpp
+        ${RADCPP_ROOT}/radcpp/GPU/GLSLCompiler.cpp
     )
 endif()
 
@@ -184,6 +188,12 @@ if (RADCPP_ENABLE_VULKAN)
     target_compile_definitions(radcpp
         PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
     )
+    add_library(shaderc_shared SHARED IMPORTED)
+    set_target_properties(shaderc_shared PROPERTIES
+        IMPORTED_LOCATION   "$ENV{VULKAN_SDK}/Bin/shaderc_shared.dll"
+        IMPORTED_IMPLIB     "$ENV{VULKAN_SDK}/Lib/shaderc_shared.lib"
+    )
+    list(APPEND VULKAN_LIBRARIES shaderc_shared)
 endif()
 
 target_link_libraries(radcpp
@@ -196,6 +206,7 @@ target_link_libraries(radcpp
     PUBLIC MINIZIP::minizip-ng
     PUBLIC Python3::Python
     PUBLIC STDEXEC::stdexec
+    PUBLIC ${VULKAN_LIBRARIES}
 )
 
 if (WIN32)
