@@ -138,6 +138,7 @@ if (RADCPP_ENABLE_VULKAN)
         ${RADCPP_ROOT}/radcpp/GPU/VulkanBuffer.h
         ${RADCPP_ROOT}/radcpp/GPU/VulkanImage.h
         ${RADCPP_ROOT}/radcpp/GPU/ShaderMacro.h
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanDescriptor.h
         ${RADCPP_ROOT}/radcpp/GPU/ShaderIncluder.h
         ${RADCPP_ROOT}/radcpp/GPU/GLSLCompiler.h
     )
@@ -148,6 +149,7 @@ if (RADCPP_ENABLE_VULKAN)
         ${RADCPP_ROOT}/radcpp/GPU/VulkanCommand.cpp
         ${RADCPP_ROOT}/radcpp/GPU/VulkanBuffer.cpp
         ${RADCPP_ROOT}/radcpp/GPU/VulkanImage.cpp
+        ${RADCPP_ROOT}/radcpp/GPU/VulkanDescriptor.cpp
         ${RADCPP_ROOT}/radcpp/GPU/GLSLCompiler.cpp
     )
 endif()
