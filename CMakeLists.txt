@@ -67,6 +67,7 @@ set_target_properties(system_context PROPERTIES
 
 list(APPEND RADCPP_HEADERS
     ${RADCPP_ROOT}/radcpp/Algorithm/Sort.h
+    ${RADCPP_ROOT}/radcpp/Container/ArrayProxy.h
     ${RADCPP_ROOT}/radcpp/Container/SmallVector.h
     ${RADCPP_ROOT}/radcpp/Container/Span.h
     ${RADCPP_ROOT}/radcpp/Container/Vector.h
