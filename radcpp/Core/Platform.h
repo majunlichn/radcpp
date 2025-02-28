@@ -402,3 +402,29 @@
 #else
 #define RAD_NEW new
 #endif // RAD_COMPILER_MSVC
+
+////////////////////////////////////////////////////////////////////////////////
+// Cross-platform Compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+#if defined(_WIN32)
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#else // not Windows
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#ifndef UNREFERENCED_PARAMETER
+#define UNREFERENCED_PARAMETER(x) (void)(x)
+#endif
+
+#endif

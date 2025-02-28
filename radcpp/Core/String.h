@@ -15,9 +15,27 @@
 #include <regex>
 #include <sstream>
 
-#if defined(RAD_COMPILER_MSVC)
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
+#if defined(_WIN32)
+
+#define strcasecmp(a, b) _stricmp(a, b)
+#define strncasecmp(a, b) _strnicmp(a, b)
+
+#else
+
+#define _strcmpi(a, b) strcasecmp(a, b)
+#define _stricmp(a, b) strcasecmp(a, b)
+
+#define strcpy_s(dst, dstSize, src) strcpy(dst, src)
+#define strcat_s(dst, dstSize, src) strcat(dst, src)
+#define strtok_s(a, b, c) strtok(a, b)
+#define strnlen_s(a, b) strlen(a)
+#define strncpy_s(a, b, c, d) strncpy(a, c, d)
+
+#define wcscat_s(dst, dstSize, src) wcscat(dst, src)
+#define wcscpy_s(dst, dstSize, src) wcscpy(dst, src)
+#define wcsncpy_s(dst, dstSize, src, count) wcsncpy(dst, src, count)
+#define wcsnlen_s(str, maxSize) wcsnlen(str, maxSize)
+
 #endif
 
 namespace rad
