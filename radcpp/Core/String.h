@@ -48,6 +48,9 @@ using boost::locale::conv::to_utf;
 using boost::locale::conv::from_utf;
 using boost::locale::conv::utf_to_utf;
 
+std::string StrPrintf(std::string_view format, ...);
+std::string StrPrintfV(std::string_view format, va_list args);
+
 bool StrEqual(std::string_view str1, std::string_view str2);
 bool StrCaseEqual(std::string_view str1, std::string_view str2);
 
@@ -67,9 +70,22 @@ void StrRemoveSuffixInPlace(std::string& str, std::string_view suffix);
 std::string ToString(std::wstring_view wstr);
 std::wstring ToWideString(std::string_view str);
 
-inline const char8_t* UTF8Cast(std::string_view str)
+template<class T>
+std::u8string ToUTF8(T str)
 {
-    return (const char8_t*)str.data();
+    return utf_to_utf<char8_t>(str);
+}
+
+template<class T>
+std::u16string ToUTF16(T str)
+{
+    return utf_to_utf<char16_t>(str);
+}
+
+template<class T>
+std::u32string ToUTF32(T str)
+{
+    return utf_to_utf<char32_t>(str);
 }
 
 bool IsDigit(char c);

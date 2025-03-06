@@ -6,6 +6,39 @@
 namespace rad
 {
 
+std::string StrPrintf(std::string_view format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    std::string str = StrPrintfV(format, args);
+    va_end(args);
+    return str;
+}
+
+std::string StrPrintfV(std::string_view format, va_list args)
+{
+    std::string buffer(16, 0);
+    va_list args1;
+    va_copy(args1, args);
+    int len = vsnprintf(buffer.data(), buffer.size(), format.data(), args1);
+    va_end(args1);
+
+    if (len > 0)
+    {
+        if (len > buffer.size())
+        {
+            buffer.resize(len + 1);
+            vsnprintf(buffer.data(), buffer.size(), format.data(), args);
+        }
+    }
+    else
+    {
+        assert(false && "invalid format");
+        buffer.clear();
+    }
+    return buffer;
+}
+
 bool StrEqual(std::string_view str1, std::string_view str2)
 {
     return (str1 == str2);
