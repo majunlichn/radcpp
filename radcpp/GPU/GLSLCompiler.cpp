@@ -131,4 +131,22 @@ std::string GLSLCompiler::CompileToAssembly(
     }
 }
 
+std::string GLSLCompiler::Disassemble(const uint32_t* binary, size_t binary_size, uint32_t options)
+{
+    spv_text text = nullptr;
+    spv_diagnostic diagnostic = nullptr;
+    spv_context context = spvContextCreate(SPV_ENV_VULKAN_1_4);
+    spv_result_t error =
+        spvBinaryToText(context, binary, binary_size, options, &text, &diagnostic);
+    if (error)
+    {
+        m_log = diagnostic->error;
+        spvDiagnosticDestroy(diagnostic);
+        return {};
+    }
+    return std::string(text->str, text->length);
+    spvTextDestroy(text);
+    spvContextDestroy(context);
+}
+
 } // namespace rad

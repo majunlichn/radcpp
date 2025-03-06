@@ -196,7 +196,12 @@ if (RADCPP_ENABLE_VULKAN)
         IMPORTED_LOCATION   "$ENV{VULKAN_SDK}/Bin/shaderc_shared.dll"
         IMPORTED_IMPLIB     "$ENV{VULKAN_SDK}/Lib/shaderc_shared.lib"
     )
-    list(APPEND VULKAN_LIBRARIES shaderc_shared)
+    add_library(SPIRV-Tools-shared SHARED IMPORTED)
+    set_target_properties(SPIRV-Tools-shared PROPERTIES
+        IMPORTED_LOCATION   "$ENV{VULKAN_SDK}/Bin/SPIRV-Tools-shared.dll"
+        IMPORTED_IMPLIB     "$ENV{VULKAN_SDK}/Lib/SPIRV-Tools-shared.lib"
+    )
+    list(APPEND VULKAN_LIBRARIES shaderc_shared SPIRV-Tools-shared)
 endif()
 
 target_link_libraries(radcpp

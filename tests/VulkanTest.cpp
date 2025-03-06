@@ -73,13 +73,21 @@ void FragMain()
         std::vector<rad::ShaderMacro> macros = {
             { "ALPHA", 1.0f }
         };
-        std::vector<uint32_t> fragBinary = compiler.Compile(vk::ShaderStageFlagBits::eFragment, "barycentric", fragSource, "FragMain", macros);
+        std::vector<uint32_t> fragBinary = compiler.Compile(
+            vk::ShaderStageFlagBits::eFragment, "barycentric", fragSource, "FragMain", macros);
         EXPECT_FALSE(fragBinary.empty());
-        std::string fragAssembly = compiler.CompileToAssembly(vk::ShaderStageFlagBits::eFragment, "barycentric", fragSource, "FragMain", macros);
+        std::string fragAssembly = compiler.CompileToAssembly(
+            vk::ShaderStageFlagBits::eFragment, "barycentric", fragSource, "FragMain", macros);
         rad::File file;
         if (file.Open("barycentric.spv.txt", "w"))
         {
             file.Write(fragAssembly.data(), fragAssembly.size());
+            file.Close();
+        }
+        std::string fragDisassembly = compiler.Disassemble(fragBinary.data(), fragBinary.size());
+        if (file.Open("barycentric.dis.txt", "w"))
+        {
+            file.Write(fragDisassembly.data(), fragDisassembly.size());
             file.Close();
         }
     }
