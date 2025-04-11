@@ -29,18 +29,25 @@ if(CCACHE_PROGRAM)
 endif()
 
 # Print build infos
+message(STATUS "============================================================")
+message(STATUS "Build Informations")
 message(STATUS "CMake version: ${CMAKE_VERSION}")
 get_property(
     is_generator_multi_config GLOBAL
     PROPERTY GENERATOR_IS_MULTI_CONFIG
 )
-message(STATUS "radcpp: Generator: ${CMAKE_GENERATOR}")
+message(STATUS "CMake Generator: ${CMAKE_GENERATOR}")
 if (NOT is_generator_multi_config)
-    message(STATUS "radcpp: Build Type: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "CMake Build Type: ${CMAKE_BUILD_TYPE}")
 endif()
+message(STATUS "CMake Install Prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "============================================================")
 
 add_subdirectory(rad)
 
 if(RADCPP_BUILD_TESTS)
     add_subdirectory(tests)
+    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT HelloWorld)
 endif()
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
