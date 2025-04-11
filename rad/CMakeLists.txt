@@ -8,12 +8,12 @@ target_include_directories(rad
 )
 
 list(APPEND RAD_HEADERS
-    Integer.h
-    Platform.h
+    Core/Integer.h
+    Core/Platform.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
-    Integer.cpp
-    Platform.cpp
+    Core/Integer.cpp
+    Core/Platform.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_HEADERS} ${RAD_PRIVATE_SOURCES})
@@ -41,6 +41,8 @@ if (WIN32)
         PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
     )
 endif()
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rad/Config.h DESTINATION include/rad)
 
 install(
     TARGETS rad
