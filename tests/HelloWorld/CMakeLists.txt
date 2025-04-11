@@ -3,13 +3,15 @@ target_include_directories(HelloWorld
     PUBLIC ${RADCPP_ROOT}
 )
 list(APPEND HelloWorld_SOURCES
+    IntegerTest.cpp
     main.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HelloWorld_SOURCES})
 target_sources(HelloWorld PRIVATE ${HelloWorld_SOURCES})
-find_package(Threads REQUIRED)
+find_package(GTest CONFIG REQUIRED)
 target_link_libraries(HelloWorld
-    rad
+    PRIVATE rad
+    PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main
 )
 target_compile_features(HelloWorld PUBLIC cxx_std_20)
 

@@ -1,6 +1,7 @@
 ## Custom
 
 build/
+vcpkg_installed/
 compile_commands.json
 
 ## C++
