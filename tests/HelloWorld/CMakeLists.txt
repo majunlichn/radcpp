@@ -3,8 +3,9 @@ target_include_directories(HelloWorld
     PUBLIC ${RADCPP_ROOT}
 )
 list(APPEND HelloWorld_SOURCES
-    IntegerTest.cpp
+    ContainerTest.cpp
     FloatTest.cpp
+    IntegerTest.cpp
     main.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HelloWorld_SOURCES})

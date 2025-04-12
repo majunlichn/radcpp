@@ -8,6 +8,7 @@ target_include_directories(rad
 )
 
 list(APPEND RAD_HEADERS
+    Container/SmallVector.h
     Core/Float.h
     Core/Integer.h
     Core/Platform.h
