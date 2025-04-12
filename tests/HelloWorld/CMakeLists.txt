@@ -4,6 +4,7 @@ target_include_directories(HelloWorld
 )
 list(APPEND HelloWorld_SOURCES
     IntegerTest.cpp
+    FloatTest.cpp
     main.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HelloWorld_SOURCES})

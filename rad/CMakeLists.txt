@@ -8,10 +8,12 @@ target_include_directories(rad
 )
 
 list(APPEND RAD_HEADERS
+    Core/Float.h
     Core/Integer.h
     Core/Platform.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
+    Core/Float.cpp
     Core/Integer.cpp
     Core/Platform.cpp
 )
@@ -27,8 +29,10 @@ target_sources(rad PUBLIC
 )
 
 find_package(Threads REQUIRED)
+find_package(boost_math REQUIRED CONFIG)
 target_link_libraries(rad
     Threads::Threads
+    Boost::math
 )
 target_compile_features(rad PUBLIC cxx_std_20)
 
