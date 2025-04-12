@@ -6,6 +6,7 @@ list(APPEND HelloWorld_SOURCES
     ContainerTest.cpp
     FloatTest.cpp
     IntegerTest.cpp
+    MemoryTest.cpp
     main.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HelloWorld_SOURCES})

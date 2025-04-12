@@ -15,6 +15,7 @@ list(APPEND RAD_HEADERS
     Core/Integer.h
     Core/Memory.h
     Core/Platform.h
+    Core/RefCounted.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
     Core/Float.cpp
