@@ -13,11 +13,13 @@ list(APPEND RAD_HEADERS
     Core/Algorithm.h
     Core/Float.h
     Core/Integer.h
+    Core/Memory.h
     Core/Platform.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
     Core/Float.cpp
     Core/Integer.cpp
+    Core/Memory.cpp
     Core/Platform.cpp
 )
 
