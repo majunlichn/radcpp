@@ -1,4 +1,5 @@
 #include <rad/Container/SmallVector.h>
+#include <rad/Container/Span.h>
 
 #include <gtest/gtest.h>
 
@@ -22,7 +23,29 @@ void TestSmallVector()
     }
 }
 
+int Sum(rad::Span<int> numbers)
+{
+    int sum = 0;
+    for (const auto x : numbers)
+    {
+        sum += x;
+    }
+    return sum;
+}
+
+void TestSpan()
+{
+    rad::SmallVector<int, 4> vec = { 1, 2, 3, 4 };
+    EXPECT_EQ(Sum(vec), 10);
+    rad::ArrayRef<int> ref = vec;
+    rad::ArrayRef<int> ref1 = ref.slice(1, 2);
+    ref.drop_front();
+    ref.drop_back();
+    EXPECT_TRUE(ref.equals(ref1));
+}
+
 TEST(Core, Container)
 {
     TestSmallVector();
+    TestSpan();
 }
