@@ -13,6 +13,7 @@ list(APPEND RAD_HEADERS
     Core/Algorithm.h
     Core/Float.h
     Core/Integer.h
+    Core/Literals.h
     Core/Memory.h
     Core/Platform.h
     Core/RefCounted.h
