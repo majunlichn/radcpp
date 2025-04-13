@@ -11,6 +11,7 @@ list(APPEND RAD_HEADERS
     Container/SmallVector.h
     Container/Span.h
     Core/Algorithm.h
+    Core/Flags.h
     Core/Float.h
     Core/Integer.h
     Core/Literals.h
