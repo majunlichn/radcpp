@@ -1,16 +1,25 @@
-#include <rad/IO/Logging.h>
+#include <rad/System/Application.h>
 #include <format>
 #include <iostream>
 
 #include <gtest/gtest.h>
 
+void TestStackTrace()
+{
+    rad::Application* app = rad::Application::GetInstance();
+    app->PrintStackTrace();
+}
+
 int main(int argc, char* argv[])
 {
-    std::string logFileName = std::string(argv[0]) + ".log";
-    rad::InitLogging(logFileName, true);
-    RAD_LOG(info, "radcpp Version: {}.{}.{}",
-        RAD_VERSION_MAJOR, RAD_VERSION_MINOR, RAD_VERSION_PATCH);
+    rad::Application app;
+    if (!app.Init(argc, argv))
+    {
+        std::cerr << "Init failed!" << std::endl;
+        return -1;
+    }
 
     testing::InitGoogleTest(&argc, argv);
+    TestStackTrace();
     return RUN_ALL_TESTS();
 }

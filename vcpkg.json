@@ -1,9 +1,11 @@
 {
   "dependencies": [
+    "backward-cpp",
+    "boost-json",
     "boost-locale",
     "boost-math",
     "gtest",
     "spdlog",
-    "boost-json"
+    "boost-nowide"
   ]
 }

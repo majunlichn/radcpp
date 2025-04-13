@@ -27,6 +27,7 @@ list(APPEND RAD_HEADERS
     IO/File.h
     IO/Json.h
     IO/Logging.h
+    System/Application.h
     System/Time.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
@@ -45,6 +46,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     IO/File.cpp
     IO/Json.cpp
     IO/Logging.cpp
+    System/Application.cpp
     System/Time.cpp
 )
 
@@ -58,15 +60,19 @@ target_sources(rad PUBLIC
     FILE_SET HEADERS FILES ${RADCPP_HEADERS}
 )
 
+find_package(Backward CONFIG REQUIRED)
 find_package(boost_json REQUIRED CONFIG)
 find_package(boost_locale REQUIRED CONFIG)
 find_package(boost_math REQUIRED CONFIG)
+find_package(boost_nowide REQUIRED CONFIG)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 target_link_libraries(rad
+    PUBLIC Backward::Backward
     PUBLIC Boost::json
     PUBLIC Boost::locale
     PUBLIC Boost::math
+    PUBLIC Boost::nowide
     PUBLIC spdlog::spdlog
     PUBLIC Threads::Threads
 )
