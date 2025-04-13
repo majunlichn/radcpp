@@ -25,7 +25,7 @@ bool InitLogging(spdlog::sink_ptr fileSink)
         DefaultLogger->sinks().push_back(fileSink);
     }
 
-#if defined(RAD_COMPILER_MSC) && defined(_DEBUG)
+#if defined(RAD_COMPILER_MSVC) && defined(_DEBUG)
     spdlog::sink_ptr msvcSink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
     DefaultLogger->sinks().push_back(msvcSink);
 #endif

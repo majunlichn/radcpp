@@ -128,7 +128,7 @@
 #endif
 
 #if defined(_MSC_VER)
-#define RAD_COMPILER_MSC
+#define RAD_COMPILER_MSVC
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,11 +215,11 @@
 #if defined(RAD_ARCH_ANY_ARM)
 // Note: MSVC targeting ARM does not define `__ARM_NEON` but Windows on ARM
 // requires it. In that case we force NEON detection.
-#if defined(__ARM_NEON) || defined(RAD_COMPILER_MSC)
+#if defined(__ARM_NEON) || defined(RAD_COMPILER_MSVC)
 #define RAD_COMPILED_ANY_ARM_NEON 1
 #else
 #define RAD_COMPILED_ANY_ARM_NEON 0
-#endif  //  defined(__ARM_NEON) || defined(RAD_COMPILER_MSC)
+#endif  //  defined(__ARM_NEON) || defined(RAD_COMPILER_MSVC)
 #endif  //  defined(RAD_ARCH_ANY_ARM)
 
 #if defined(RAD_ARCH_MIPS)
@@ -350,7 +350,7 @@
 // Communicates to the compiler that the block is unreachable
 #if defined(RAD_COMPILER_CLANG) || defined(RAD_COMPILER_GCC)
 #define RAD_UNREACHABLE() __builtin_unreachable()
-#elif defined(RAD_COMPILER_MSC)
+#elif defined(RAD_COMPILER_MSVC)
 #define RAD_UNREACHABLE() __assume(0)
 #else
 #define RAD_UNREACHABLE()
@@ -359,7 +359,7 @@
 // Communicates to the compiler that the function is now deprecated
 #if defined(RAD_COMPILER_CLANG) || defined(RAD_COMPILER_GCC)
 #define RAD_DEPRECATED(message) __attribute__((deprecated(message)))
-#elif defined(RAD_COMPILER_MSC)
+#elif defined(RAD_COMPILER_MSVC)
 #define RAD_DEPRECATED(message) __declspec(deprecated(message))
 #else
 #define RAD_DEPRECATED(message)

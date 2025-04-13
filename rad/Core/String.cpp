@@ -51,7 +51,7 @@ bool StrCaseEqual(std::string_view str1, std::string_view str2)
     {
         return false;
     }
-#if defined(RAD_COMPILER_MSC)
+#if defined(RAD_COMPILER_MSVC)
     return (_strnicmp(str1.data(), str2.data(), str1.size()) == 0);
 #else
     return (strncasecmp(str1.data(), str2.data(), str1.size()) == 0);
