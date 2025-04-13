@@ -20,6 +20,7 @@ list(APPEND RAD_HEADERS
     Core/String.h
     Core/pystring.h
     IO/File.h
+    IO/Json.h
     IO/Logging.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
@@ -30,6 +31,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     Core/String.cpp
     Core/pystring.cpp
     IO/File.cpp
+    IO/Json.cpp
     IO/Logging.cpp
 )
 
@@ -43,11 +45,13 @@ target_sources(rad PUBLIC
     FILE_SET HEADERS FILES ${RADCPP_HEADERS}
 )
 
+find_package(boost_json REQUIRED CONFIG)
 find_package(boost_locale REQUIRED CONFIG)
 find_package(boost_math REQUIRED CONFIG)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 target_link_libraries(rad
+    PUBLIC Boost::json
     PUBLIC Boost::locale
     PUBLIC Boost::math
     PUBLIC spdlog::spdlog

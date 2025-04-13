@@ -3,6 +3,7 @@
     "boost-locale",
     "boost-math",
     "gtest",
-    "spdlog"
+    "spdlog",
+    "boost-json"
   ]
 }
