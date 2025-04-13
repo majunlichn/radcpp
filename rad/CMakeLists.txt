@@ -17,12 +17,16 @@ list(APPEND RAD_HEADERS
     Core/Memory.h
     Core/Platform.h
     Core/RefCounted.h
+    Core/String.h
+    Core/pystring.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
     Core/Float.cpp
     Core/Integer.cpp
     Core/Memory.cpp
     Core/Platform.cpp
+    Core/String.cpp
+    Core/pystring.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_HEADERS} ${RAD_PRIVATE_SOURCES})
@@ -35,12 +39,15 @@ target_sources(rad PUBLIC
     FILE_SET HEADERS FILES ${RADCPP_HEADERS}
 )
 
-find_package(Threads REQUIRED)
+find_package(boost_locale REQUIRED CONFIG)
 find_package(boost_math REQUIRED CONFIG)
+find_package(Threads REQUIRED)
 target_link_libraries(rad
-    Threads::Threads
+    Boost::locale
     Boost::math
+    Threads::Threads
 )
+
 target_compile_features(rad PUBLIC cxx_std_20)
 
 if (WIN32)
