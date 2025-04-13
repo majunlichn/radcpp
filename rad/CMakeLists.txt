@@ -30,6 +30,7 @@ list(APPEND RAD_HEADERS
     System/Application.h
     System/CpuInfo.h
     System/OS.h
+    System/Thread.h
     System/Time.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
@@ -51,6 +52,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     System/Application.cpp
     System/CpuInfo.cpp
     System/OS.cpp
+    System/Thread.cpp
     System/Time.cpp
 )
 
