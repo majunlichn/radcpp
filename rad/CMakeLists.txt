@@ -16,6 +16,7 @@ list(APPEND RAD_HEADERS
     Core/Integer.h
     Core/Literals.h
     Core/Memory.h
+    Core/Numeric.h
     Core/Platform.h
     Core/pystring.h
     Core/RefCounted.h
@@ -32,6 +33,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     Core/Float8.cpp
     Core/Integer.cpp
     Core/Memory.cpp
+    Core/Numeric.cpp
     Core/Platform.cpp
     Core/String.cpp
     Core/pystring.cpp
