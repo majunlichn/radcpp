@@ -19,6 +19,7 @@ list(APPEND RAD_HEADERS
     Core/RefCounted.h
     Core/String.h
     Core/pystring.h
+    IO/File.h
     IO/Logging.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
@@ -28,6 +29,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     Core/Platform.cpp
     Core/String.cpp
     Core/pystring.cpp
+    IO/File.cpp
     IO/Logging.cpp
 )
 
