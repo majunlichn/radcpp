@@ -1,7 +1,8 @@
 {
   "dependencies": [
+    "boost-locale",
     "boost-math",
     "gtest",
-    "boost-locale"
+    "spdlog"
   ]
 }

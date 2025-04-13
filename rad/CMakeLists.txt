@@ -19,6 +19,7 @@ list(APPEND RAD_HEADERS
     Core/RefCounted.h
     Core/String.h
     Core/pystring.h
+    IO/Logging.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
     Core/Float.cpp
@@ -27,6 +28,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     Core/Platform.cpp
     Core/String.cpp
     Core/pystring.cpp
+    IO/Logging.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_HEADERS} ${RAD_PRIVATE_SOURCES})
@@ -41,11 +43,13 @@ target_sources(rad PUBLIC
 
 find_package(boost_locale REQUIRED CONFIG)
 find_package(boost_math REQUIRED CONFIG)
+find_package(spdlog CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 target_link_libraries(rad
-    Boost::locale
-    Boost::math
-    Threads::Threads
+    PUBLIC Boost::locale
+    PUBLIC Boost::math
+    PUBLIC spdlog::spdlog
+    PUBLIC Threads::Threads
 )
 
 target_compile_features(rad PUBLIC cxx_std_20)
