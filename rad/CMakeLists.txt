@@ -29,6 +29,7 @@ list(APPEND RAD_HEADERS
     IO/Logging.h
     System/Application.h
     System/CpuInfo.h
+    System/OS.h
     System/Time.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
@@ -49,6 +50,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     IO/Logging.cpp
     System/Application.cpp
     System/CpuInfo.cpp
+    System/OS.cpp
     System/Time.cpp
 )
 
@@ -67,6 +69,7 @@ find_package(boost_json REQUIRED CONFIG)
 find_package(boost_locale REQUIRED CONFIG)
 find_package(boost_math REQUIRED CONFIG)
 find_package(boost_nowide REQUIRED CONFIG)
+find_package(boost_process REQUIRED CONFIG)
 find_package(CpuFeatures CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Threads REQUIRED)
@@ -76,6 +79,7 @@ target_link_libraries(rad
     PUBLIC Boost::locale
     PUBLIC Boost::math
     PUBLIC Boost::nowide
+    PUBLIC Boost::process
     PUBLIC CpuFeatures::cpu_features
     PUBLIC spdlog::spdlog
     PUBLIC Threads::Threads
