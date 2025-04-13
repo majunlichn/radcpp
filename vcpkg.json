@@ -4,8 +4,9 @@
     "boost-json",
     "boost-locale",
     "boost-math",
+    "boost-nowide",
     "gtest",
     "spdlog",
-    "boost-nowide"
+    "cpu-features"
   ]
 }

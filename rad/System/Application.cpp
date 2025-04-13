@@ -2,6 +2,7 @@
 
 #include <rad/IO/File.h>
 #include <rad/IO/Logging.h>
+#include <rad/System/CpuInfo.h>
 
 #include <backward.hpp>
 
@@ -56,6 +57,12 @@ bool Application::Init(int argc, char** argv)
     RAD_LOG(info, "Program: {}", argv[0]);
     RAD_LOG(info, "Working Dir: {}",
         (const char*)rad::GetWorkingDirectory().u8string().c_str());
+
+#if defined(CPU_FEATURES_ARCH_X86)
+    RAD_LOG(info, "CPU: {} ({})",
+        rad::StrTrim(rad::g_X86Info.brand_string),
+        rad::g_X86Info.vendor);
+#endif
 
     return true;
 }
