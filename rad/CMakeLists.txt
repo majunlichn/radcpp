@@ -26,7 +26,10 @@ list(APPEND RAD_HEADERS
     IO/Logging.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
+    Core/BFloat16.cpp
     Core/Float.cpp
+    Core/Float16.cpp
+    Core/Float8.cpp
     Core/Integer.cpp
     Core/Memory.cpp
     Core/Platform.cpp
