@@ -342,28 +342,6 @@
 #endif  //  defined(RAD_ARCH_RISCV)
 
 ////////////////////////////////////////////////////////////////////////////////
-// Utils
-////////////////////////////////////////////////////////////////////////////////
-
-// Communicates to the compiler that the block is unreachable
-#if defined(RAD_COMPILER_CLANG) || defined(RAD_COMPILER_GCC)
-#define RAD_UNREACHABLE() __builtin_unreachable()
-#elif defined(RAD_COMPILER_MSVC)
-#define RAD_UNREACHABLE() __assume(0)
-#else
-#define RAD_UNREACHABLE()
-#endif
-
-// Communicates to the compiler that the function is now deprecated
-#if defined(RAD_COMPILER_CLANG) || defined(RAD_COMPILER_GCC)
-#define RAD_DEPRECATED(message) __attribute__((deprecated(message)))
-#elif defined(RAD_COMPILER_MSVC)
-#define RAD_DEPRECATED(message) __declspec(deprecated(message))
-#else
-#define RAD_DEPRECATED(message)
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 // Cross-platform Compatibility
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -404,6 +382,36 @@
 #else // not _DEBUG
 #define RAD_NEW new
 #endif // RAD_COMPILER_MSVC
+
+////////////////////////////////////////////////////////////////////////////////
+// Utils
+////////////////////////////////////////////////////////////////////////////////
+
+#if defined(RAD_COMPILER_MSVC)
+#define RAD_FORCE_INLINE __forceinline
+#define RAD_ASSUME(expr) __assume(expr)
+#define RAD_UNREACHABLE() __assume(0)
+#define RAD_DEPRECATED(message) __declspec(deprecated(message))
+#define RAD_RESTRICT __restrict
+#elif  defined(RAD_COMPILER_GCC) || defined(RAD_COMPILER_CLANG)
+#define RAD_FORCE_INLINE __attribute__((always_inline)) inline
+#define RAD_ASSUME(expr) __attribute__((assume(expr)))
+#define RAD_UNREACHABLE() __builtin_unreachable()
+#define RAD_DEPRECATED(message) __attribute__((deprecated(message)))
+#define RAD_RESTRICT __restrict
+#else
+#define RAD_FORCE_INLINE
+#define RAD_ASSUME(expr)
+#define RAD_UNREACHABLE()
+#define RAD_DEPRECATED(message)
+#define RAD_RESTRICT
+#endif
+
+#define RAD_DISABLE_COPY_AND_MOVE(ClassName) \
+    ClassName(const ClassName&) = delete; \
+    ClassName& operator=(const ClassName&) = delete; \
+    ClassName(ClassName&&) = delete; \
+    ClassName& operator=(ClassName&&) = delete;
 
 namespace rad
 {
