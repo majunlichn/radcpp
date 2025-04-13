@@ -25,6 +25,7 @@ list(APPEND RAD_HEADERS
     Core/String.h
     Core/TypeTraits.h
     IO/File.h
+    IO/Image.h
     IO/Json.h
     IO/Logging.h
     System/Application.h
@@ -47,6 +48,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     Core/String.cpp
     Core/pystring.cpp
     IO/File.cpp
+    IO/Image.cpp
     IO/Json.cpp
     IO/Logging.cpp
     System/Application.cpp
