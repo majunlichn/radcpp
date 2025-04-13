@@ -15,10 +15,12 @@ list(APPEND RAD_HEADERS
     Core/Float.h
     Core/Integer.h
     Core/Literals.h
+    Core/Math.h
     Core/Memory.h
     Core/Numeric.h
     Core/Platform.h
     Core/pystring.h
+    Core/Random.h
     Core/RefCounted.h
     Core/String.h
     Core/TypeTraits.h
@@ -32,9 +34,11 @@ list(APPEND RAD_PRIVATE_SOURCES
     Core/Float16.cpp
     Core/Float8.cpp
     Core/Integer.cpp
+    Core/Math.cpp
     Core/Memory.cpp
     Core/Numeric.cpp
     Core/Platform.cpp
+    Core/Random.cpp
     Core/String.cpp
     Core/pystring.cpp
     IO/File.cpp
