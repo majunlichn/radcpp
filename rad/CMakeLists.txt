@@ -16,9 +16,10 @@ list(APPEND RAD_HEADERS
     Core/Literals.h
     Core/Memory.h
     Core/Platform.h
+    Core/pystring.h
     Core/RefCounted.h
     Core/String.h
-    Core/pystring.h
+    Core/TypeTraits.h
     IO/File.h
     IO/Json.h
     IO/Logging.h
