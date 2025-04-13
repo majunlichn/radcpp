@@ -75,6 +75,7 @@ find_package(boost_math REQUIRED CONFIG)
 find_package(boost_nowide REQUIRED CONFIG)
 find_package(boost_process REQUIRED CONFIG)
 find_package(CpuFeatures CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 target_link_libraries(rad
@@ -85,6 +86,7 @@ target_link_libraries(rad
     PUBLIC Boost::nowide
     PUBLIC Boost::process
     PUBLIC CpuFeatures::cpu_features
+    PUBLIC glm::glm
     PUBLIC spdlog::spdlog
     PUBLIC Threads::Threads
 )

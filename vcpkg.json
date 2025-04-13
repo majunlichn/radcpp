@@ -5,9 +5,10 @@
     "boost-locale",
     "boost-math",
     "boost-nowide",
+    "boost-process",
     "cpu-features",
     "gtest",
     "spdlog",
-    "boost-process"
+    "glm"
   ]
 }

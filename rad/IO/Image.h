@@ -3,6 +3,8 @@
 #include <rad/Core/Platform.h>
 #include <rad/Core/String.h>
 
+#include <glm/glm.hpp>
+
 namespace rad
 {
 
@@ -32,34 +34,34 @@ public:
         return (m_data + offset);
     }
 
-    void SetPixelR(int i, int j, unsigned r)
+    void SetPixelR(int i, int j, uint32_t r)
     {
         assert(m_channelCount == 1);
         GetPixel(i, j)[0] = static_cast<unsigned char>(r);
     }
 
-    void SetPixelRG(int i, int j, unsigned r, unsigned g)
+    void SetPixelRG(int i, int j, const glm::uvec2& color)
     {
         assert(m_channelCount == 2);
-        GetPixel(i, j)[0] = static_cast<unsigned char>(r);
-        GetPixel(i, j)[1] = static_cast<unsigned char>(g);
+        GetPixel(i, j)[0] = static_cast<unsigned char>(color.r);
+        GetPixel(i, j)[1] = static_cast<unsigned char>(color.g);
     }
 
-    void SetPixelRGB(int i, int j, unsigned r, unsigned g, unsigned b)
+    void SetPixelRGB(int i, int j, const glm::uvec3& color)
     {
         assert(m_channelCount == 3);
-        GetPixel(i, j)[0] = static_cast<unsigned char>(r);
-        GetPixel(i, j)[1] = static_cast<unsigned char>(g);
-        GetPixel(i, j)[2] = static_cast<unsigned char>(b);
+        GetPixel(i, j)[0] = static_cast<unsigned char>(color.r);
+        GetPixel(i, j)[1] = static_cast<unsigned char>(color.g);
+        GetPixel(i, j)[2] = static_cast<unsigned char>(color.b);
     }
 
-    void SetPixelRGBA(int i, int j, unsigned r, unsigned g, unsigned b, unsigned a)
+    void SetPixelRGBA(int i, int j, const glm::uvec4& color)
     {
         assert(m_channelCount == 4);
-        GetPixel(i, j)[0] = static_cast<unsigned char>(r);
-        GetPixel(i, j)[1] = static_cast<unsigned char>(g);
-        GetPixel(i, j)[2] = static_cast<unsigned char>(b);
-        GetPixel(i, j)[3] = static_cast<unsigned char>(a);
+        GetPixel(i, j)[0] = static_cast<unsigned char>(color.r);
+        GetPixel(i, j)[1] = static_cast<unsigned char>(color.g);
+        GetPixel(i, j)[2] = static_cast<unsigned char>(color.b);
+        GetPixel(i, j)[3] = static_cast<unsigned char>(color.a);
     }
 
     bool WritePNG(std::string_view filename) const;
@@ -110,28 +112,28 @@ public:
         GetPixel(i, j)[0] = r;
     }
 
-    void SetPixelRG(int i, int j, float r, float g)
+    void SetPixelRG(int i, int j, const glm::vec2& color)
     {
         assert(m_channelCount == 2);
-        GetPixel(i, j)[0] = r;
-        GetPixel(i, j)[1] = g;
+        GetPixel(i, j)[0] = color.r;
+        GetPixel(i, j)[1] = color.g;
     }
 
-    void SetPixelRGB(int i, int j, float r, float g, float b)
+    void SetPixelRGB(int i, int j, const glm::vec3& color)
     {
         assert(m_channelCount == 3);
-        GetPixel(i, j)[0] = r;
-        GetPixel(i, j)[1] = g;
-        GetPixel(i, j)[2] = b;
+        GetPixel(i, j)[0] = color.r;
+        GetPixel(i, j)[1] = color.g;
+        GetPixel(i, j)[2] = color.b;
     }
 
-    void SetPixelRGBA(int i, int j, float r, float g, float b, float a)
+    void SetPixelRGBA(int i, int j, const glm::vec4& color)
     {
         assert(m_channelCount == 4);
-        GetPixel(i, j)[0] = r;
-        GetPixel(i, j)[1] = g;
-        GetPixel(i, j)[2] = b;
-        GetPixel(i, j)[3] = a;
+        GetPixel(i, j)[0] = color.r;
+        GetPixel(i, j)[1] = color.g;
+        GetPixel(i, j)[2] = color.b;
+        GetPixel(i, j)[3] = color.a;
     }
 
     // HDR (radiance rgbE format) expects linear float data,
