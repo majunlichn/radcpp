@@ -27,6 +27,7 @@ list(APPEND RAD_HEADERS
     IO/File.h
     IO/Json.h
     IO/Logging.h
+    System/Time.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
     Core/BFloat16.cpp
@@ -44,6 +45,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     IO/File.cpp
     IO/Json.cpp
     IO/Logging.cpp
+    System/Time.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RAD_HEADERS} ${RAD_PRIVATE_SOURCES})
