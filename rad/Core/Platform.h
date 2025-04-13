@@ -2,8 +2,6 @@
 
 #include <rad/Config.h>
 
-#include <cstddef>
-
 // https://github.com/google/cpu_features/blob/main/include/cpu_features_macros.h
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -364,6 +362,48 @@
 #else
 #define RAD_DEPRECATED(message)
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+// Cross-platform Compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+#if defined(_WIN32)
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#else // not Windows
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#ifndef UNREFERENCED_PARAMETER
+#define UNREFERENCED_PARAMETER(x) (void)(x)
+#endif
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+// Debug
+////////////////////////////////////////////////////////////////////////////////
+
+#if defined(_DEBUG)
+#if defined(RAD_COMPILER_MSVC)
+// https://learn.microsoft.com/en-us/cpp/c-runtime-library/find-memory-leaks-using-the-crt-library?view=msvc-170
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#define RAD_NEW new (_NORMAL_BLOCK , __FILE__ , __LINE__)
+#endif
+#else // not _DEBUG
+#define RAD_NEW new
+#endif // RAD_COMPILER_MSVC
 
 namespace rad
 {

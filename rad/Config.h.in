@@ -1,3 +1,5 @@
+#pragma once
+
 #define RAD_VERSION_MAJOR @radcpp_VERSION_MAJOR@
 #define RAD_VERSION_MINOR @radcpp_VERSION_MINOR@
 #define RAD_VERSION_PATCH @radcpp_VERSION_PATCH@
