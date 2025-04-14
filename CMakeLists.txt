@@ -35,6 +35,8 @@ if(CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
 endif()
 
+include(cmake/radcppCompileOptions.cmake)
+
 # Print build infos
 message(STATUS "============================================================")
 message(STATUS "Build Informations")
