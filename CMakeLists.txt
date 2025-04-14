@@ -36,6 +36,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 include(cmake/radcppCompileOptions.cmake)
+include(cmake/radcppSanitizers.cmake)
 
 # Print build infos
 message(STATUS "============================================================")
