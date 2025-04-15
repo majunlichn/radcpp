@@ -22,9 +22,14 @@
 namespace rad
 {
 
-FilePath MakeFilePath(std::string_view s)
+FilePath MakeFilePath(std::string_view str)
 {
-    return FilePath((const char8_t*)s.data());
+    return FilePath((const char8_t*)str.data());
+}
+
+std::string ToString(const FilePath& path)
+{
+    return std::string((const char*)path.u8string().c_str());
 }
 
 void Swap(FilePath& lhs, FilePath& rhs)

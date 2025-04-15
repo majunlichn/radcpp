@@ -10,7 +10,8 @@ namespace rad
 using FilePath = std::filesystem::path;
 
 // Treat std::string as UTF-8 encoded.
-FilePath MakeFilePath(std::string_view s);
+FilePath MakeFilePath(std::string_view str);
+std::string ToString(const FilePath& path);
 
 void Swap(FilePath& lhs, FilePath& rhs);
 size_t Hash(const FilePath& p);

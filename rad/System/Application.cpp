@@ -49,7 +49,9 @@ bool Application::Init(int argc, char** argv)
 #endif
 
     InstallDefaultSignalHandlers();
-    InitLogging(std::string(argv[0]) + ".log", true);
+    std::string logFileName = pystring::os::path::basename(argv[0]) + ".log";
+    FilePath logFilePath = GetCurrentPath() / MakeFilePath(logFileName);
+    InitLogging(ToString(logFilePath), true);
 
     RAD_LOG(info, "radcpp Version: {}.{}.{}",
         RAD_VERSION_MAJOR, RAD_VERSION_MINOR, RAD_VERSION_PATCH);
