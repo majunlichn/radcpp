@@ -16,7 +16,12 @@ project(
 
 include(CMakeDependentOption)
 
-option(RADCPP_BUILD_TESTS "Whether build tests" ${PROJECT_IS_TOP_LEVEL})
+if(DEFINED ENV{VCPKG_ROOT})
+    set(HAS_VULKAN_SDK True)
+endif()
+
+option(BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
+option(BUILD_VKPP "Build vkpp" ${HAS_VULKAN_SDK})
 
 set(RADCPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -35,8 +40,8 @@ if(CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
 endif()
 
-include(cmake/radcppCompileOptions.cmake)
-include(cmake/radcppSanitizers.cmake)
+include(cmake/radCompileOptions.cmake)
+include(cmake/radSanitizers.cmake)
 
 # Print build infos
 message(STATUS "============================================================")
@@ -55,8 +60,18 @@ message(STATUS "============================================================")
 
 add_subdirectory(rad)
 
-if(RADCPP_BUILD_TESTS)
-    add_subdirectory(tests)
+if(BUILD_VKPP)
+    add_subdirectory(vkpp)
+endif()
+
+if(BUILD_TESTS)
+    include(CTest)
+    if(TARGET rad)
+        add_subdirectory(tests/HelloWorld)
+    endif()
+    if(TARGET vkpp)
+        add_subdirectory(tests/HelloVulkan)
+    endif()
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT HelloWorld)
 endif()
 
