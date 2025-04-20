@@ -11,6 +11,7 @@ set(VKPP_HEADERS
     Core/ShaderMacro.h
     Core/ShaderIncluder.h
     Core/ShaderCompiler.h
+    Core/Pipeline.h
 )
 
 set(VKPP_SOURCE_FILES
@@ -23,6 +24,7 @@ set(VKPP_SOURCE_FILES
     Core/Image.cpp
     Core/Descriptor.cpp
     Core/ShaderCompiler.cpp
+    Core/Pipeline.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${VKPP_SOURCE_FILES})
