@@ -10,12 +10,20 @@ class Device;
 class CommandPool : public rad::RefCounted<CommandPool>
 {
 public:
-    CommandPool(rad::Ref<Device> device, QueueFamily queueFamily);
+    CommandPool(rad::Ref<Device> device, QueueFamily queueFamily, vk::CommandPoolCreateFlags flags);
     ~CommandPool();
 
     vk::CommandPool GetHandle() const { return static_cast<vk::CommandPool>(m_handle); }
 
     vk::raii::CommandBuffers Allocate(vk::CommandBufferLevel level, uint32_t count);
+    vk::raii::CommandBuffers AllocatePrimary(uint32_t count)
+    {
+        return Allocate(vk::CommandBufferLevel::ePrimary, count);
+    }
+    vk::raii::CommandBuffers AllocateSecondary(uint32_t count)
+    {
+        return Allocate(vk::CommandBufferLevel::eSecondary, count);
+    }
 
     rad::Ref<Device> m_device;
     QueueFamily m_queueFamily;

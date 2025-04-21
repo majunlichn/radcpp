@@ -1,6 +1,7 @@
 #include <vkpp/Core/Device.h>
 #include <vkpp/Core/Instance.h>
 #include <vkpp/Core/Command.h>
+#include <vkpp/Core/Descriptor.h>
 #include <vkpp/Core/Buffer.h>
 #include <vkpp/Core/Image.h>
 
@@ -158,6 +159,31 @@ Device::~Device()
         vmaDestroyAllocator(m_allocator);
         m_allocator = VK_NULL_HANDLE;
     }
+}
+
+rad::Ref<CommandPool> Device::CreateCommandPool(
+    QueueFamily queueFamily, vk::CommandPoolCreateFlags flags)
+{
+    return RAD_NEW CommandPool(this, queueFamily, flags);
+}
+
+rad::Ref<DescriptorPool> Device::CreateDescriptorPool(
+    uint32_t maxSets, rad::ArrayRef<vk::DescriptorPoolSize> poolSizes,
+    vk::DescriptorPoolCreateFlags flags)
+{
+    vk::DescriptorPoolCreateInfo createInfo = {};
+    createInfo.flags = flags;
+    createInfo.maxSets = maxSets;
+    createInfo.setPoolSizes(poolSizes);
+    return RAD_NEW DescriptorPool(this, createInfo);
+}
+
+vk::raii::DescriptorSetLayout Device::CreateDescriptorSetLayout(
+    rad::ArrayRef<vk::DescriptorSetLayoutBinding> bindings)
+{
+    vk::DescriptorSetLayoutCreateInfo createInfo = {};
+    createInfo.setBindings(bindings);
+    return vk::raii::DescriptorSetLayout(this->m_handle, createInfo);
 }
 
 vk::Format Device::FindFormat(

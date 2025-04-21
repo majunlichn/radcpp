@@ -9,6 +9,7 @@ namespace vkpp
 
 class Instance;
 class CommandPool;
+class DescriptorPool;
 class Buffer;
 class BufferView;
 class Image;
@@ -46,6 +47,14 @@ public:
     {
         return m_enabledExtensions.contains(name);
     }
+
+    rad::Ref<CommandPool> CreateCommandPool(QueueFamily queueFamily, vk::CommandPoolCreateFlags flags);
+    rad::Ref<DescriptorPool> CreateDescriptorPool(
+        uint32_t maxSets, rad::ArrayRef<vk::DescriptorPoolSize> poolSizes,
+        vk::DescriptorPoolCreateFlags flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
+    vk::raii::DescriptorSetLayout CreateDescriptorSetLayout(
+        rad::ArrayRef<vk::DescriptorSetLayoutBinding> bindings);
+
 
     vk::Format FindFormat(rad::ArrayRef<vk::Format> candidates,
         vk::FormatFeatureFlags linearTilingFeatures,

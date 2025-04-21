@@ -5,11 +5,11 @@
 namespace vkpp
 {
 
-CommandPool::CommandPool(rad::Ref<Device> device, QueueFamily queueFamily) :
+CommandPool::CommandPool(rad::Ref<Device> device, QueueFamily queueFamily, vk::CommandPoolCreateFlags flags) :
     m_device(std::move(device)),
     m_queueFamily(queueFamily)
 {
-    vk::CommandPoolCreateInfo createInfo({}, m_device->GetQueueFamilyIndex(queueFamily));
+    vk::CommandPoolCreateInfo createInfo(flags, m_device->GetQueueFamilyIndex(queueFamily));
     m_handle = m_device->m_handle.createCommandPool(createInfo);
 }
 
