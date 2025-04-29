@@ -3,6 +3,9 @@
 #include <vkpp/Core/Command.h>
 #include <vkpp/Core/Descriptor.h>
 
+#include <vkpp/Compute/Tensor.h>
+
+#include <rad/Core/Float.h>
 #include <rad/System/Application.h>
 
 #include <gtest/gtest.h>
@@ -26,7 +29,7 @@ int main(int argc, char* argv[])
 
     rad::Ref<vkpp::Device> device = vulkan->CreateDevice();
     rad::Ref<vkpp::CommandPool> cmdPool = device->CreateCommandPool(
-        vkpp::QueueFamily::Graphics,
+        vkpp::QueueFamily::Universal,
         vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
     vk::raii::CommandBuffers cmdBuffers = cmdPool->AllocatePrimary(1);
 
@@ -39,6 +42,10 @@ int main(int argc, char* argv[])
             { 0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute },
         });
     vk::raii::DescriptorSets descSets = descPool->Allocate({ descSetLayout });
+
+    rad::Ref<vkpp::Tensor> tensor = RAD_NEW vkpp::Tensor(device);
+    tensor->Init(vk::ComponentTypeKHR::eFloat16, { 1, 4, 1024, 1024 }, vkpp::Tensor::MemoryLayout::NHWC);
+    tensor->FillRandom(0.0f, 1.0f);
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

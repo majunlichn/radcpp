@@ -23,6 +23,19 @@ vk::raii::CommandBuffers CommandPool::Allocate(vk::CommandBufferLevel level, uin
     return vk::raii::CommandBuffers(m_device->m_handle, allocateInfo);
 }
 
+void CommandRecorder::Begin(vk::CommandBufferUsageFlags flags, vk::CommandBufferInheritanceInfo* pInheritanceInfo)
+{
+    vk::CommandBufferBeginInfo beginInfo = {};
+    beginInfo.flags = flags;
+    beginInfo.pInheritanceInfo = pInheritanceInfo;
+    m_cmdBuffer.begin(beginInfo);
+}
+
+void CommandRecorder::End()
+{
+    m_cmdBuffer.end();
+}
+
 void CommandRecorder::SetMemoryBarrier(vk::PipelineStageFlags2KHR srcStageMask, vk::AccessFlags2KHR srcAccessMask, vk::PipelineStageFlags2KHR dstStageMask, vk::AccessFlags2KHR dstAccessMask)
 {
     vk::MemoryBarrier2KHR barrier;

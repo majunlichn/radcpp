@@ -37,7 +37,7 @@ Device::Device(
             reinterpret_cast<VkPhysicalDeviceProperties2*>(&m_properties2));
     }
 
-    m_queueFamilies = m_physicalDevice.getQueueFamilyProperties();
+    m_queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
     m_memoryProperties = m_physicalDevice.getMemoryProperties();
 
     m_features = m_physicalDevice.getFeatures();
@@ -63,13 +63,14 @@ Device::Device(
     }
 
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-    m_queueFamilies = m_physicalDevice.getQueueFamilyProperties();
+    m_queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
     m_queueFamilyIndices.fill(VK_QUEUE_FAMILY_IGNORED);
     float priority = 1.0f;
-    for (uint32_t i = 0; i < m_queueFamilies.size(); i++)
+    // Find the universal queue that support both graphics and compute.
+    for (uint32_t i = 0; i < m_queueFamilyProperties.size(); i++)
     {
-        if (!HasQueueFamily(QueueFamily::Graphics) &&
-            (m_queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics))
+        if ((m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
+            (m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eCompute))
         {
             vk::DeviceQueueCreateInfo queueInfo = {};
             queueInfo.flags = {};
@@ -77,12 +78,51 @@ Device::Device(
             queueInfo.queueCount = 1;
             queueInfo.pQueuePriorities = &priority;
             queueCreateInfos.emplace_back(queueInfo);
+            m_queueFamilyIndices[size_t(QueueFamily::Universal)] = i;
+            break;
+        }
+    }
+    // No queue support both graphics and compute, pick the first compute queue as the universal queue.
+    if (!HasQueueFamily(QueueFamily::Universal))
+    {
+        for (uint32_t i = 0; i < m_queueFamilyProperties.size(); i++)
+        {
+            if (m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eCompute)
+            {
+                vk::DeviceQueueCreateInfo queueInfo = {};
+                queueInfo.flags = {};
+                queueInfo.queueFamilyIndex = i;
+                queueInfo.queueCount = 1;
+                queueInfo.pQueuePriorities = &priority;
+                queueCreateInfos.emplace_back(queueInfo);
+                m_queueFamilyIndices[size_t(QueueFamily::Universal)] = i;
+                break;
+            }
+        }
+    }
+    assert(HasQueueFamily(QueueFamily::Universal));
+    for (uint32_t i = 0; i < m_queueFamilyProperties.size(); i++)
+    {
+        if (!HasQueueFamily(QueueFamily::Graphics) &&
+            (m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics))
+        {
+            if (i != GetQueueFamilyIndex(QueueFamily::Universal))
+            {
+                vk::DeviceQueueCreateInfo queueInfo = {};
+                queueInfo.flags = {};
+                queueInfo.queueFamilyIndex = i;
+                queueInfo.queueCount = 1;
+                queueInfo.pQueuePriorities = &priority;
+                queueCreateInfos.emplace_back(queueInfo);
+                m_queueFamilyIndices[size_t(QueueFamily::Graphics)] = i;
+            }
             m_queueFamilyIndices[size_t(QueueFamily::Graphics)] = i;
         }
-        // Async Compute Engine (ACE): no graphics bit, has compute bit.
+        // Async Compute Engine (ACE): different from the universal queue and only support compute.
         else if (!HasQueueFamily(QueueFamily::Compute) &&
-            !(m_queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
-            (m_queueFamilies[i].queueFlags & vk::QueueFlagBits::eCompute))
+            (i != m_queueFamilyIndices[size_t(QueueFamily::Universal)]) &&
+            !(m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
+            (m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eCompute))
         {
             vk::DeviceQueueCreateInfo queueInfo = {};
             queueInfo.flags = {};
@@ -94,9 +134,9 @@ Device::Device(
         }
         // DMA: no graphics or compute bit, has transfer bit.
         else if (!HasQueueFamily(QueueFamily::Transfer) &&
-            !(m_queueFamilies[i].queueFlags &
-                (vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute)) &&
-            (m_queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer))
+            !(m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
+            !(m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eCompute) &&
+            (m_queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eTransfer))
         {
             vk::DeviceQueueCreateInfo queueInfo = {};
             queueInfo.flags = {};
@@ -107,8 +147,6 @@ Device::Device(
             m_queueFamilyIndices[size_t(QueueFamily::Transfer)] = i;
         }
     }
-
-    assert(queueCreateInfos.size() == m_queueFamilyIndices.size());
 
     const auto& supportedExtensions = m_physicalDevice.enumerateDeviceExtensionProperties();
     std::vector<const char*> enabledExtensions;
@@ -150,15 +188,39 @@ Device::Device(
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     }
     VK_CHECK(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator));
+
+    for (int i = 0; i < rad::ToUnderlying(QueueFamily::Count); i++)
+    {
+        QueueFamily queueFamily = static_cast<QueueFamily>(i);
+        vk::CommandPoolCreateInfo commandPoolCreateInfo = {};
+        commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+        commandPoolCreateInfo.queueFamilyIndex = GetQueueFamilyIndex(queueFamily);
+        m_cmdPools[i] = std::make_shared<vk::raii::CommandPool>(m_handle, commandPoolCreateInfo);
+    }
 }
 
 Device::~Device()
 {
+    for (int i = 0; i < rad::ToUnderlying(QueueFamily::Count); i++)
+    {
+        if (m_cmdPools[i])
+        {
+            m_cmdPools[i].reset();
+        }
+    }
+
     if (m_allocator)
     {
         vmaDestroyAllocator(m_allocator);
         m_allocator = VK_NULL_HANDLE;
     }
+}
+
+vk::raii::CommandBuffer Device::AllocateTemporaryCommandBuffer(QueueFamily queueFamily)
+{
+    vk::raii::CommandPool* pCmdPool = m_cmdPools[rad::ToUnderlying(queueFamily)].get();
+    vk::CommandBufferAllocateInfo allocateInfo(*pCmdPool, vk::CommandBufferLevel::ePrimary, 1);
+    return std::move(vk::raii::CommandBuffers(m_handle, allocateInfo)[0]);
 }
 
 rad::Ref<CommandPool> Device::CreateCommandPool(
@@ -243,6 +305,47 @@ rad::Ref<Image> Device::CreateImage2DDepthStencilAttachment(
     VmaAllocationCreateInfo allocCreateInfo = {};
     allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
     return RAD_NEW Image(this, imageInfo, allocCreateInfo);
+}
+
+void Device::Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)
+{
+    m_queues[0].submit(submitInfos, fence, *m_handle.getDispatcher());
+}
+
+void Device::ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos)
+{
+    vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
+    vk::raii::Fence fence(m_handle, fenceInfo);
+    m_queues[0].submit(submitInfos, fence, *m_handle.getDispatcher());
+    VK_CHECK(m_handle.waitForFences({ fence }, vk::True, UINT64_MAX));
+}
+
+void Device::Execute(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence)
+{
+    vk::SubmitInfo submitInfo = {};
+    rad::SmallVector<vk::Semaphore, 8> waitSemaphoreHandles(waits.size());
+    rad::SmallVector<vk::PipelineStageFlags, 8> waitDstStageMasks(waits.size());
+    for (size_t i = 0; i < waits.size(); ++i)
+    {
+        waitSemaphoreHandles[i] = waits[i].semaphore;
+    }
+    for (size_t i = 0; i < waits.size(); ++i)
+    {
+        waitDstStageMasks[i] = waits[i].dstStageMask;
+    }
+    submitInfo.setWaitSemaphores(waitSemaphoreHandles);
+    submitInfo.setWaitDstStageMask(waitDstStageMasks);
+    submitInfo.setCommandBuffers(cmdBuffers);
+    submitInfo.setSignalSemaphores(signalSemaphores);
+    Execute(submitInfo, fence);
+}
+
+void Device::ExecuteSync(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores)
+{
+    vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
+    vk::raii::Fence fence(m_handle, fenceInfo);
+    Execute(waits, cmdBuffers, signalSemaphores, fence);
+    VK_CHECK(m_handle.waitForFences({ fence }, vk::True, UINT64_MAX));
 }
 
 } // namespace vkpp

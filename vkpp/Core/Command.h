@@ -44,6 +44,9 @@ public:
     {
     }
 
+    void Begin(vk::CommandBufferUsageFlags flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit, vk::CommandBufferInheritanceInfo* pInheritanceInfo = nullptr);
+    void End();
+
     // https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples
 
     // Generally considered more efficient to do a global memory barrier than per-resource barriers,
@@ -83,7 +86,7 @@ public:
     // This is a WAR hazard, only requires layout transition.
     void SetImageBarrier_FragmentSampleToColorAttachment(vk::Image image, const vk::ImageSubresourceRange& range);
 
-    // CPU read back of data written by a compute shader.
+    // CPU read back of data written by shaders.
     void SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlagBits2 stage);
 
 }; // class CommandRecorder

@@ -390,7 +390,7 @@
 #if defined(RAD_COMPILER_MSVC)
 #define RAD_FORCE_INLINE __forceinline
 #define RAD_ASSUME(expr) __assume(expr)
-#define RAD_UNREACHABLE() __assume(0)
+#define RAD_UNREACHABLE() __assume(false)
 #define RAD_DEPRECATED(message) __declspec(deprecated(message))
 #define RAD_RESTRICT __restrict
 #elif  defined(RAD_COMPILER_GCC) || defined(RAD_COMPILER_CLANG)

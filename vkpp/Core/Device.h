@@ -29,17 +29,25 @@ public:
     vk::raii::PhysicalDevice m_physicalDevice;
     vk::raii::Device m_handle = { nullptr };
     std::array<uint32_t, size_t(QueueFamily::Count)> m_queueFamilyIndices;
-    uint32_t GetQueueFamilyIndex(QueueFamily queueFamily)
+
+    uint32_t GetQueueFamilyIndex(QueueFamily queueFamily) const
     {
         return m_queueFamilyIndices[size_t(queueFamily)];
     }
+
     void SetQueueFamilyIndex(QueueFamily queueFamily, uint32_t index)
     {
         m_queueFamilyIndices[size_t(queueFamily)] = index;
     }
+
     bool HasQueueFamily(QueueFamily queueFamily) const
     {
         return (m_queueFamilyIndices[size_t(queueFamily)] != VK_QUEUE_FAMILY_IGNORED);
+    }
+
+    const vk::QueueFamilyProperties& GetQueueFamilyProperties(QueueFamily queueFamily) const
+    {
+        return m_queueFamilyProperties[GetQueueFamilyIndex(queueFamily)];
     }
 
     std::set<std::string, rad::StringLess> m_enabledExtensions;
@@ -48,7 +56,10 @@ public:
         return m_enabledExtensions.contains(name);
     }
 
+    vk::raii::CommandBuffer AllocateTemporaryCommandBuffer(QueueFamily queueFamily);
+
     rad::Ref<CommandPool> CreateCommandPool(QueueFamily queueFamily, vk::CommandPoolCreateFlags flags);
+
     rad::Ref<DescriptorPool> CreateDescriptorPool(
         uint32_t maxSets, rad::ArrayRef<vk::DescriptorPoolSize> poolSizes,
         vk::DescriptorPoolCreateFlags flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
@@ -72,7 +83,7 @@ public:
     vk::PhysicalDeviceVulkan12Properties m_vk12Properties;
     vk::PhysicalDeviceVulkan13Properties m_vk13Properties;
 
-    std::vector<vk::QueueFamilyProperties> m_queueFamilies;
+    std::vector<vk::QueueFamilyProperties> m_queueFamilyProperties;
     vk::PhysicalDeviceMemoryProperties m_memoryProperties;
 
     vk::PhysicalDeviceFeatures m_features;
@@ -83,7 +94,14 @@ public:
 
     VmaAllocator m_allocator = nullptr;
 
-    vk::Queue m_queues[size_t(QueueFamily::Count)];
+    vk::Queue m_queues[rad::ToUnderlying(QueueFamily::Count)];
+    void Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence);
+    void ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos);
+    void Execute(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence);
+    void ExecuteSync(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores);
+
+    // Internal command pools for transient allocation.
+    std::shared_ptr<vk::raii::CommandPool> m_cmdPools[rad::ToUnderlying(QueueFamily::Count)];
 
 }; // class Device
 

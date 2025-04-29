@@ -41,6 +41,9 @@ struct MaxSizeof<T, Rest...>
 template <class T>
 concept Enumeration = std::is_enum_v<T>;
 
+template <class T>
+concept TriviallyCopyable = std::is_trivially_copyable_v<T>;
+
 template<class T>
 constexpr auto ToUnderlying(T t) noexcept
 {

@@ -76,4 +76,80 @@ void ReportError(VkResult result, const char* expr, std::source_location sourceL
     }
 }
 
+VkDeviceSize GetComponentSizeInBytes(vk::ComponentTypeKHR type)
+{
+    switch (type)
+    {
+    case vk::ComponentTypeKHR::eFloat16: return 2;
+    case vk::ComponentTypeKHR::eFloat32: return 4;
+    case vk::ComponentTypeKHR::eFloat64: return 8;
+    case vk::ComponentTypeKHR::eSint8: return 1;
+    case vk::ComponentTypeKHR::eSint16: return 2;
+    case vk::ComponentTypeKHR::eSint32: return 4;
+    case vk::ComponentTypeKHR::eSint64: return 8;
+    case vk::ComponentTypeKHR::eUint8: return 1;
+    case vk::ComponentTypeKHR::eUint16: return 2;
+    case vk::ComponentTypeKHR::eUint32: return 4;
+    case vk::ComponentTypeKHR::eUint64: return 8;
+    case vk::ComponentTypeKHR::eSint8PackedNV: return 4;
+    case vk::ComponentTypeKHR::eUint8PackedNV: return 4;
+    case vk::ComponentTypeKHR::eFloatE4M3NV: return 1;
+    case vk::ComponentTypeKHR::eFloatE5M2NV: return 1;
+    default: RAD_UNREACHABLE();
+    }
+}
+
+bool IsFloatingPointType(vk::ComponentTypeKHR type)
+{
+    if ((type == vk::ComponentTypeKHR::eFloat16) ||
+        (type == vk::ComponentTypeKHR::eFloat32) ||
+        (type == vk::ComponentTypeKHR::eFloat64) ||
+        (type == vk::ComponentTypeKHR::eFloatE4M3NV) ||
+        (type == vk::ComponentTypeKHR::eFloatE5M2NV))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool IsSignedIntegerType(vk::ComponentTypeKHR type)
+{
+    if ((type == vk::ComponentTypeKHR::eSint8) ||
+        (type == vk::ComponentTypeKHR::eSint16) ||
+        (type == vk::ComponentTypeKHR::eSint32) ||
+        (type == vk::ComponentTypeKHR::eSint64) ||
+        (type == vk::ComponentTypeKHR::eSint8PackedNV))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool IsUnsignedIntegerType(vk::ComponentTypeKHR type)
+{
+    if ((type == vk::ComponentTypeKHR::eUint8) ||
+        (type == vk::ComponentTypeKHR::eUint16) ||
+        (type == vk::ComponentTypeKHR::eUint32) ||
+        (type == vk::ComponentTypeKHR::eUint64) ||
+        (type == vk::ComponentTypeKHR::eUint8PackedNV))
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool IsIntegerType(vk::ComponentTypeKHR type)
+{
+    return IsSignedIntegerType(type) || IsUnsignedIntegerType(type);
+}
+
 } // namespace vkpp

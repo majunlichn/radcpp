@@ -39,6 +39,11 @@ public:
             VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
             VMA_ALLOCATION_CREATE_MAPPED_BIT);
     }
+    static rad::Ref<Buffer> CreateStorage(rad::Ref<Device> device, vk::DeviceSize size)
+    {
+        return Create(device, size, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
+            VMA_MEMORY_USAGE_AUTO);
+    }
 
     rad::Ref<Device> m_device;
     vk::Buffer m_handle = nullptr;
@@ -53,6 +58,7 @@ public:
     ~Buffer();
 
     vk::Buffer GetHandle() const { return m_handle; }
+    vk::DeviceSize GetSize() const { return m_size; }
 
     bool IsHostVisible() const { return (m_memPropFlags & vk::MemoryPropertyFlagBits::eHostVisible).m_mask; }
     bool IsHostCoherent() const { return (m_memPropFlags & vk::MemoryPropertyFlagBits::eHostCoherent).m_mask; }
@@ -66,8 +72,15 @@ public:
         vk::DeviceSize range = vk::WholeSize,
         vk::BufferViewCreateFlags flags = {});
 
+    void ReadHost(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
+    void ReadHost(void* data) { ReadHost(data, 0, GetSize()); };
+    void WriteHost(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
+    void WriteHost(const void* data) { WriteHost(data, 0, GetSize()); }
+
     void Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
+    void Read(void* data) { Read(data, 0, GetSize()); }
     void Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
+    void Write(const void* data) { Write(data, 0, GetSize()); }
 
 }; // class Buffer
 

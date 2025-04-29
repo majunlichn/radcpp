@@ -32,10 +32,17 @@ namespace vkpp
 
 enum class QueueFamily
 {
+    Universal,
     Graphics,
     Compute,    // Async Compute Engine (ACE)
-    Transfer,   // DMA
+    Transfer,   // Async Transfer (DMA)
     Count
+};
+
+struct SubmitWaitInfo
+{
+    vk::Semaphore semaphore;
+    vk::PipelineStageFlagBits dstStageMask;
 };
 
 #define VK_STRUCTURE_CHAIN_CREATE(Head) auto Head##ChainNext = &Head.pNext;
@@ -113,6 +120,12 @@ spdlog::logger* GetLogger();
 #define VKPP_LOG(LogLevel, ...) SPDLOG_LOGGER_CALL(vkpp::GetLogger(), spdlog::level::LogLevel, __VA_ARGS__)
 void ReportError(VkResult result, const char* expr, std::source_location sourceLoc = std::source_location::current());
 #define VK_CHECK(Expr) \
-    do { const VkResult result = Expr; if (result < 0) { vkpp::ReportError(result, #Expr); } } while(0)
+    do { const VkResult result_ = static_cast<VkResult>(Expr); if (result_ < 0) { vkpp::ReportError(result_, #Expr); } } while(0)
+
+VkDeviceSize GetComponentSizeInBytes(vk::ComponentTypeKHR type);
+bool IsFloatingPointType(vk::ComponentTypeKHR type);
+bool IsSignedIntegerType(vk::ComponentTypeKHR type);
+bool IsUnsignedIntegerType(vk::ComponentTypeKHR type);
+bool IsIntegerType(vk::ComponentTypeKHR type);
 
 } // namespace vkpp

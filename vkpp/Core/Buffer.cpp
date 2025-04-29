@@ -1,5 +1,6 @@
 #include <vkpp/Core/Buffer.h>
 #include <vkpp/Core/Device.h>
+#include <vkpp/Core/Command.h>
 
 namespace vkpp
 {
@@ -71,7 +72,7 @@ rad::Ref<BufferView> Buffer::CreateView(
     return RAD_NEW BufferView(this, viewInfo);
 }
 
-void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
+void Buffer::ReadHost(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
 {
     assert(m_memPropFlags & vk::MemoryPropertyFlagBits::eHostVisible);
     if (m_allocInfo.pMappedData)
@@ -84,20 +85,20 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
     }
     else
     {
-        void* mapped = MapMemory();
-        if (mapped)
+        void* pMappedData = MapMemory();
+        if (pMappedData)
         {
             if (!(m_memPropFlags & vk::MemoryPropertyFlagBits::eHostCoherent))
             {
                 vmaFlushAllocation(m_device->m_allocator, m_alloc, offset, dataSize);
             }
-            memcpy(data, mapped, dataSize);
+            memcpy(data, pMappedData, dataSize);
             UnmapMemory();
         }
     }
 }
 
-void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
+void Buffer::WriteHost(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
 {
     assert(m_memPropFlags & vk::MemoryPropertyFlagBits::eHostVisible);
     if (m_allocInfo.pMappedData)
@@ -110,16 +111,87 @@ void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataS
     }
     else
     {
-        void* mapped = MapMemory();
-        if (mapped)
+        void* pMappedData = MapMemory();
+        if (pMappedData)
         {
-            memcpy(mapped, data, dataSize);
+            memcpy(pMappedData, data, dataSize);
             if (!(m_memPropFlags & vk::MemoryPropertyFlagBits::eHostCoherent))
             {
                 vmaFlushAllocation(m_device->m_allocator, m_alloc, offset, dataSize);
             }
             UnmapMemory();
         }
+    }
+}
+
+void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
+{
+    if (IsHostVisible())
+    {
+        Read(data, offset, dataSize);
+    }
+    else
+    {
+        rad::Ref<Buffer> stagingBuffer = CreateStagingReadback(m_device, dataSize);
+
+        vk::raii::CommandBuffer cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+        CommandRecorder(cmdBuffer).Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+        // Generally considered more efficient to do a global memory barrier than per-resource barriers?
+        vk::MemoryBarrier2 deviceRAW;
+        deviceRAW.srcStageMask = vk::PipelineStageFlagBits2::eAllCommands;
+        deviceRAW.srcAccessMask = vk::AccessFlagBits2::eShaderWrite | vk::AccessFlagBits2::eMemoryWrite;
+        deviceRAW.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
+        deviceRAW.dstAccessMask = vk::AccessFlagBits2::eTransferRead;
+        vk::DependencyInfo dependency;
+        dependency.setMemoryBarriers(deviceRAW);
+        cmdBuffer.pipelineBarrier2(dependency);
+        vk::BufferCopy copyRegion = {};
+        copyRegion.srcOffset = offset;
+        copyRegion.dstOffset = 0;
+        copyRegion.size = dataSize;
+        cmdBuffer.copyBuffer(GetHandle(), stagingBuffer->GetHandle(), copyRegion);
+        vk::MemoryBarrier2 stagingRAW;
+        stagingRAW.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+        stagingRAW.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
+        stagingRAW.dstStageMask = vk::PipelineStageFlagBits2::eHost;
+        stagingRAW.dstAccessMask = vk::AccessFlagBits2::eHostRead;
+        dependency.setMemoryBarriers(stagingRAW);
+        cmdBuffer.pipelineBarrier2(dependency);
+        CommandRecorder(cmdBuffer).End();
+
+        m_device->ExecuteSync({}, { cmdBuffer }, {});
+        stagingBuffer->ReadHost(data, 0, dataSize);
+    }
+}
+
+void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
+{
+    if (IsHostVisible())
+    {
+        WriteHost(data, offset, dataSize);
+    }
+    else
+    {
+        rad::Ref<Buffer> stagingBuffer = CreateStagingUpload(m_device, dataSize);
+        stagingBuffer->WriteHost(data, 0, dataSize);
+        vk::raii::CommandBuffer cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+        CommandRecorder(cmdBuffer).Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+        vk::BufferCopy copyRegion = {};
+        copyRegion.srcOffset = 0;
+        copyRegion.dstOffset = offset;
+        copyRegion.size = dataSize;
+        cmdBuffer.copyBuffer(stagingBuffer->GetHandle(), GetHandle(), copyRegion);
+        vk::MemoryBarrier2 deviceRAW;
+        deviceRAW.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+        deviceRAW.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
+        deviceRAW.dstStageMask = vk::PipelineStageFlagBits2::eAllCommands;
+        deviceRAW.dstAccessMask = vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eMemoryRead;
+        vk::DependencyInfo dependency;
+        dependency.setMemoryBarriers(deviceRAW);
+        cmdBuffer.pipelineBarrier2(dependency);
+        CommandRecorder(cmdBuffer).End();
+
+        m_device->ExecuteSync({}, { cmdBuffer }, {});
     }
 }
 
