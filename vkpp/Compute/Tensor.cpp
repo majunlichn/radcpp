@@ -43,20 +43,20 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, Me
 #endif
 
     size_t elementCount = GetElementCount();
-    size_t bufferElementCount = 1;
+    size_t indexOfLastElement = 0;
     for (size_t i = 0; i < m_sizes.size(); ++i)
     {
         if (m_sizes[i] > 1)
         {
-            bufferElementCount += (m_sizes[i] - 1) * m_strides[i];
+            indexOfLastElement += (m_sizes[i] - 1) * m_strides[i];
         }
     }
-    if (bufferElementCount == elementCount)
+    if (indexOfLastElement + 1 == elementCount)
     {
         m_isContiguous = true;
     }
 
-    m_bufferSize = VkDeviceSize(bufferElementCount) * GetElementSizeInBytes();
+    m_bufferSize = VkDeviceSize(indexOfLastElement + 1) * GetElementSizeInBytes();
     m_bufferSize = rad::Pow2AlignUp(m_bufferSize, VkDeviceSize(4));
 
     if (buffer)
@@ -164,6 +164,21 @@ size_t Tensor::GetElementCount() const
     return count;
 }
 
+size_t Tensor::GetBufferElementCount() const
+{
+    return static_cast<size_t>(m_bufferSize / GetElementSizeInBytes());
+}
+
+void Tensor::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
+{
+    m_buffer->Read(data, m_bufferOffset + offset, dataSize);
+}
+
+void Tensor::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
+{
+    m_buffer->Write(data, m_bufferOffset + offset, dataSize);
+}
+
 void Tensor::FillRandom(float minValue, float maxValue)
 {
     assert(IsFloatingPointType(m_dataType));
@@ -174,32 +189,32 @@ void Tensor::FillRandom(float minValue, float maxValue)
     if (m_dataType == vk::ComponentTypeKHR::eFloat16)
     {
         std::vector<uint16_t> bufferData = GenerateBufferData<uint16_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return rad::fp16_ieee_from_fp32_value(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return rad::fp16_ieee_from_fp32_value(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloat32)
     {
         std::vector<float> bufferData = GenerateBufferData<float>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return dist(eng); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return dist(eng); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloat64)
     {
         std::uniform_real_distribution<double> dist64(minValue, maxValue);
         std::vector<double> bufferData = GenerateBufferData<double>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return dist64(eng); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return dist64(eng); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
     {
         std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return rad::fp8e4m3fn_from_fp32_value(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return rad::fp8e4m3fn_from_fp32_value(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
     {
         std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return rad::fp8e5m2_from_fp32_value(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return rad::fp8e5m2_from_fp32_value(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
 }
@@ -214,25 +229,25 @@ void Tensor::FillRandom(int minValue, int maxValue)
     if (m_dataType == vk::ComponentTypeKHR::eSint8)
     {
         std::vector<int8_t> bufferData = GenerateBufferData<int8_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return int8_t(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return int8_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint16)
     {
         std::vector<int16_t> bufferData = GenerateBufferData<int16_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return int16_t(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return int16_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint32)
     {
         std::vector<int32_t> bufferData = GenerateBufferData<int32_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return int32_t(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return int32_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint64)
     {
         std::vector<int64_t> bufferData = GenerateBufferData<int64_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return int64_t(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return int64_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint8)
@@ -240,7 +255,7 @@ void Tensor::FillRandom(int minValue, int maxValue)
         assert(minValue >= 0);
         assert(maxValue > 0);
         std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return uint8_t(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return uint8_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint16)
@@ -248,7 +263,7 @@ void Tensor::FillRandom(int minValue, int maxValue)
         assert(minValue >= 0);
         assert(maxValue > 0);
         std::vector<uint16_t> bufferData = GenerateBufferData<uint16_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return uint16_t(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return uint16_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint32)
@@ -256,7 +271,7 @@ void Tensor::FillRandom(int minValue, int maxValue)
         assert(minValue >= 0);
         assert(maxValue > 0);
         std::vector<uint32_t> bufferData = GenerateBufferData<uint32_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return uint32_t(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return uint32_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint64)
@@ -264,7 +279,7 @@ void Tensor::FillRandom(int minValue, int maxValue)
         assert(minValue >= 0);
         assert(maxValue > 0);
         std::vector<uint64_t> bufferData = GenerateBufferData<uint64_t>(
-            [&](size_t n, size_t c, size_t d, size_t h, size_t w) { return uint64_t(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord) { return uint64_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
 }

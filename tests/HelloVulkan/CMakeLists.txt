@@ -1,10 +1,13 @@
 add_executable(HelloVulkan)
+
 target_include_directories(HelloVulkan
     PUBLIC ${RADCPP_ROOT}
 )
 list(APPEND HelloVulkan_SOURCES
     main.cpp
+    TestTensor.cpp
 )
+
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${HelloVulkan_SOURCES})
 target_sources(HelloVulkan PRIVATE ${HelloVulkan_SOURCES})
 find_package(GTest CONFIG REQUIRED)

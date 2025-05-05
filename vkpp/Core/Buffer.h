@@ -25,6 +25,7 @@ public:
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
             VMA_ALLOCATION_CREATE_MAPPED_BIT);
     }
+
     static rad::Ref<Buffer> CreateStagingUpload(rad::Ref<Device> device, vk::DeviceSize size)
     {
         return Create(device, size, vk::BufferUsageFlagBits::eTransferSrc,
@@ -32,6 +33,7 @@ public:
             VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
             VMA_ALLOCATION_CREATE_MAPPED_BIT);
     }
+
     static rad::Ref<Buffer> CreateStagingReadback(rad::Ref<Device> device, vk::DeviceSize size)
     {
         return Create(device, size, vk::BufferUsageFlagBits::eTransferDst,
@@ -39,6 +41,7 @@ public:
             VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT |
             VMA_ALLOCATION_CREATE_MAPPED_BIT);
     }
+
     static rad::Ref<Buffer> CreateStorage(rad::Ref<Device> device, vk::DeviceSize size)
     {
         return Create(device, size, vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,

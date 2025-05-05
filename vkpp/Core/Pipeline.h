@@ -9,11 +9,15 @@ namespace vkpp
 
 class Device;
 
-class PipelineShaderStage : public rad::RefCounted<PipelineShaderStage>
+class ShaderStageInfo : public rad::RefCounted<ShaderStageInfo>
 {
 public:
-    PipelineShaderStage() {}
-    ~PipelineShaderStage() {}
+    ShaderStageInfo() {}
+    ~ShaderStageInfo() {}
+
+    static rad::Ref<ShaderStageInfo> CreateFromGLSL(rad::Ref<Device> device,
+        vk::ShaderStageFlagBits stage, const std::string& fileName, const std::string& source,
+        const std::string& entryPoint = "main", rad::Span<ShaderMacro> macros = {});
 
     template<typename T>
     void AddSpecData(uint32_t constantID, const T& value)
@@ -41,6 +45,7 @@ public:
         {
             createInfo.pSpecializationInfo = &m_specInfo;
         }
+        return createInfo;
     }
 
     vk::PipelineShaderStageCreateFlags m_flags = {};
@@ -51,7 +56,7 @@ public:
     std::vector<vk::SpecializationMapEntry> m_specMapEntries;
     std::vector<uint8_t> m_specData;
 
-}; // class PipelineShaderStage
+}; // class ShaderStageInfo
 
 class Pipeline : public rad::RefCounted<Pipeline>
 {
@@ -62,7 +67,7 @@ public:
     void CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
         rad::ArrayRef<vk::PushConstantRange> pushConstantRanges);
 
-    rad::Ref<PipelineShaderStage> CreateShaderStageFromGLSL(
+    rad::Ref<ShaderStageInfo> CreateShaderStageFromGLSL(
         vk::ShaderStageFlagBits stage, const std::string& fileName, const std::string& source,
         const std::string& entryPoint = "main", rad::Span<ShaderMacro> macros = {},
         shaderc_optimization_level opt = shaderc_optimization_level_zero
@@ -83,7 +88,7 @@ public:
         vk::Optional<const vk::raii::PipelineCache> cache);
     ~GraphicsPipeline();
 
-    std::map<vk::ShaderStageFlagBits, rad::Ref<PipelineShaderStage>> m_shaderStages;
+    std::map<vk::ShaderStageFlagBits, rad::Ref<ShaderStageInfo>> m_shaderStages;
 
 }; // class GraphicsPipeline
 
@@ -96,7 +101,7 @@ public:
         vk::Optional<const vk::raii::PipelineCache> cache);
     ~ComputePipeline();
 
-    rad::Ref<PipelineShaderStage> m_shaderStage;
+    rad::Ref<ShaderStageInfo> m_shaderStage;
 
 }; // class ComputePipeline
 

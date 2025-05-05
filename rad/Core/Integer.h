@@ -170,4 +170,11 @@ inline uint64_t RoundUpToPow2(uint64_t x)
 
 #endif
 
+template <std::integral T>
+constexpr T DivRoundUp(T a, T b)
+{
+    assert(b > 0);
+    return (a + b - 1) / b;
+}
+
 } // namespace rad

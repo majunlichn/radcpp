@@ -22,13 +22,6 @@ struct ShaderMacro
         this->m_definition = definition;
     }
 
-    template<typename T>
-    ShaderMacro(std::string_view name, T definition)
-    {
-        this->m_name = name;
-        this->m_definition = std::to_string(definition);
-    }
-
     std::string m_name;
     std::string m_definition;
 

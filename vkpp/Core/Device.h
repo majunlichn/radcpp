@@ -14,6 +14,10 @@ class Buffer;
 class BufferView;
 class Image;
 class ImageView;
+class ShaderStageInfo;
+class Pipeline;
+class GraphicsPipeline;
+class ComputePipeline;
 
 class Device : public rad::RefCounted<Device>
 {
@@ -65,7 +69,9 @@ public:
         vk::DescriptorPoolCreateFlags flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
     vk::raii::DescriptorSetLayout CreateDescriptorSetLayout(
         rad::ArrayRef<vk::DescriptorSetLayoutBinding> bindings);
-
+    vk::raii::PipelineLayout CreatePipelineLayout(
+        rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
+        rad::ArrayRef<vk::PushConstantRange> pushConstantRanges = {});
 
     vk::Format FindFormat(rad::ArrayRef<vk::Format> candidates,
         vk::FormatFeatureFlags linearTilingFeatures,
@@ -76,6 +82,9 @@ public:
         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eColorAttachment);
     rad::Ref<Image> CreateImage2DDepthStencilAttachment(vk::Format format, uint32_t width, uint32_t height,
         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eDepthStencilAttachment);
+
+    rad::Ref<ComputePipeline> CreateComputePipeline(
+        rad::Ref<ShaderStageInfo> shaderStage, vk::PipelineLayout layout);
 
     vk::PhysicalDeviceProperties m_properties;
     vk::PhysicalDeviceProperties2 m_properties2;

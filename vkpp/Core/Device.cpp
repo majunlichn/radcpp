@@ -4,6 +4,7 @@
 #include <vkpp/Core/Descriptor.h>
 #include <vkpp/Core/Buffer.h>
 #include <vkpp/Core/Image.h>
+#include <vkpp/Core/Pipeline.h>
 
 namespace vkpp
 {
@@ -248,6 +249,19 @@ vk::raii::DescriptorSetLayout Device::CreateDescriptorSetLayout(
     return vk::raii::DescriptorSetLayout(this->m_handle, createInfo);
 }
 
+vk::raii::PipelineLayout Device::CreatePipelineLayout(
+    rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
+    rad::ArrayRef<vk::PushConstantRange> pushConstantRanges)
+{
+    vk::PipelineLayoutCreateInfo createInfo = {};
+    createInfo.flags = {};
+    createInfo.setLayoutCount = setLayouts.size32();
+    createInfo.pSetLayouts = setLayouts.data();
+    createInfo.pushConstantRangeCount = pushConstantRanges.size32();
+    createInfo.pPushConstantRanges = pushConstantRanges.data();
+    return vk::raii::PipelineLayout(m_handle, createInfo);
+}
+
 vk::Format Device::FindFormat(
     rad::ArrayRef<vk::Format> candidates,
     vk::FormatFeatureFlags linearTilingFeatures,
@@ -305,6 +319,18 @@ rad::Ref<Image> Device::CreateImage2DDepthStencilAttachment(
     VmaAllocationCreateInfo allocCreateInfo = {};
     allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
     return RAD_NEW Image(this, imageInfo, allocCreateInfo);
+}
+
+rad::Ref<ComputePipeline> Device::CreateComputePipeline(
+    rad::Ref<ShaderStageInfo> shaderStage, vk::PipelineLayout layout)
+{
+    vk::ComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.flags = {};
+    pipelineInfo.stage = *shaderStage;
+    pipelineInfo.layout = layout;
+    pipelineInfo.basePipelineHandle = nullptr;
+    pipelineInfo.basePipelineIndex = 0;
+    return RAD_NEW ComputePipeline(this, pipelineInfo, nullptr);
 }
 
 void Device::Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)

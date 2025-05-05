@@ -1,8 +1,34 @@
 #include <vkpp/Core/Pipeline.h>
 #include <vkpp/Core/Device.h>
+#include <vkpp/Core/ShaderCompiler.h>
 
 namespace vkpp
 {
+
+rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromGLSL(
+    rad::Ref<Device> device, vk::ShaderStageFlagBits stage,
+    const std::string& fileName, const std::string& source,
+    const std::string& entryPoint, rad::Span<ShaderMacro> macros)
+{
+    rad::Ref<ShaderStageInfo> shaderStage;
+    ShaderCompiler compiler;
+    std::vector<uint32_t> code = compiler.CompileGLSL(stage, fileName, source, entryPoint, macros);
+    if (!code.empty())
+    {
+        shaderStage = RAD_NEW ShaderStageInfo();
+        shaderStage->m_stage = stage;
+        vk::ShaderModuleCreateInfo shaderModuleInfo = {};
+        shaderModuleInfo.setCode(code);
+        shaderStage->m_module = vk::raii::ShaderModule(device->m_handle, shaderModuleInfo);
+        shaderStage->m_entryPoint = "main";
+    }
+    else
+    {
+        VKPP_LOG(err, "Failed to compile {}:\n{}", fileName, compiler.GetLog());
+        return nullptr;
+    }
+    return shaderStage;
+}
 
 void Pipeline::CreateLayout(const vk::PipelineLayoutCreateInfo& createInfo)
 {
@@ -19,7 +45,7 @@ void Pipeline::CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<v
     CreateLayout(createInfo);
 }
 
-rad::Ref<PipelineShaderStage> Pipeline::CreateShaderStageFromGLSL(
+rad::Ref<ShaderStageInfo> Pipeline::CreateShaderStageFromGLSL(
     vk::ShaderStageFlagBits stage, const std::string& fileName, const std::string& source,
     const std::string& entryPoint, rad::Span<ShaderMacro> macros,
     shaderc_optimization_level opt)
@@ -33,7 +59,7 @@ rad::Ref<PipelineShaderStage> Pipeline::CreateShaderStageFromGLSL(
         shaderModuleCreateInfo.pCode = code.data();
         vk::raii::ShaderModule shaderModule = m_device->m_handle.createShaderModule(shaderModuleCreateInfo);
 
-        rad::Ref<PipelineShaderStage> shaderStage = RAD_NEW PipelineShaderStage();
+        rad::Ref<ShaderStageInfo> shaderStage = RAD_NEW ShaderStageInfo();
         shaderStage->m_stage = stage;
         shaderStage->m_module = std::move(shaderModule);
         shaderStage->m_entryPoint = "main";

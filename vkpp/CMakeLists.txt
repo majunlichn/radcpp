@@ -13,6 +13,7 @@ set(VKPP_HEADERS
     Core/ShaderCompiler.h
     Core/Pipeline.h
     Compute/Tensor.h
+    Compute/TensorOp.h
 )
 
 set(VKPP_SOURCE_FILES
@@ -27,6 +28,7 @@ set(VKPP_SOURCE_FILES
     Core/ShaderCompiler.cpp
     Core/Pipeline.cpp
     Compute/Tensor.cpp
+    Compute/TensorOp.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${VKPP_SOURCE_FILES})
@@ -40,3 +42,10 @@ target_include_directories(vkpp
 target_link_libraries(vkpp
     PUBLIC rad
 )
+
+if(WIN32)
+    target_link_libraries(vkpp
+        PUBLIC "$ENV{VULKAN_SDK}/Lib/shaderc_shared.lib"
+        PUBLIC "$ENV{VULKAN_SDK}/Lib/SPIRV-Tools-shared.lib"
+    )
+endif()
