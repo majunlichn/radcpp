@@ -109,7 +109,7 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
     m_desc = desc;
 
     std::string sourceRoot = std::getenv("VKPP_SHADERS_ROOT");
-    std::string sourceName = sourceRoot + "/TensorOp/" + "ElementWiseUnary4D.comp";
+    std::string sourceName = sourceRoot + "/TensorOp/ElementWiseUnary4D.comp";
     std::string source = rad::File::ReadAll(sourceName);
     std::vector<ShaderMacro> macros =
     {

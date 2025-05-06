@@ -16,7 +16,8 @@ Tensor::~Tensor()
 {
 }
 
-bool Tensor::Init(vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, MemoryLayout layout, rad::ArrayRef<size_t> strides,
+bool Tensor::Init(vk::ComponentTypeKHR dataType,
+    rad::ArrayRef<size_t> sizes, MemoryLayout layout, rad::ArrayRef<size_t> strides,
     rad::Ref<Buffer> buffer, VkDeviceSize bufferOffset)
 {
     assert((sizes.size() == 4) || (sizes.size() == 5));
@@ -80,7 +81,8 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, Me
     return true;
 }
 
-std::vector<size_t> GetContiguousStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
+std::vector<size_t> GetContiguousStridesByMemoryOrder(
+    rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
 {
     if (sizes.empty())
     {
@@ -96,7 +98,8 @@ std::vector<size_t> GetContiguousStridesByMemoryOrder(rad::ArrayRef<size_t> size
     return strides;
 }
 
-std::vector<size_t> Tensor::GetContiguousStrides(rad::ArrayRef<size_t> sizes, MemoryLayout layout)
+std::vector<size_t> Tensor::GetContiguousStrides(
+    rad::ArrayRef<size_t> sizes, MemoryLayout layout)
 {
     assert(layout != MemoryLayout::Undefined);
     if (sizes.empty())
@@ -189,7 +192,9 @@ void Tensor::FillRandom(float minValue, float maxValue)
     if (m_dataType == vk::ComponentTypeKHR::eFloat16)
     {
         std::vector<uint16_t> bufferData = GenerateBufferData<uint16_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return rad::fp16_ieee_from_fp32_value(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord)
+            { return rad::fp16_ieee_from_fp32_value(dist(eng)); }
+        );
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloat32)
@@ -208,13 +213,17 @@ void Tensor::FillRandom(float minValue, float maxValue)
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
     {
         std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return rad::fp8e4m3fn_from_fp32_value(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord)
+            { return rad::fp8e4m3fn_from_fp32_value(dist(eng)); }
+        );
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
     {
         std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return rad::fp8e5m2_from_fp32_value(dist(eng)); });
+            [&](size_t index, std::initializer_list<size_t> coord)
+            { return rad::fp8e5m2_from_fp32_value(dist(eng)); }
+        );
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
     }
 }

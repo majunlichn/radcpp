@@ -58,6 +58,10 @@ public:
 
     template <rad::TriviallyCopyable T>
     std::vector<T> GenerateBufferData(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const;
+    template <rad::TriviallyCopyable T>
+    std::vector<T> GenerateBufferData4D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const;
+    template <rad::TriviallyCopyable T>
+    std::vector<T> GenerateBufferData5D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const;
 
     void Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
     void Read(void* data) { Read(data, 0, m_bufferSize); }
@@ -76,40 +80,57 @@ template<rad::TriviallyCopyable T>
 inline std::vector<T> Tensor::GenerateBufferData(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
-    std::vector<T> buffer(m_bufferSize / GetElementSizeInBytes(), T(0));
     if (m_sizes.size() == 4)
     {
-        for (size_t n = 0; n < m_sizes[0]; ++n)
+        return GenerateBufferData4D(generator);
+    }
+    else
+    {
+        return GenerateBufferData5D(generator);
+    }
+    return {};
+}
+
+template<rad::TriviallyCopyable T>
+inline std::vector<T> Tensor::GenerateBufferData4D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
+{
+    assert(sizeof(T) == GetElementSizeInBytes());
+    std::vector<T> buffer(m_bufferSize / GetElementSizeInBytes(), T(0));
+    for (size_t n = 0; n < m_sizes[0]; ++n)
+    {
+        for (size_t c = 0; c < m_sizes[1]; ++c)
         {
-            for (size_t c = 0; c < m_sizes[1]; ++c)
+            for (size_t h = 0; h < m_sizes[2]; ++h)
             {
-                for (size_t h = 0; h < m_sizes[2]; ++h)
+                for (size_t w = 0; w < m_sizes[3]; ++w)
                 {
-                    for (size_t w = 0; w < m_sizes[3]; ++w)
-                    {
-                        size_t index = n * m_strides[0] + c * m_strides[1] + h * m_strides[2] + w * m_strides[3];
-                        buffer[index] = generator(index, { n, c, h, w });
-                    }
+                    size_t index = n * m_strides[0] + c * m_strides[1] + h * m_strides[2] + w * m_strides[3];
+                    buffer[index] = generator(index, { n, c, h, w });
                 }
             }
         }
     }
-    else
+    return buffer;
+}
+
+template<rad::TriviallyCopyable T>
+inline std::vector<T> Tensor::GenerateBufferData5D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
+{
+    assert(sizeof(T) == GetElementSizeInBytes());
+    std::vector<T> buffer(m_bufferSize / GetElementSizeInBytes(), T(0));
+    for (size_t n = 0; n < m_sizes[0]; ++n)
     {
-        for (size_t n = 0; n < m_sizes[0]; ++n)
+        for (size_t c = 0; c < m_sizes[1]; ++c)
         {
-            for (size_t c = 0; c < m_sizes[1]; ++c)
+            for (size_t d = 0; d < m_sizes[2]; ++d)
             {
-                for (size_t d = 0; d < m_sizes[2]; ++d)
+                for (size_t h = 0; h < m_sizes[3]; ++h)
                 {
-                    for (size_t h = 0; h < m_sizes[3]; ++h)
+                    for (size_t w = 0; w < m_sizes[4]; ++w)
                     {
-                        for (size_t w = 0; w < m_sizes[4]; ++w)
-                        {
-                            size_t index = n * m_strides[0] + c * m_strides[1] +
-                                d * m_strides[2] + h * m_strides[3] + w * m_strides[4];
-                            buffer[index] = generator(index, { n, c, d, h, w });
-                        }
+                        size_t index = n * m_strides[0] + c * m_strides[1] +
+                            d * m_strides[2] + h * m_strides[3] + w * m_strides[4];
+                        buffer[index] = generator(index, { n, c, d, h, w });
                     }
                 }
             }
