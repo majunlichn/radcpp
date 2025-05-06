@@ -38,23 +38,28 @@ public:
 
     size_t GetDimensionCount() const { return m_sizes.size(); }
     size_t GetElementCount() const;
+    VkDeviceSize GetSizeInBytes() const { return m_sizeInBytes; }
     // Element count that can fill the entire buffer,
-    // which is "m_bufferSize / GetElementSizeInBytes()";
+    // which is "GetSizeInBytes() / GetElementSizeInBytes()";
     size_t GetBufferElementCount() const;
     bool IsContiguous() const { return m_isContiguous; }
 
     rad::Ref<Device> m_device;
 
     vk::ComponentTypeKHR m_dataType = vk::ComponentTypeKHR::eFloat16;
+    // The total size of a tensor may not exceed (2^32 - 1) elements -
+    // for example, 16GB for a Float32 tensor.
     std::vector<size_t> m_sizes;
     std::vector<size_t> m_strides;
     MemoryLayout m_layout = MemoryLayout::Undefined;
     bool m_isContiguous = false;
     // The buffer allocated in device memory, can be shared by other tensors.
     rad::Ref<Buffer> m_buffer;
+    // The base offset of the buffer range in bytes.
+    // TODO: guarantee a minimum alignment in bytes for the base offset of the buffer range.
     VkDeviceSize m_bufferOffset = 0;
-    // The buffer size must be multiple of 4.
-    VkDeviceSize m_bufferSize = 0;
+    // The total size in bytes of the buffer range, must be the multiple of 4.
+    VkDeviceSize m_sizeInBytes = 0;
 
     template <rad::TriviallyCopyable T>
     std::vector<T> GenerateBufferData(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const;
@@ -64,9 +69,9 @@ public:
     std::vector<T> GenerateBufferData5D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const;
 
     void Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
-    void Read(void* data) { Read(data, 0, m_bufferSize); }
+    void Read(void* data) { Read(data, 0, m_sizeInBytes); }
     void Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
-    void Write(const void* data) { Write(data, 0, m_bufferSize); }
+    void Write(const void* data) { Write(data, 0, m_sizeInBytes); }
 
     template <rad::TriviallyCopyable T>
     void FillConstant(const T& value);
@@ -80,13 +85,14 @@ template<rad::TriviallyCopyable T>
 inline std::vector<T> Tensor::GenerateBufferData(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
+    assert((m_sizes.size() == 4) || (m_sizes.size() == 5));
     if (m_sizes.size() == 4)
     {
-        return GenerateBufferData4D(generator);
+        return GenerateBufferData4D<T>(generator);
     }
-    else
+    else if (m_sizes.size() == 5)
     {
-        return GenerateBufferData5D(generator);
+        return GenerateBufferData5D<T>(generator);
     }
     return {};
 }
@@ -95,7 +101,7 @@ template<rad::TriviallyCopyable T>
 inline std::vector<T> Tensor::GenerateBufferData4D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
-    std::vector<T> buffer(m_bufferSize / GetElementSizeInBytes(), T(0));
+    std::vector<T> buffer(m_sizeInBytes / GetElementSizeInBytes(), T(0));
     for (size_t n = 0; n < m_sizes[0]; ++n)
     {
         for (size_t c = 0; c < m_sizes[1]; ++c)
@@ -117,7 +123,7 @@ template<rad::TriviallyCopyable T>
 inline std::vector<T> Tensor::GenerateBufferData5D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
-    std::vector<T> buffer(m_bufferSize / GetElementSizeInBytes(), T(0));
+    std::vector<T> buffer(m_sizeInBytes / GetElementSizeInBytes(), T(0));
     for (size_t n = 0; n < m_sizes[0]; ++n)
     {
         for (size_t c = 0; c < m_sizes[1]; ++c)
@@ -145,7 +151,7 @@ inline void Tensor::FillConstant(const T& value)
     assert(sizeof(T) == GetElementSizeInBytes());
     std::vector<T> bufferData = GenerateBufferData<T>(
         [&](size_t index, std::initializer_list<size_t> coord) { return value; });
-    m_buffer->Write(bufferData.data(), m_bufferOffset, m_bufferSize);
+    m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
 }
 
 } // namespace vkpp

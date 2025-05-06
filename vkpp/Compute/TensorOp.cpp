@@ -71,7 +71,7 @@ void TensorOp::SetTensor(uint32_t binding, Tensor* tensor)
     vk::DescriptorBufferInfo bufferInfo = {};
     bufferInfo.buffer = tensor->m_buffer->GetHandle();
     bufferInfo.offset = tensor->m_bufferOffset;
-    bufferInfo.range = tensor->m_bufferSize;
+    bufferInfo.range = tensor->m_sizeInBytes;
     updater.UpdateBuffers(binding, 0, vk::DescriptorType::eStorageBuffer, bufferInfo);
     m_bindings[binding] = tensor;
 }
