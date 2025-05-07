@@ -21,7 +21,7 @@ def remove_dir(dir : str):
         shutil.rmtree(dir)
 
 def download_file(url, filename):
-    print(f"Downloading {filename} from {url}")
+    print(f"Downloading '{filename}' from '{url}'")
     if not os.path.exists(filename):
         urllib.request.urlretrieve(url, filename)
 
@@ -29,7 +29,7 @@ def extract_zip(filename, path="."):
     if not os.path.exists(path):
         os.makedirs(path)
     with ZipFile(filename, "r") as zip:
-        print(f"Extracting {filename} to {os.path.realpath(path)}")
+        print(f"Extracting '{filename}' to '{os.path.realpath(path)}'")
         zip.extractall(path)
 
 def download_and_extract_zip(url, filename, extract_path="."):
@@ -58,6 +58,11 @@ def build_SDL_mixer():
                    env=dict(os.environ, SDL3_DIR=sdl3_dir))
     run_shell(f"cmake --build build --target install --config Release")
 
+def setup_windows(tasks):
+    if "mysql" in tasks:
+        download_and_extract_zip("https://dev.mysql.com/get/Downloads/Connector-C++/mysql-connector-c++-9.1.0-winx64.zip",
+                                 "mysql-connector-c++-9.1.0-winx64.zip")
+
 def main() -> int:
     tasks = sys.argv[1:]
     print(f"Tasks: {tasks}")
@@ -70,6 +75,10 @@ def main() -> int:
             chdir(script_root)
             build_SDL_mixer()
             chdir(script_root)
+        if platform.system() == "Windows":
+            setup_windows(tasks)
+        chdir(script_root)
+
     except Exception as e:
         print(e)
         err = -1
