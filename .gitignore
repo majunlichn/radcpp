@@ -1,5 +1,7 @@
 ## Custom
 
+imported/SDL/
+imported/SDL_mixer/
 build/
 vcpkg_installed/
 compile_commands.json
