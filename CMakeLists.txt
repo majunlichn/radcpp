@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
 
+if(POLICY CMP0091)
+    cmake_policy(SET CMP0091 NEW)
+endif()
+
 if((NOT DEFINED CMAKE_TOOLCHAIN_FILE) AND (DEFINED ENV{VCPKG_ROOT}))
     list(APPEND CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 endif()
@@ -16,12 +20,13 @@ project(
 
 include(CMakeDependentOption)
 
-if(DEFINED ENV{VCPKG_ROOT})
+if(DEFINED ENV{VULKAN_SDK})
     set(HAS_VULKAN_SDK True)
 endif()
 
 option(BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(BUILD_VKPP "Build vkpp" ${HAS_VULKAN_SDK})
+option(BUILD_GUI "Build GUI libraries" True)
 
 set(RADCPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -62,6 +67,12 @@ add_subdirectory(rad)
 
 if(BUILD_VKPP)
     add_subdirectory(vkpp)
+endif()
+
+if(BUILD_GUI)
+    find_package(SDL3 CONFIG REQUIRED PATHS ${RADCPP_ROOT}/imported/SDL/build/installed)
+    add_subdirectory(imported/imgui)
+    set_target_properties(imgui PROPERTIES FOLDER "imported")
 endif()
 
 if(BUILD_TESTS)
