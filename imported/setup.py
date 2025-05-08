@@ -76,6 +76,7 @@ def main() -> int:
             build_SDL_mixer()
             chdir(script_root)
         if platform.system() == "Windows":
+            chdir(script_root)
             setup_windows(tasks)
         chdir(script_root)
 
