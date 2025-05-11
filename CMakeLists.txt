@@ -25,8 +25,10 @@ if(DEFINED ENV{VULKAN_SDK})
 endif()
 
 option(BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
+option(BUILD_SAMPLES "Build samples" ${PROJECT_IS_TOP_LEVEL})
 option(BUILD_VKPP "Build vkpp" ${HAS_VULKAN_SDK})
 option(BUILD_GUI "Build GUI libraries" True)
+option(BUILD_SDFramework "Build SDFramework" True)
 
 set(RADCPP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -69,6 +71,10 @@ if(BUILD_VKPP)
     add_subdirectory(vkpp)
 endif()
 
+if(BUILD_SDFramework)
+    add_subdirectory(SDFramework)
+endif()
+
 if(BUILD_GUI)
     find_package(SDL3 CONFIG REQUIRED PATHS ${RADCPP_ROOT}/imported/SDL/build/installed)
     add_subdirectory(imported/imgui)
@@ -84,6 +90,12 @@ if(BUILD_TESTS)
         add_subdirectory(tests/HelloVulkan)
     endif()
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT HelloWorld)
+endif()
+
+if(BUILD_SAMPLES)
+    if(TARGET SDFramework)
+        add_subdirectory(samples/Painter)
+    endif()
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
