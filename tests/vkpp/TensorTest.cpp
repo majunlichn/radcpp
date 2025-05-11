@@ -15,24 +15,8 @@ extern rad::Ref<vkpp::Device> g_device;
 
 TEST(Tensor, ElementWise)
 {
-    rad::Ref<vkpp::CommandPool> cmdPool = g_device->CreateCommandPool(
-        vkpp::QueueFamily::Universal,
-        vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-    vk::raii::CommandBuffers cmdBuffers = cmdPool->AllocatePrimary(1);
-
-    rad::Ref<vkpp::DescriptorPool> descPool = g_device->CreateDescriptorPool(1,
-        {   // type, count
-            { vk::DescriptorType::eStorageBuffer, 1 }
-        });
-    vk::raii::DescriptorSetLayout descSetLayout = g_device->CreateDescriptorSetLayout(
-        {   // binding, type, count, stageFlags, pImmutableSamplers
-            { 0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute },
-        });
-    vk::raii::DescriptorSets descSets = descPool->Allocate({ descSetLayout });
-
     rad::Ref<vkpp::Tensor> tensor = RAD_NEW vkpp::Tensor(g_device);
-    tensor->Init(vk::ComponentTypeKHR::eFloat16, { 1, 4, 1024, 1024 }, vkpp::Tensor::MemoryLayout::NCHW);
-    tensor->FillConstant<uint16_t>(0);
+    tensor->Init(vk::ComponentTypeKHR::eFloat16, { 1, 2, 512, 512 }, vkpp::Tensor::MemoryLayout::NCHW);
 
     std::random_device rd;
     std::default_random_engine eng(rd());
@@ -74,4 +58,5 @@ TEST(Tensor, ElementWise)
             break;
         }
     }
+    tensor.reset();
 }

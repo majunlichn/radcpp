@@ -22,7 +22,7 @@ public:
     const std::vector<std::string>& GetArgv() { return m_argv; }
     const char* GetArgv(size_t index) { return m_argv[index].c_str(); }
 
-    void PrintStackTrace(int depth = 32);
+    void PrintStackTrace(std::ostream& stream, int depth);
 
     // Causes normal program termination to occur.
     // Functions registered with std::atexit are called in the reverse order of their registration.

@@ -71,7 +71,7 @@ bool Application::Init(int argc, char** argv)
 
 // Implement with backward-cpp: https://github.com/bombela/backward-cpp
 // C++23 <stacktrace>: https://en.cppreference.com/w/cpp/header/stacktrace
-void Application::PrintStackTrace(int depth)
+void Application::PrintStackTrace(std::ostream& stream, int depth)
 {
     using namespace backward;
     // On Windows, must delcare Printer before load_here, or the first print won't work, is it a bug?
@@ -81,9 +81,7 @@ void Application::PrintStackTrace(int depth)
     p.trace_context_size = 9;
     st.skip_n_firsts(2); // skip current and load_here.
     st.load_here(depth);
-    std::stringstream ss;
-    p.print(st, ss);
-    RAD_LOG(info, "{}", ss.str());
+    p.print(st, stream);
 }
 
 void Application::Exit(int code)
