@@ -12,22 +12,22 @@
 namespace rad
 {
 
-static Application* g_App = nullptr;
+static Application* g_appInstance = nullptr;
 
 Application* Application::GetInstance()
 {
-    return g_App;
+    return g_appInstance;
 }
 
 Application::Application()
 {
-    assert(g_App == nullptr);
-    g_App = this;
+    assert(g_appInstance == nullptr);
+    g_appInstance = this;
 }
 
 Application::~Application()
 {
-    g_App = nullptr;
+    g_appInstance = nullptr;
 }
 
 bool Application::Init(int argc, char** argv)

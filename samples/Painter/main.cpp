@@ -1,11 +1,11 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include <SDFramework/Core/Application.h>
-#include "Painter.h"
+#include "MainWindow.h"
 #include <SDL3/SDL_main.h>
 
 rad::Ref<sdf::Application> g_app;
-rad::Ref<Painter> g_window;
+rad::Ref<MainWindow> g_mainWindow;
 
 SDL_AppResult SDL_AppInit(void** appState, int argc, char** argv)
 {
@@ -19,8 +19,8 @@ SDL_AppResult SDL_AppInit(void** appState, int argc, char** argv)
     {
         return SDL_APP_FAILURE;
     }
-    g_window = RAD_NEW Painter();
-    if (!g_window->Init())
+    g_mainWindow = RAD_NEW MainWindow();
+    if (!g_mainWindow->Init())
     {
         return SDL_APP_FAILURE;
     }
@@ -78,6 +78,6 @@ void SDL_AppQuit(void* appState, SDL_AppResult result)
     sdf::Application* app = reinterpret_cast<sdf::Application*>(appState);
     assert(g_app == app);
 
-    g_window.reset();
+    g_mainWindow.reset();
     g_app.reset();
 }

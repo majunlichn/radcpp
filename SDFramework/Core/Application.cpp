@@ -3,17 +3,17 @@
 namespace sdf
 {
 
-static Application* g_app = nullptr;
+static Application* g_appInstance = nullptr;
 
 Application* Application::GetInstance()
 {
-    return g_app;
+    return g_appInstance;
 }
 
 Application::Application()
 {
-    assert(g_app == nullptr);
-    g_app = this;
+    assert(g_appInstance == nullptr);
+    g_appInstance = this;
 }
 
 Application::~Application()
@@ -58,11 +58,11 @@ bool Application::Init(int argc, char** argv)
 
 void Application::Destroy()
 {
-    if (g_app)
+    if (g_appInstance)
     {
         SDL_Quit();
         SDF_LOG(info, "SDL quited.");
-        g_app = nullptr;
+        g_appInstance = nullptr;
     }
 }
 

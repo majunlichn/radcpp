@@ -1,20 +1,23 @@
-#include "Painter.h"
+#include "MainWindow.h"
+#include "MainMenu.h"
 
-Painter::Painter()
+MainWindow::MainWindow()
 {
-    m_logger = rad::CreateLogger("Painter");
+    m_logger = rad::CreateLogger("MainWindow");
     m_logger->trace(__FUNCTION__);
 }
 
-Painter::~Painter()
+MainWindow::~MainWindow()
 {
     m_logger->trace(__FUNCTION__);
 }
 
-bool Painter::Init()
+bool MainWindow::Init()
 {
     SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN;
     Create("Painter", 1600, 900, flags);
+
+    m_manager = RAD_NEW PaintManager();
 
     m_renderer = RAD_NEW sdf::Renderer(this);
     if (!m_renderer->Init())
@@ -28,10 +31,13 @@ bool Painter::Init()
     {
         return false;
     }
+
+    m_mainMenu = RAD_NEW MainMenu(m_manager.get(), m_gui.get());
+
     return true;
 }
 
-bool Painter::OnEvent(const SDL_Event& event)
+bool MainWindow::OnEvent(const SDL_Event& event)
 {
     if (m_gui)
     {
@@ -40,7 +46,7 @@ bool Painter::OnEvent(const SDL_Event& event)
     return Window::OnEvent(event);
 }
 
-void Painter::OnIdle()
+void MainWindow::OnIdle()
 {
     if (GetFlags() & SDL_WINDOW_MINIMIZED)
     {
@@ -48,176 +54,188 @@ void Painter::OnIdle()
     }
     m_renderer->Clear();
     m_gui->NewFrame();
-    if (m_showDemoWindow)
+
+    if (m_mainMenu && m_mainMenu->IsEnabled())
     {
-        ImGui::ShowDemoWindow(&m_showDemoWindow);
+        m_mainMenu->OnIdle();
     }
+
+    if (m_manager->m_showDemoWindow)
+    {
+        ImGui::ShowDemoWindow(&m_manager->m_showDemoWindow);
+    }
+
+    if (m_manager->m_showAboutWindow)
+    {
+        ImGui::ShowAboutWindow(&m_manager->m_showAboutWindow);
+    }
+
     m_gui->Render();
     m_renderer->Present();
 }
 
-void Painter::OnShown()
+void MainWindow::OnShown()
 {
     m_logger->trace(__FUNCTION__);
 }
 
-void Painter::OnHidden()
+void MainWindow::OnHidden()
 {
     m_logger->trace(__FUNCTION__);
 }
 
-void Painter::OnExposed()
+void MainWindow::OnExposed()
 {
     m_logger->trace(__FUNCTION__);
 }
 
-void Painter::OnMoved(int x, int y)
+void MainWindow::OnMoved(int x, int y)
 {
     m_logger->trace("OnMoved: {:4}, {:4}", x, y);
 }
 
-void Painter::OnResized(int width, int height)
+void MainWindow::OnResized(int width, int height)
 {
     m_logger->trace("OnResized: {:4}, {:4}", width, height);
 }
 
-void Painter::OnPixelSizeChanged(int width, int height)
+void MainWindow::OnPixelSizeChanged(int width, int height)
 {
     m_logger->trace("OnPixelSizeChanged: {:4}, {:4}", width, height);
 }
 
-void Painter::OnMinimized()
+void MainWindow::OnMinimized()
 {
     m_logger->trace("OnMinimized");
 }
 
-void Painter::OnMaximized()
+void MainWindow::OnMaximized()
 {
     m_logger->trace("OnMaximized");
 }
 
-void Painter::OnRestored()
+void MainWindow::OnRestored()
 {
     m_logger->trace("OnRestored");
 }
 
-void Painter::OnMouseEnter()
+void MainWindow::OnMouseEnter()
 {
     m_logger->trace("OnMouseEnter");
 }
 
-void Painter::OnMouseLeave()
+void MainWindow::OnMouseLeave()
 {
     m_logger->trace("OnMouseLeave");
 }
 
-void Painter::OnFocusGained()
+void MainWindow::OnFocusGained()
 {
     m_logger->trace("OnFocusGained");
 }
 
-void Painter::OnFocusLost()
+void MainWindow::OnFocusLost()
 {
     m_logger->trace("OnFocusLost");
 }
 
-void Painter::OnCloseRequested()
+void MainWindow::OnCloseRequested()
 {
     m_logger->trace("OnCloseRequested");
     Destroy();
 }
 
-void Painter::OnHitTest()
+void MainWindow::OnHitTest()
 {
     m_logger->trace("OnHitTest");
 }
 
-void Painter::OnIccProfileChanged()
+void MainWindow::OnIccProfileChanged()
 {
     m_logger->trace("OnIccProfileChanged");
 }
 
-void Painter::OnDisplayChanged()
+void MainWindow::OnDisplayChanged()
 {
     m_logger->trace("OnDisplayChanged");
 }
 
-void Painter::OnDisplayScaleChanged()
+void MainWindow::OnDisplayScaleChanged()
 {
     m_logger->trace("OnDisplayScaleChanged");
 }
 
-void Painter::OnOccluded()
+void MainWindow::OnOccluded()
 {
     m_logger->trace("OnOccluded");
 }
 
-void Painter::OnEnterFullscreen()
+void MainWindow::OnEnterFullscreen()
 {
     m_logger->trace("OnEnterFullscreen");
 }
 
-void Painter::OnLeaveFullscreen()
+void MainWindow::OnLeaveFullscreen()
 {
     m_logger->trace("OnLeaveFullscreen");
 }
 
-void Painter::OnDestroyed()
+void MainWindow::OnDestroyed()
 {
     m_logger->trace("OnDestroyed");
 }
 
-void Painter::OnKeyDown(const SDL_KeyboardEvent& keyDown)
+void MainWindow::OnKeyDown(const SDL_KeyboardEvent& keyDown)
 {
     m_logger->trace("OnKeyDown: {}", SDL_GetKeyName(keyDown.key));
-    if (keyDown.key == SDLK_F1)
+    if (keyDown.key == SDLK_TAB)
     {
-        m_showDemoWindow = !m_showDemoWindow;
+        m_manager->m_showDemoWindow = !m_manager->m_showDemoWindow;
     }
 }
 
-void Painter::OnKeyUp(const SDL_KeyboardEvent& keyUp)
+void MainWindow::OnKeyUp(const SDL_KeyboardEvent& keyUp)
 {
     m_logger->trace("OnKeyUp: {}", SDL_GetKeyName(keyUp.key));
 }
 
-void Painter::OnTextEditing(const SDL_TextEditingEvent& textEditing)
+void MainWindow::OnTextEditing(const SDL_TextEditingEvent& textEditing)
 {
     m_logger->trace("OnTextEditing: {}", textEditing.text);
 }
 
-void Painter::OnTextInput(const SDL_TextInputEvent& textInput)
+void MainWindow::OnTextInput(const SDL_TextInputEvent& textInput)
 {
     m_logger->trace("OnTextInput: {}", textInput.text);
 }
 
-void Painter::OnMouseMove(const SDL_MouseMotionEvent& mouseMotion)
+void MainWindow::OnMouseMove(const SDL_MouseMotionEvent& mouseMotion)
 {
     m_logger->trace("OnMouseMove: x={:4} ({:+4}); y={:4} ({:+4})",
         mouseMotion.x, mouseMotion.xrel, mouseMotion.y, mouseMotion.yrel);
 }
 
-void Painter::OnMouseButtonDown(const SDL_MouseButtonEvent& mouseButton)
+void MainWindow::OnMouseButtonDown(const SDL_MouseButtonEvent& mouseButton)
 {
     m_logger->trace("OnMouseButtonDown: {}", GetMouseButtonName(mouseButton.button));
 }
 
-void Painter::OnMouseButtonUp(const SDL_MouseButtonEvent& mouseButton)
+void MainWindow::OnMouseButtonUp(const SDL_MouseButtonEvent& mouseButton)
 {
     m_logger->trace("OnMouseButtonUp: {}", GetMouseButtonName(mouseButton.button));
 }
 
-void Painter::OnMouseWheel(const SDL_MouseWheelEvent& mouseWheel)
+void MainWindow::OnMouseWheel(const SDL_MouseWheelEvent& mouseWheel)
 {
     m_logger->trace("OnMouseWheel: {:+}", mouseWheel.y);
 }
 
-void Painter::OnUserEvent(const SDL_UserEvent& user)
+void MainWindow::OnUserEvent(const SDL_UserEvent& user)
 {
     m_logger->trace("OnUserEvent");
 }
 
-const char* Painter::GetMouseButtonName(Uint8 button)
+const char* MainWindow::GetMouseButtonName(Uint8 button)
 {
     switch (button)
     {

@@ -1,7 +1,13 @@
 set(PAINTER_SOURCE_FILES
     main.cpp
-    Painter.h
-    Painter.cpp
+    PaintManager.h
+    PaintManager.cpp
+    MainWindow.h
+    MainWindow.cpp
+    Widget.h
+    Widget.cpp
+    MainMenu.h
+    MainMenu.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${PAINTER_SOURCE_FILES})

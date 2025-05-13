@@ -4,11 +4,16 @@
 #include <SDFramework/Gui/Renderer.h>
 #include <SDFramework/Gui/GuiContext.h>
 
-class Painter : public sdf::Window
+#include "PaintManager.h"
+#include "Widget.h"
+
+#include <list>
+
+class MainWindow : public sdf::Window
 {
 public:
-    Painter();
-    ~Painter();
+    MainWindow();
+    ~MainWindow();
 
     bool Init();
 
@@ -63,9 +68,10 @@ private:
 
     std::shared_ptr<spdlog::logger> m_logger;
 
+    rad::Ref<PaintManager> m_manager;
     rad::Ref<sdf::Renderer> m_renderer;
     rad::Ref<sdf::GuiContext> m_gui;
 
-    bool m_showDemoWindow = true;
+    rad::Ref<Widget> m_mainMenu;
 
-}; // class Painter
+}; // class MainWindow
