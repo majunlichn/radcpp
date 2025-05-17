@@ -78,21 +78,21 @@ void TensorOp::SetTensor(uint32_t binding, Tensor* tensor)
 
 void TensorOp::Execute(glm::uvec3 groupCount)
 {
-    vk::raii::CommandBuffer cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+    rad::Ref<CommandBuffer> cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
 
-    CommandRecorder(cmdBuffer).Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+    cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
     if (m_enable_PreExecute_MemoryBarrierRAW)
     {
-        CommandRecorder(cmdBuffer).SetMemoryBarrier_ComputeToComputeRAW();
+        cmdBuffer->SetMemoryBarrier_ComputeToComputeRAW();
     }
 
-    cmdBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline->m_handle);
-    cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout, 0,
+    cmdBuffer->BindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline->m_wrapper);
+    cmdBuffer->BindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout, 0,
         { m_descSets[0] }, {});
-    cmdBuffer.dispatch(groupCount.x, groupCount.y, groupCount.z);
-    CommandRecorder(cmdBuffer).End();
+    cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
+    cmdBuffer->End();
 
-    m_device->ExecuteSync(m_executeWaits, { cmdBuffer }, m_executeSignalSemaphores);
+    m_device->ExecuteSync(m_executeWaits, { cmdBuffer->GetHandle() }, m_executeSignalSemaphores);
 }
 
 TensorOpElementWiseUnary::TensorOpElementWiseUnary(rad::Ref<Device> device) :

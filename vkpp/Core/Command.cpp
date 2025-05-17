@@ -1,6 +1,8 @@
 #include <vkpp/Core/Command.h>
 #include <vkpp/Core/Device.h>
-
+#include <vkpp/Core/Buffer.h>
+#include <vkpp/Core/Image.h>
+#include <vkpp/Core/Pipeline.h>
 
 namespace vkpp
 {
@@ -10,33 +12,69 @@ CommandPool::CommandPool(rad::Ref<Device> device, QueueFamily queueFamily, vk::C
     m_queueFamily(queueFamily)
 {
     vk::CommandPoolCreateInfo createInfo(flags, m_device->GetQueueFamilyIndex(queueFamily));
-    m_handle = m_device->m_handle.createCommandPool(createInfo);
+    m_wrapper = m_device->m_wrapper.createCommandPool(createInfo);
 }
 
 CommandPool::~CommandPool()
 {
 }
 
-vk::raii::CommandBuffers CommandPool::Allocate(vk::CommandBufferLevel level, uint32_t count)
+const DeviceDispatcher* CommandPool::GetDispatcher() const
 {
-    vk::CommandBufferAllocateInfo allocateInfo(m_handle, level, count);
-    return vk::raii::CommandBuffers(m_device->m_handle, allocateInfo);
+    return m_device->GetDispatcher();
 }
 
-void CommandRecorder::Begin(vk::CommandBufferUsageFlags flags, vk::CommandBufferInheritanceInfo* pInheritanceInfo)
+vk::raii::CommandBuffers CommandPool::Allocate(vk::CommandBufferLevel level, uint32_t count)
+{
+    vk::CommandBufferAllocateInfo allocateInfo(m_wrapper, level, count);
+    return vk::raii::CommandBuffers(m_device->m_wrapper, allocateInfo);
+}
+
+CommandBuffer::CommandBuffer(rad::Ref<Device> device, vk::CommandPool poolHandle, vk::CommandBuffer bufferHandle) :
+    m_device(std::move(device))
+{
+    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, bufferHandle, poolHandle);
+}
+
+CommandBuffer::CommandBuffer(
+    rad::Ref<CommandPool> pool, vk::CommandBuffer bufferHandle) :
+    m_device(pool->m_device),
+    m_pool(std::move(pool))
+{
+    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, bufferHandle, pool->GetHandle());
+}
+
+CommandBuffer::~CommandBuffer()
+{
+    m_wrapper.clear();
+    m_pool.reset();
+    m_device.reset();
+}
+
+const DeviceDispatcher* CommandBuffer::GetDispatcher() const
+{
+    return m_device->GetDispatcher();
+}
+
+void CommandBuffer::Begin(vk::CommandBufferUsageFlags flags, vk::CommandBufferInheritanceInfo* pInheritanceInfo)
 {
     vk::CommandBufferBeginInfo beginInfo = {};
     beginInfo.flags = flags;
     beginInfo.pInheritanceInfo = pInheritanceInfo;
-    m_cmdBuffer.begin(beginInfo);
+    m_wrapper.begin(beginInfo);
 }
 
-void CommandRecorder::End()
+void CommandBuffer::End()
 {
-    m_cmdBuffer.end();
+    m_wrapper.end();
 }
 
-void CommandRecorder::SetMemoryBarrier(vk::PipelineStageFlags2KHR srcStageMask, vk::AccessFlags2KHR srcAccessMask, vk::PipelineStageFlags2KHR dstStageMask, vk::AccessFlags2KHR dstAccessMask)
+void CommandBuffer::BindPipeine(Pipeline* pipeline)
+{
+    m_wrapper.bindPipeline(pipeline->GetBindPoint(), pipeline->GetHandle());
+}
+
+void CommandBuffer::SetMemoryBarrier(vk::PipelineStageFlags2KHR srcStageMask, vk::AccessFlags2KHR srcAccessMask, vk::PipelineStageFlags2KHR dstStageMask, vk::AccessFlags2KHR dstAccessMask)
 {
     vk::MemoryBarrier2KHR barrier;
     barrier.srcStageMask = srcStageMask;
@@ -45,10 +83,10 @@ void CommandRecorder::SetMemoryBarrier(vk::PipelineStageFlags2KHR srcStageMask, 
     barrier.dstAccessMask = dstAccessMask;
     vk::DependencyInfoKHR dependency;
     dependency.setMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetImageBarrier(vk::PipelineStageFlags2KHR srcStageMask, vk::AccessFlags2KHR srcAccessMask, vk::PipelineStageFlags2KHR dstStageMask, vk::AccessFlags2KHR dstAccessMask, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::Image image, const vk::ImageSubresourceRange& range)
+void CommandBuffer::SetImageBarrier(vk::PipelineStageFlags2KHR srcStageMask, vk::AccessFlags2KHR srcAccessMask, vk::PipelineStageFlags2KHR dstStageMask, vk::AccessFlags2KHR dstAccessMask, vk::ImageLayout oldLayout, vk::ImageLayout newLayout, vk::Image image, const vk::ImageSubresourceRange& range)
 {
     vk::ImageMemoryBarrier2KHR barrier;
     barrier.srcStageMask = srcStageMask;
@@ -61,10 +99,10 @@ void CommandRecorder::SetImageBarrier(vk::PipelineStageFlags2KHR srcStageMask, v
     barrier.subresourceRange = range;
     vk::DependencyInfoKHR dependency;
     dependency.setImageMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetMemoryBarrier_ComputeToComputeRAW()
+void CommandBuffer::SetMemoryBarrier_ComputeToComputeRAW()
 {
     vk::MemoryBarrier2 barrier;
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eComputeShader;
@@ -74,10 +112,10 @@ void CommandRecorder::SetMemoryBarrier_ComputeToComputeRAW()
 
     vk::DependencyInfoKHR dependency;
     dependency.setMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetMemoryBarrier_ComputeToComputeWAR()
+void CommandBuffer::SetMemoryBarrier_ComputeToComputeWAR()
 {
     // WAR hazards don't need availability or visibility operations between them -
     // execution dependencies are sufficient.
@@ -88,10 +126,10 @@ void CommandRecorder::SetMemoryBarrier_ComputeToComputeWAR()
 
     vk::DependencyInfoKHR dependency;
     dependency.setMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetMemoryBarrier_ComputeWriteToGraphicsIndexRead()
+void CommandBuffer::SetMemoryBarrier_ComputeWriteToGraphicsIndexRead()
 {
     vk::MemoryBarrier2 barrier;
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eComputeShader;
@@ -100,10 +138,10 @@ void CommandRecorder::SetMemoryBarrier_ComputeWriteToGraphicsIndexRead()
     barrier.dstAccessMask = vk::AccessFlagBits2::eIndexRead | vk::AccessFlagBits2::eMemoryRead;
     vk::DependencyInfoKHR dependency;
     dependency.setMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetMemoryBarrier_ComputeWriteToGraphicsIndirectCommandRead()
+void CommandBuffer::SetMemoryBarrier_ComputeWriteToGraphicsIndirectCommandRead()
 {
     vk::MemoryBarrier2 barrier;
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eComputeShader;
@@ -112,10 +150,10 @@ void CommandRecorder::SetMemoryBarrier_ComputeWriteToGraphicsIndirectCommandRead
     barrier.dstAccessMask = vk::AccessFlagBits2::eIndirectCommandRead | vk::AccessFlagBits2::eMemoryRead;
     vk::DependencyInfoKHR dependency;
     dependency.setMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetImageBarrier_ComputeWriteToGraphicsSample(
+void CommandBuffer::SetImageBarrier_ComputeWriteToGraphicsSample(
     vk::Image image, const vk::ImageSubresourceRange& range)
 {
     vk::ImageMemoryBarrier2 barrier;
@@ -129,10 +167,10 @@ void CommandRecorder::SetImageBarrier_ComputeWriteToGraphicsSample(
     barrier.subresourceRange = range;
     vk::DependencyInfoKHR dependency;
     dependency.setImageMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetImageBarrier_ColorAttachmentToComputeSample(
+void CommandBuffer::SetImageBarrier_ColorAttachmentToComputeSample(
     vk::Image image, const vk::ImageSubresourceRange& range)
 {
     vk::ImageMemoryBarrier2 barrier;
@@ -146,10 +184,10 @@ void CommandRecorder::SetImageBarrier_ColorAttachmentToComputeSample(
     barrier.subresourceRange = range;
     vk::DependencyInfoKHR dependency;
     dependency.setImageMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetImageBarrier_DepthStencilAttachmentToComputeSample(
+void CommandBuffer::SetImageBarrier_DepthStencilAttachmentToComputeSample(
     vk::Image image, const vk::ImageSubresourceRange& range)
 {
     vk::ImageMemoryBarrier2 barrier;
@@ -165,10 +203,10 @@ void CommandRecorder::SetImageBarrier_DepthStencilAttachmentToComputeSample(
     barrier.subresourceRange = range;
     vk::DependencyInfoKHR dependency;
     dependency.setImageMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetImageBarrier_DepthStencilAttachmentToFragmentSample(
+void CommandBuffer::SetImageBarrier_DepthStencilAttachmentToFragmentSample(
     vk::Image image, const vk::ImageSubresourceRange& range)
 {
     vk::ImageMemoryBarrier2 barrier;
@@ -184,10 +222,10 @@ void CommandRecorder::SetImageBarrier_DepthStencilAttachmentToFragmentSample(
     barrier.subresourceRange = range;
     vk::DependencyInfoKHR dependency;
     dependency.setImageMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetImageBarrier_ColorAttachmentToFragmentSample(vk::Image image, const vk::ImageSubresourceRange& range)
+void CommandBuffer::SetImageBarrier_ColorAttachmentToFragmentSample(vk::Image image, const vk::ImageSubresourceRange& range)
 {
     vk::ImageMemoryBarrier2 barrier;
     barrier.srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
@@ -200,10 +238,10 @@ void CommandRecorder::SetImageBarrier_ColorAttachmentToFragmentSample(vk::Image 
     barrier.subresourceRange = range;
     vk::DependencyInfoKHR dependency;
     dependency.setImageMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetImageBarrier_FragmentSampleToColorAttachment(
+void CommandBuffer::SetImageBarrier_FragmentSampleToColorAttachment(
     vk::Image image, const vk::ImageSubresourceRange& range)
 {
     vk::ImageMemoryBarrier2 barrier;
@@ -215,10 +253,10 @@ void CommandRecorder::SetImageBarrier_FragmentSampleToColorAttachment(
     barrier.subresourceRange = range;
     vk::DependencyInfoKHR dependency;
     dependency.setImageMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
-void CommandRecorder::SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlagBits2 stage)
+void CommandBuffer::SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlagBits2 stage)
 {
     vk::MemoryBarrier2 barrier;
     barrier.srcStageMask = stage;
@@ -228,7 +266,7 @@ void CommandRecorder::SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFl
 
     vk::DependencyInfo dependency;
     dependency.setMemoryBarriers(barrier);
-    m_cmdBuffer.pipelineBarrier2(dependency);
+    m_wrapper.pipelineBarrier2(dependency);
 }
 
 } // namespace vkpp

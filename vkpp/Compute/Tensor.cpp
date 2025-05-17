@@ -72,11 +72,11 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
         m_bufferOffset = 0;
     }
 
-    vk::raii::CommandBuffer cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
-    CommandRecorder(cmdBuffer).Begin();
-    cmdBuffer.fillBuffer(m_buffer->m_handle, m_bufferOffset, m_buffer->GetSize(), 0);
-    CommandRecorder(cmdBuffer).End();
-    m_device->ExecuteSync({}, { cmdBuffer }, {});
+    rad::Ref<CommandBuffer> cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+    cmdBuffer->Begin();
+    cmdBuffer->FillBuffer(m_buffer->m_handle, m_bufferOffset, m_buffer->GetSize(), 0);
+    cmdBuffer->End();
+    m_device->ExecuteSync({}, { cmdBuffer->GetHandle() }, {});
 
     return true;
 }

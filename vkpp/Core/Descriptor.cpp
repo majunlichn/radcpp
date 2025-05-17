@@ -11,7 +11,7 @@ namespace vkpp
 DescriptorPool::DescriptorPool(rad::Ref<Device> device, const vk::DescriptorPoolCreateInfo& createInfo) :
     m_device(std::move(device))
 {
-    m_handle = m_device->m_handle.createDescriptorPool(createInfo);
+    m_wrapper = m_device->m_wrapper.createDescriptorPool(createInfo);
 }
 
 DescriptorPool::~DescriptorPool()
@@ -21,9 +21,9 @@ DescriptorPool::~DescriptorPool()
 vk::raii::DescriptorSets DescriptorPool::Allocate(vk::ArrayProxy<vk::DescriptorSetLayout> layouts)
 {
     vk::DescriptorSetAllocateInfo allocInfo = {};
-    allocInfo.descriptorPool = m_handle;
+    allocInfo.descriptorPool = m_wrapper;
     allocInfo.setSetLayouts(layouts);
-    return vk::raii::DescriptorSets(m_device->m_handle, allocInfo);
+    return vk::raii::DescriptorSets(m_device->m_wrapper, allocInfo);
 }
 
 void DescriptorUpdater::UpdateBuffers(

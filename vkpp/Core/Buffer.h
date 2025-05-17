@@ -94,7 +94,7 @@ public:
     ~BufferView();
 
     rad::Ref<Buffer> m_buffer;
-    vk::raii::BufferView m_handle = { nullptr };
+    vk::raii::BufferView m_wrapper = { nullptr };
     vk::Format m_format = vk::Format::eUndefined;
     vk::DeviceSize m_offset = 0;
     vk::DeviceSize m_range = 0;

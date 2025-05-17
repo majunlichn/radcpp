@@ -18,7 +18,7 @@ public:
     vk::raii::DescriptorSets Allocate(vk::ArrayProxy<vk::DescriptorSetLayout> layouts);
 
     rad::Ref<Device> m_device;
-    vk::raii::DescriptorPool m_handle = { nullptr };
+    vk::raii::DescriptorPool m_wrapper = { nullptr };
 
 }; // class DescriptorPool
 

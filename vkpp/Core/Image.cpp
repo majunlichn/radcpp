@@ -89,7 +89,7 @@ rad::Ref<ImageView> Image::CreateView()
 ImageView::ImageView(rad::Ref<Image> image, const vk::ImageViewCreateInfo& createInfo) :
     m_image(std::move(image))
 {
-    m_handle = m_image->m_device->m_handle.createImageView(createInfo);
+    m_wrapper = m_image->m_device->m_wrapper.createImageView(createInfo);
     m_type = createInfo.viewType;
     m_format = createInfo.format;
     m_range = createInfo.subresourceRange;

@@ -166,20 +166,20 @@ Device::Device(
     createInfo.setQueueCreateInfos(queueCreateInfos);
     createInfo.setPEnabledExtensionNames(enabledExtensions);
     createInfo.pEnabledFeatures;
-    m_handle = vk::raii::Device(m_physicalDevice, createInfo);
+    m_wrapper = vk::raii::Device(m_physicalDevice, createInfo);
 
     for (int i = 0; i < rad::ToUnderlying(QueueFamily::Count); i++)
     {
-        m_queues[i] = m_handle.getQueue(m_queueFamilyIndices[i], 0);
+        m_queues[i] = m_wrapper.getQueue(m_queueFamilyIndices[i], 0);
     }
 
     // Vma Initialization
     // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html#quick_start_initialization
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
     allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_3;
-    allocatorCreateInfo.instance = static_cast<vk::Instance>(m_instance->m_handle);
+    allocatorCreateInfo.instance = static_cast<vk::Instance>(m_instance->m_wrapper);
     allocatorCreateInfo.physicalDevice = static_cast<vk::PhysicalDevice>(m_physicalDevice);
-    allocatorCreateInfo.device = static_cast<vk::Device>(m_handle);
+    allocatorCreateInfo.device = static_cast<vk::Device>(m_wrapper);
     VmaVulkanFunctions vmaFunctions = {};
     vmaFunctions.vkGetInstanceProcAddr = m_physicalDevice.getDispatcher()->vkGetInstanceProcAddr;
     vmaFunctions.vkGetDeviceProcAddr = m_physicalDevice.getDispatcher()->vkGetDeviceProcAddr;
@@ -196,7 +196,7 @@ Device::Device(
         vk::CommandPoolCreateInfo commandPoolCreateInfo = {};
         commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
         commandPoolCreateInfo.queueFamilyIndex = GetQueueFamilyIndex(queueFamily);
-        m_cmdPools[i] = std::make_shared<vk::raii::CommandPool>(m_handle, commandPoolCreateInfo);
+        m_cmdPools[i] = std::make_shared<vk::raii::CommandPool>(m_wrapper, commandPoolCreateInfo);
     }
 }
 
@@ -217,11 +217,20 @@ Device::~Device()
     }
 }
 
-vk::raii::CommandBuffer Device::AllocateTemporaryCommandBuffer(QueueFamily queueFamily)
+rad::Ref<CommandBuffer> Device::AllocateTemporaryCommandBuffer(QueueFamily queueFamily)
 {
-    vk::raii::CommandPool* pCmdPool = m_cmdPools[rad::ToUnderlying(queueFamily)].get();
-    vk::CommandBufferAllocateInfo allocateInfo(*pCmdPool, vk::CommandBufferLevel::ePrimary, 1);
-    return std::move(vk::raii::CommandBuffers(m_handle, allocateInfo)[0]);
+    vk::raii::CommandPool* cmdPool = m_cmdPools[rad::ToUnderlying(queueFamily)].get();
+    vk::CommandBufferAllocateInfo allocateInfo;
+    allocateInfo.commandPool = *cmdPool;
+    allocateInfo.level = vk::CommandBufferLevel::ePrimary;
+    allocateInfo.commandBufferCount = 1;
+    vk::CommandPool cmdPoolHandle = *cmdPool;
+    vk::CommandBuffer cmdBufferHandle = VK_NULL_HANDLE;
+    m_wrapper.getDispatcher()->vkAllocateCommandBuffers(
+        this->GetHandle(),
+        reinterpret_cast<const VkCommandBufferAllocateInfo*>(&allocateInfo),
+        reinterpret_cast<VkCommandBuffer*>(&cmdBufferHandle));
+    return RAD_NEW CommandBuffer(this, cmdPoolHandle, cmdBufferHandle);
 }
 
 rad::Ref<CommandPool> Device::CreateCommandPool(
@@ -246,7 +255,7 @@ vk::raii::DescriptorSetLayout Device::CreateDescriptorSetLayout(
 {
     vk::DescriptorSetLayoutCreateInfo createInfo = {};
     createInfo.setBindings(bindings);
-    return vk::raii::DescriptorSetLayout(this->m_handle, createInfo);
+    return vk::raii::DescriptorSetLayout(this->m_wrapper, createInfo);
 }
 
 vk::raii::PipelineLayout Device::CreatePipelineLayout(
@@ -259,7 +268,7 @@ vk::raii::PipelineLayout Device::CreatePipelineLayout(
     createInfo.pSetLayouts = setLayouts.data();
     createInfo.pushConstantRangeCount = pushConstantRanges.size32();
     createInfo.pPushConstantRanges = pushConstantRanges.data();
-    return vk::raii::PipelineLayout(m_handle, createInfo);
+    return vk::raii::PipelineLayout(m_wrapper, createInfo);
 }
 
 vk::Format Device::FindFormat(
@@ -335,15 +344,15 @@ rad::Ref<ComputePipeline> Device::CreateComputePipeline(
 
 void Device::Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)
 {
-    m_queues[0].submit(submitInfos, fence, *m_handle.getDispatcher());
+    m_queues[0].submit(submitInfos, fence, *m_wrapper.getDispatcher());
 }
 
 void Device::ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos)
 {
     vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
-    vk::raii::Fence fence(m_handle, fenceInfo);
-    m_queues[0].submit(submitInfos, fence, *m_handle.getDispatcher());
-    VK_CHECK(m_handle.waitForFences({ fence }, vk::True, UINT64_MAX));
+    vk::raii::Fence fence(m_wrapper, fenceInfo);
+    m_queues[0].submit(submitInfos, fence, *m_wrapper.getDispatcher());
+    VK_CHECK(m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
 }
 
 void Device::Execute(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence)
@@ -369,9 +378,9 @@ void Device::Execute(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Comm
 void Device::ExecuteSync(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores)
 {
     vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
-    vk::raii::Fence fence(m_handle, fenceInfo);
+    vk::raii::Fence fence(m_wrapper, fenceInfo);
     Execute(waits, cmdBuffers, signalSemaphores, fence);
-    VK_CHECK(m_handle.waitForFences({ fence }, vk::True, UINT64_MAX));
+    VK_CHECK(m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
 }
 
 } // namespace vkpp

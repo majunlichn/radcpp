@@ -19,7 +19,7 @@ rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromGLSL(
         shaderStage->m_stage = stage;
         vk::ShaderModuleCreateInfo shaderModuleInfo = {};
         shaderModuleInfo.setCode(code);
-        shaderStage->m_module = vk::raii::ShaderModule(device->m_handle, shaderModuleInfo);
+        shaderStage->m_module = vk::raii::ShaderModule(device->m_wrapper, shaderModuleInfo);
         shaderStage->m_entryPoint = "main";
     }
     else
@@ -32,7 +32,7 @@ rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromGLSL(
 
 void Pipeline::CreateLayout(const vk::PipelineLayoutCreateInfo& createInfo)
 {
-    m_layout = vk::raii::PipelineLayout(m_device->m_handle, createInfo);
+    m_layout = vk::raii::PipelineLayout(m_device->m_wrapper, createInfo);
 }
 
 void Pipeline::CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
@@ -57,7 +57,7 @@ rad::Ref<ShaderStageInfo> Pipeline::CreateShaderStageFromGLSL(
         vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
         shaderModuleCreateInfo.codeSize = code.size() * sizeof(uint32_t);
         shaderModuleCreateInfo.pCode = code.data();
-        vk::raii::ShaderModule shaderModule = m_device->m_handle.createShaderModule(shaderModuleCreateInfo);
+        vk::raii::ShaderModule shaderModule = m_device->m_wrapper.createShaderModule(shaderModuleCreateInfo);
 
         rad::Ref<ShaderStageInfo> shaderStage = RAD_NEW ShaderStageInfo();
         shaderStage->m_stage = stage;
@@ -76,9 +76,9 @@ rad::Ref<ShaderStageInfo> Pipeline::CreateShaderStageFromGLSL(
 GraphicsPipeline::GraphicsPipeline(
     rad::Ref<Device> device, const vk::GraphicsPipelineCreateInfo& createInfo,
     vk::Optional<const vk::raii::PipelineCache> cache) :
-    Pipeline(std::move(device))
+    Pipeline(std::move(device), vk::PipelineBindPoint::eGraphics)
 {
-    m_handle = m_device->m_handle.createGraphicsPipeline(cache, createInfo, nullptr);
+    m_wrapper = m_device->m_wrapper.createGraphicsPipeline(cache, createInfo, nullptr);
 }
 
 GraphicsPipeline::~GraphicsPipeline()
@@ -88,9 +88,9 @@ GraphicsPipeline::~GraphicsPipeline()
 ComputePipeline::ComputePipeline(
     rad::Ref<Device> device, const vk::ComputePipelineCreateInfo& createInfo,
     vk::Optional<const vk::raii::PipelineCache> cache) :
-    Pipeline(std::move(device))
+    Pipeline(std::move(device), vk::PipelineBindPoint::eCompute)
 {
-    m_handle = m_device->m_handle.createComputePipeline(cache, createInfo, nullptr);
+    m_wrapper = m_device->m_wrapper.createComputePipeline(cache, createInfo, nullptr);
 }
 
 ComputePipeline::~ComputePipeline()

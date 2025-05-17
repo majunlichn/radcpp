@@ -2,6 +2,8 @@
 #include <vkpp/Core/Common.h>
 #include <vulkan/utility/vk_format_utils.h>
 
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
+
 namespace vkpp
 {
 

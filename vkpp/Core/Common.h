@@ -30,6 +30,8 @@
 namespace vkpp
 {
 
+using DeviceDispatcher = vk::raii::detail::DeviceDispatcher;
+
 enum class QueueFamily
 {
     Universal,

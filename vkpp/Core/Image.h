@@ -49,7 +49,7 @@ public:
     ~ImageView();
 
     rad::Ref<Image> m_image;
-    vk::raii::ImageView m_handle = { nullptr };
+    vk::raii::ImageView m_wrapper = { nullptr };
     vk::ImageViewType m_type;
     vk::Format m_format;
     vk::ImageSubresourceRange m_range;

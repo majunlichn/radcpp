@@ -9,6 +9,7 @@ namespace vkpp
 
 class Instance;
 class CommandPool;
+class CommandBuffer;
 class DescriptorPool;
 class Buffer;
 class BufferView;
@@ -26,12 +27,14 @@ public:
         const std::set<std::string>& requiredExtensions);
     ~Device();
 
-    vk::Device GetHandle() const { return static_cast<vk::Device>(m_handle); }
+    vk::Device GetHandle() const { return static_cast<vk::Device>(m_wrapper); }
+    const DeviceDispatcher* GetDispatcher() const { return m_wrapper.getDispatcher(); }
+
     const char* GetName() const { return m_properties.deviceName; }
 
     rad::Ref<Instance> m_instance;
     vk::raii::PhysicalDevice m_physicalDevice;
-    vk::raii::Device m_handle = { nullptr };
+    vk::raii::Device m_wrapper = { nullptr };
     std::array<uint32_t, size_t(QueueFamily::Count)> m_queueFamilyIndices;
 
     uint32_t GetQueueFamilyIndex(QueueFamily queueFamily) const
@@ -60,7 +63,7 @@ public:
         return m_enabledExtensions.contains(name);
     }
 
-    vk::raii::CommandBuffer AllocateTemporaryCommandBuffer(QueueFamily queueFamily);
+    rad::Ref<CommandBuffer> AllocateTemporaryCommandBuffer(QueueFamily queueFamily);
 
     rad::Ref<CommandPool> CreateCommandPool(QueueFamily queueFamily, vk::CommandPoolCreateFlags flags);
 

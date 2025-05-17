@@ -13,7 +13,7 @@ public:
     Instance();
     ~Instance();
 
-    vk::Instance GetHandle() const { return static_cast<vk::Instance>(m_handle); }
+    vk::Instance GetHandle() const { return static_cast<vk::Instance>(m_wrapper); }
 
     std::vector<VkLayerProperties> EnumerateInstanceLayers();
     std::vector<VkExtensionProperties> EnumerateInstanceExtensions(const char* layerName);
@@ -52,7 +52,7 @@ public:
     uint32_t m_apiVersion = 0;
     std::set<std::string, rad::StringLess> m_enabledLayers;
     std::set<std::string, rad::StringLess> m_enabledExtensions;
-    vk::raii::Instance m_handle = { nullptr };
+    vk::raii::Instance m_wrapper = { nullptr };
     vk::raii::DebugUtilsMessengerEXT m_debugUtilsMessenger = { nullptr };
     vk::raii::PhysicalDevices m_physicalDevices = { nullptr };
 

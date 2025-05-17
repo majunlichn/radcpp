@@ -61,7 +61,11 @@ public:
 class Pipeline : public rad::RefCounted<Pipeline>
 {
 public:
-    Pipeline(rad::Ref<Device> device) : m_device(std::move(device)) {}
+    Pipeline(rad::Ref<Device> device, vk::PipelineBindPoint bindPoint) :
+        m_device(std::move(device)), m_bindPoint(bindPoint){}
+
+    vk::Pipeline GetHandle() const { return m_wrapper; };
+    vk::PipelineBindPoint GetBindPoint() const { return m_bindPoint; };
 
     void CreateLayout(const vk::PipelineLayoutCreateInfo& createInfo);
     void CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
@@ -74,15 +78,18 @@ public:
     );
 
     rad::Ref<Device> m_device;
-    vk::raii::Pipeline m_handle = { nullptr };
+    vk::raii::Pipeline m_wrapper = { nullptr };
     vk::raii::PipelineLayout m_layout = { nullptr };
+
+    vk::PipelineBindPoint m_bindPoint;
 
 }; // class Pipeline
 
 class GraphicsPipeline : public Pipeline
 {
 public:
-    GraphicsPipeline(rad::Ref<Device> device) : Pipeline(std::move(device)) {}
+    GraphicsPipeline(rad::Ref<Device> device) :
+        Pipeline(std::move(device), vk::PipelineBindPoint::eGraphics) {}
     GraphicsPipeline(rad::Ref<Device> device,
         const vk::GraphicsPipelineCreateInfo& createInfo,
         vk::Optional<const vk::raii::PipelineCache> cache);
@@ -95,7 +102,8 @@ public:
 class ComputePipeline : public Pipeline
 {
 public:
-    ComputePipeline(rad::Ref<Device> device) : Pipeline(std::move(device)) {}
+    ComputePipeline(rad::Ref<Device> device) :
+        Pipeline(std::move(device), vk::PipelineBindPoint::eGraphics) {}
     ComputePipeline(rad::Ref<Device> device,
         const vk::ComputePipelineCreateInfo& createInfo,
         vk::Optional<const vk::raii::PipelineCache> cache);
