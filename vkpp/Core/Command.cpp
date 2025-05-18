@@ -174,8 +174,8 @@ void CommandBuffer::SetImageBarrier_ComputeWriteToGraphicsSample(
 void CommandBuffer::TransitLayout(
     Image* image,
     vk::PipelineStageFlags2     srcStageMask,
-    vk::PipelineStageFlags2     dstStageMask,
     vk::AccessFlags2            srcAccessMask,
+    vk::PipelineStageFlags2     dstStageMask,
     vk::AccessFlags2            dstAccessMask,
     vk::ImageLayout             oldLayout,
     vk::ImageLayout             newLayout,
@@ -221,96 +221,74 @@ void CommandBuffer::TransitLayoutFromCurrent(
     const vk::ImageSubresourceRange* subresourceRange)
 {
     TransitLayout(image,
-        image->GetCurrentPipelineStage(), dstStageMask,
-        image->GetCurrentAccessMask(), dstAccessMask,
+        image->GetCurrentPipelineStage(), image->GetCurrentAccessMask(),
+        dstStageMask, dstAccessMask,
         image->GetCurrentLayout(), newLayout,
         subresourceRange);
 }
 
 void CommandBuffer::SetImageBarrier_ColorAttachmentToComputeSample(
-    vk::Image image, const vk::ImageSubresourceRange& range)
+    Image* image, const vk::ImageSubresourceRange* range)
 {
-    vk::ImageMemoryBarrier2 barrier;
-    barrier.srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite;
-    barrier.dstStageMask = vk::PipelineStageFlagBits2::eComputeShader;
-    barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
-    barrier.oldLayout = vk::ImageLayout::eAttachmentOptimal;
-    barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    barrier.image = image;
-    barrier.subresourceRange = range;
-    vk::DependencyInfoKHR dependency;
-    dependency.setImageMemoryBarriers(barrier);
-    m_wrapper.pipelineBarrier2(dependency);
+    TransitLayout(image,
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::AccessFlagBits2::eColorAttachmentWrite,
+        vk::PipelineStageFlagBits2::eComputeShader,
+        vk::AccessFlagBits2::eShaderRead,
+        vk::ImageLayout::eAttachmentOptimal,
+        vk::ImageLayout::eShaderReadOnlyOptimal,
+        range);
+}
+
+void CommandBuffer::SetImageBarrier_ColorAttachmentToFragmentSample(Image* image, const vk::ImageSubresourceRange* range)
+{
+    TransitLayout(image,
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::AccessFlagBits2::eColorAttachmentWrite,
+        vk::PipelineStageFlagBits2::eFragmentShader,
+        vk::AccessFlagBits2::eShaderRead,
+        vk::ImageLayout::eAttachmentOptimal,
+        vk::ImageLayout::eShaderReadOnlyOptimal,
+        range);
 }
 
 void CommandBuffer::SetImageBarrier_DepthStencilAttachmentToComputeSample(
-    vk::Image image, const vk::ImageSubresourceRange& range)
+    Image* image, const vk::ImageSubresourceRange* range)
 {
-    vk::ImageMemoryBarrier2 barrier;
-    barrier.srcStageMask =
-        vk::PipelineStageFlagBits2::eEarlyFragmentTests |
-        vk::PipelineStageFlagBits2::eLateFragmentTests;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
-    barrier.dstStageMask = vk::PipelineStageFlagBits2::eComputeShader;
-    barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
-    barrier.oldLayout = vk::ImageLayout::eAttachmentOptimal;
-    barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    barrier.image = image;
-    barrier.subresourceRange = range;
-    vk::DependencyInfoKHR dependency;
-    dependency.setImageMemoryBarriers(barrier);
-    m_wrapper.pipelineBarrier2(dependency);
+    TransitLayout(image,
+        vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+        vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+        vk::PipelineStageFlagBits2::eComputeShader,
+        vk::AccessFlagBits2::eShaderRead,
+        vk::ImageLayout::eAttachmentOptimal,
+        vk::ImageLayout::eShaderReadOnlyOptimal,
+        range);
 }
 
 void CommandBuffer::SetImageBarrier_DepthStencilAttachmentToFragmentSample(
-    vk::Image image, const vk::ImageSubresourceRange& range)
+    Image* image, const vk::ImageSubresourceRange* range)
 {
-    vk::ImageMemoryBarrier2 barrier;
-    barrier.srcStageMask =
-        vk::PipelineStageFlagBits2::eEarlyFragmentTests |
-        vk::PipelineStageFlagBits2::eLateFragmentTests;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
-    barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-    barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
-    barrier.oldLayout = vk::ImageLayout::eAttachmentOptimal;
-    barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    barrier.image = image;
-    barrier.subresourceRange = range;
-    vk::DependencyInfoKHR dependency;
-    dependency.setImageMemoryBarriers(barrier);
-    m_wrapper.pipelineBarrier2(dependency);
-}
-
-void CommandBuffer::SetImageBarrier_ColorAttachmentToFragmentSample(vk::Image image, const vk::ImageSubresourceRange& range)
-{
-    vk::ImageMemoryBarrier2 barrier;
-    barrier.srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite;
-    barrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-    barrier.dstAccessMask = vk::AccessFlagBits2::eShaderRead;
-    barrier.oldLayout = vk::ImageLayout::eAttachmentOptimal;
-    barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    barrier.image = image;
-    barrier.subresourceRange = range;
-    vk::DependencyInfoKHR dependency;
-    dependency.setImageMemoryBarriers(barrier);
-    m_wrapper.pipelineBarrier2(dependency);
+    TransitLayout(image,
+        vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+        vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+        vk::PipelineStageFlagBits2::eFragmentShader,
+        vk::AccessFlagBits2::eShaderRead,
+        vk::ImageLayout::eAttachmentOptimal,
+        vk::ImageLayout::eShaderReadOnlyOptimal,
+        range);
 }
 
 void CommandBuffer::SetImageBarrier_FragmentSampleToColorAttachment(
-    vk::Image image, const vk::ImageSubresourceRange& range)
+    Image* image, const vk::ImageSubresourceRange* range)
 {
-    vk::ImageMemoryBarrier2 barrier;
-    barrier.srcStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-    barrier.dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-    barrier.oldLayout = vk::ImageLayout::eReadOnlyOptimal;
-    barrier.newLayout = vk::ImageLayout::eAttachmentOptimal;
-    barrier.image = image;
-    barrier.subresourceRange = range;
-    vk::DependencyInfoKHR dependency;
-    dependency.setImageMemoryBarriers(barrier);
-    m_wrapper.pipelineBarrier2(dependency);
+    TransitLayout(image,
+        vk::PipelineStageFlagBits2::eFragmentShader,
+        vk::AccessFlagBits2(),
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::AccessFlagBits2(),
+        vk::ImageLayout::eReadOnlyOptimal,
+        vk::ImageLayout::eAttachmentOptimal,
+        range);
 }
 
 void CommandBuffer::SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlagBits2 stage)
@@ -341,8 +319,8 @@ void CommandBuffer::BeginRendering(
 {
     vk::RenderingInfoKHR renderingInfo = {};
     renderingInfo.renderArea = renderArea;
-    renderingInfo.layerCount = 1;
-    renderingInfo.viewMask = 0;
+    renderingInfo.layerCount = layerCount;
+    renderingInfo.viewMask = viewMask;
     renderingInfo.colorAttachmentCount = colorAttachments.size32();
     renderingInfo.pColorAttachments = colorAttachments.data();
     renderingInfo.pDepthAttachment = depthAttachment;

@@ -334,8 +334,8 @@ public:
     void TransitLayout(
         Image* image,
         vk::PipelineStageFlags2     srcStageMask,
-        vk::PipelineStageFlags2     dstStageMask,
         vk::AccessFlags2            srcAccessMask,
+        vk::PipelineStageFlags2     dstStageMask,
         vk::AccessFlags2            dstAccessMask,
         vk::ImageLayout             oldLayout,
         vk::ImageLayout             newLayout,
@@ -348,17 +348,17 @@ public:
         const vk::ImageSubresourceRange* subresourceRange = nullptr);
 
     // Draw writes to a color attachment. Dispatch samples from that image.
-    void SetImageBarrier_ColorAttachmentToComputeSample(vk::Image image, const vk::ImageSubresourceRange& range);
-    // Draw writes to a depth attachment. Dispatch samples from that image.
-    void SetImageBarrier_DepthStencilAttachmentToComputeSample(vk::Image image, const vk::ImageSubresourceRange& range);
-
-    // First draw writes to a depth attachment. Second draw samples from that depth image in the fragment shader (e.g. shadow map rendering).
-    void SetImageBarrier_DepthStencilAttachmentToFragmentSample(vk::Image image, const vk::ImageSubresourceRange& range);
+    void SetImageBarrier_ColorAttachmentToComputeSample(Image* image, const vk::ImageSubresourceRange* range = nullptr);
     // First draw writes to a color attachment. Second draw samples from that color image in the fragment shader.
-    void SetImageBarrier_ColorAttachmentToFragmentSample(vk::Image image, const vk::ImageSubresourceRange& range);
+    void SetImageBarrier_ColorAttachmentToFragmentSample(Image* image, const vk::ImageSubresourceRange* range = nullptr);
+    // Draw writes to a depth attachment. Dispatch samples from that image.
+    void SetImageBarrier_DepthStencilAttachmentToComputeSample(Image* image, const vk::ImageSubresourceRange* range = nullptr);
+    // First draw writes to a depth attachment. Second draw samples from that depth image in the fragment shader (e.g. shadow map rendering).
+    void SetImageBarrier_DepthStencilAttachmentToFragmentSample(Image* image, const vk::ImageSubresourceRange* range = nullptr);
+
     // First draw samples a texture in the fragment shader. Second draw writes to that texture as a color attachment.
     // This is a WAR hazard, only requires layout transition.
-    void SetImageBarrier_FragmentSampleToColorAttachment(vk::Image image, const vk::ImageSubresourceRange& range);
+    void SetImageBarrier_FragmentSampleToColorAttachment(Image* image, const vk::ImageSubresourceRange* range = nullptr);
 
     // CPU read back of data written by shaders.
     void SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlagBits2 stage);
