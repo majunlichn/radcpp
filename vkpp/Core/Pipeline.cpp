@@ -32,7 +32,7 @@ rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromGLSL(
 
 void Pipeline::CreateLayout(const vk::PipelineLayoutCreateInfo& createInfo)
 {
-    m_layout = vk::raii::PipelineLayout(m_device->m_wrapper, createInfo);
+    m_layout = m_device->m_wrapper.createPipelineLayout(createInfo);
 }
 
 void Pipeline::CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,

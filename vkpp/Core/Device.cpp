@@ -166,7 +166,7 @@ Device::Device(
     createInfo.setQueueCreateInfos(queueCreateInfos);
     createInfo.setPEnabledExtensionNames(enabledExtensions);
     createInfo.pEnabledFeatures;
-    m_wrapper = vk::raii::Device(m_physicalDevice, createInfo);
+    m_wrapper = m_physicalDevice.createDevice(createInfo);;
 
     for (int i = 0; i < rad::ToUnderlying(QueueFamily::Count); i++)
     {

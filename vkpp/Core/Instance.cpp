@@ -115,7 +115,7 @@ bool Instance::Init(std::string_view appName, uint32_t appVersion,
         debugUtilsMessengerCreateInfo,
     };
 #endif
-    m_wrapper = vk::raii::Instance(m_context, instanceCreateInfoChain.get());
+    m_wrapper = m_context.createInstance(instanceCreateInfoChain.get());
     for (const std::string& layer : m_enabledLayers)
     {
         VKPP_LOG(info, "Instance layer enabled: {}", layer);
@@ -126,9 +126,9 @@ bool Instance::Init(std::string_view appName, uint32_t appVersion,
     }
 
 #if defined(_DEBUG)
-    vk::raii::DebugUtilsMessengerEXT debugUtilsMessenger(m_wrapper, debugUtilsMessengerCreateInfo);
+    m_debugUtilsMessenger = m_wrapper.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfo);
 #endif
-    m_physicalDevices = vk::raii::PhysicalDevices(m_wrapper);
+    m_physicalDevices = m_wrapper.enumeratePhysicalDevices();
     for (size_t physicalDeviceIndex = 0; physicalDeviceIndex < m_physicalDevices.size(); physicalDeviceIndex++)
     {
         auto& physicalDevice = m_physicalDevices[physicalDeviceIndex];

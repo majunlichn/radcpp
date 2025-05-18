@@ -30,24 +30,24 @@ vk::raii::CommandBuffers CommandPool::Allocate(vk::CommandBufferLevel level, uin
     return vk::raii::CommandBuffers(m_device->m_wrapper, allocateInfo);
 }
 
-CommandBuffer::CommandBuffer(rad::Ref<Device> device, vk::CommandPool poolHandle, vk::CommandBuffer bufferHandle) :
+CommandBuffer::CommandBuffer(rad::Ref<Device> device, vk::CommandPool cmdPoolHandle, vk::CommandBuffer cmdBufferHandle) :
     m_device(std::move(device))
 {
-    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, bufferHandle, poolHandle);
+    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, cmdBufferHandle, cmdPoolHandle);
 }
 
 CommandBuffer::CommandBuffer(
-    rad::Ref<CommandPool> pool, vk::CommandBuffer bufferHandle) :
-    m_device(pool->m_device),
-    m_pool(std::move(pool))
+    rad::Ref<CommandPool> cmdPool, vk::CommandBuffer cmdBufferHandle) :
+    m_device(cmdPool->m_device),
+    m_cmdPool(std::move(cmdPool))
 {
-    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, bufferHandle, pool->GetHandle());
+    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, cmdBufferHandle, cmdPool->GetHandle());
 }
 
 CommandBuffer::~CommandBuffer()
 {
     m_wrapper.clear();
-    m_pool.reset();
+    m_cmdPool.reset();
     m_device.reset();
 }
 

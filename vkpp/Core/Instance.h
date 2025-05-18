@@ -54,7 +54,7 @@ public:
     std::set<std::string, rad::StringLess> m_enabledExtensions;
     vk::raii::Instance m_wrapper = { nullptr };
     vk::raii::DebugUtilsMessengerEXT m_debugUtilsMessenger = { nullptr };
-    vk::raii::PhysicalDevices m_physicalDevices = { nullptr };
+    std::vector<vk::raii::PhysicalDevice> m_physicalDevices;
 
 }; // class Instance
 

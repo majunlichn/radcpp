@@ -37,11 +37,11 @@ class CommandBuffer : public rad::RefCounted<CommandBuffer>
 {
 public:
     rad::Ref<Device> m_device;
-    rad::Ref<CommandPool> m_pool;
+    rad::Ref<CommandPool> m_cmdPool;
     vk::raii::CommandBuffer m_wrapper = { nullptr };
 
-    CommandBuffer(rad::Ref<Device> device, vk::CommandPool poolHandle, vk::CommandBuffer bufferHandle);
-    CommandBuffer(rad::Ref<CommandPool> pool, vk::CommandBuffer bufferHandle);
+    CommandBuffer(rad::Ref<Device> device, vk::CommandPool cmdPoolHandle, vk::CommandBuffer cmdBufferHandle);
+    CommandBuffer(rad::Ref<CommandPool> cmdPool, vk::CommandBuffer cmdBufferHandle);
     ~CommandBuffer();
 
     vk::CommandBuffer GetHandle() const { return m_wrapper; }
