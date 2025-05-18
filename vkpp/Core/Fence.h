@@ -16,7 +16,7 @@ public:
     vk::Fence GetHandle() const { return m_wrapper; }
 
     // @param timeout: in nanoseconds, will be adjusted to the closest value allowed by implementation.
-    void Wait(uint64_t timeout = UINT64_MAX);
+    vk::Result Wait(uint64_t timeout = UINT64_MAX);
     void Reset();
 
     rad::Ref<Device> m_device;

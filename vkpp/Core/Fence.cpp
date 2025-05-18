@@ -14,9 +14,9 @@ Fence::~Fence()
 {
 }
 
-void Fence::Wait(uint64_t timeout)
+vk::Result Fence::Wait(uint64_t timeout)
 {
-    m_device->m_wrapper.waitForFences({ m_wrapper }, vk::True, timeout);
+    return m_device->m_wrapper.waitForFences({ m_wrapper }, vk::True, timeout);
 }
 
 void Fence::Reset()
