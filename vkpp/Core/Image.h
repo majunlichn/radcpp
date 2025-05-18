@@ -22,6 +22,22 @@ public:
         vk::ImageViewType type, vk::Format format);
     rad::Ref<ImageView> CreateView();
 
+    vk::Image GetHandle() const { return m_handle; }
+    vk::Format GetFormat() const { return m_format; }
+    uint32_t GetWidth() const { return m_extent.width; }
+    uint32_t GetHeight() const { return m_extent.height; }
+    uint32_t GetDepth() const { return m_extent.depth; }
+    uint32_t GetMipLevels() const { return m_mipLevels; }
+    uint32_t GetArrayLayers() const { return m_arrayLayers; }
+
+    vk::PipelineStageFlags2 GetCurrentPipelineStage() const { return m_currentPipelineStage; }
+    vk::AccessFlags2 GetCurrentAccessMask() const { return m_currentAccessFlags; }
+    vk::ImageLayout GetCurrentLayout() const { return m_currentLayout; }
+
+    void SetCurrentPipelineStage(vk::PipelineStageFlags2 stage) { m_currentPipelineStage = stage; }
+    void SetCurrentAccessFlags(vk::AccessFlags2 accessFlags) { m_currentAccessFlags = accessFlags; }
+    void SetCurrentLayout(vk::ImageLayout layout) { m_currentLayout = layout; }
+
     rad::Ref<Device> m_device;
     vk::Image m_handle;
     VmaAllocation m_alloc = nullptr;
@@ -40,6 +56,11 @@ public:
 
     vk::MemoryPropertyFlags     m_memPropFlags;
 
+    // Track image layout
+    vk::PipelineStageFlags2     m_currentPipelineStage = vk::PipelineStageFlagBits2::eAllCommands;
+    vk::AccessFlags2            m_currentAccessFlags = vk::AccessFlagBits2::eNone;
+    vk::ImageLayout             m_currentLayout = vk::ImageLayout::eUndefined;
+
 }; // class Image
 
 class ImageView : public rad::RefCounted<ImageView>
@@ -47,6 +68,11 @@ class ImageView : public rad::RefCounted<ImageView>
 public:
     ImageView(rad::Ref<Image> image, const vk::ImageViewCreateInfo& createInfo);
     ~ImageView();
+
+    vk::ImageView GetHandle() const { return m_wrapper; }
+    Image* GetImage() const { return m_image.get(); }
+
+    vk::Format GetFormat() const { return m_format; }
 
     rad::Ref<Image> m_image;
     vk::raii::ImageView m_wrapper = { nullptr };

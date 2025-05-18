@@ -7,6 +7,8 @@ set(VKPP_HEADERS
     Core/Command.h
     Core/Buffer.h
     Core/Image.h
+    Core/RenderPass.h
+    Core/Framebuffer.h
     Core/Descriptor.h
     Core/ShaderMacro.h
     Core/ShaderIncluder.h
@@ -24,6 +26,8 @@ set(VKPP_SOURCE_FILES
     Core/Command.cpp
     Core/Buffer.cpp
     Core/Image.cpp
+    Core/RenderPass.cpp
+    Core/Framebuffer.cpp
     Core/Descriptor.cpp
     Core/ShaderCompiler.cpp
     Core/Pipeline.cpp

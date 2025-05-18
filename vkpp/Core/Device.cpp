@@ -4,6 +4,8 @@
 #include <vkpp/Core/Descriptor.h>
 #include <vkpp/Core/Buffer.h>
 #include <vkpp/Core/Image.h>
+#include <vkpp/Core/RenderPass.h>
+#include <vkpp/Core/Framebuffer.h>
 #include <vkpp/Core/Pipeline.h>
 
 namespace vkpp
@@ -328,6 +330,29 @@ rad::Ref<Image> Device::CreateImage2DDepthStencilAttachment(
     VmaAllocationCreateInfo allocCreateInfo = {};
     allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
     return RAD_NEW Image(this, imageInfo, allocCreateInfo);
+}
+
+rad::Ref<RenderPass> Device::CreateRenderPass(const vk::RenderPassCreateInfo& createInfo)
+{
+    return RAD_NEW RenderPass(this, createInfo);
+}
+
+rad::Ref<Framebuffer> Device::CreateFramebuffer(const vk::FramebufferCreateInfo& createInfo)
+{
+    return RAD_NEW Framebuffer(this, createInfo);
+}
+
+rad::Ref<Framebuffer> Device::CreateFramebuffer(
+    vk::RenderPass renderPass, rad::ArrayRef<vk::ImageView> attachments, uint32_t width, uint32_t height, uint32_t layers)
+{
+    vk::FramebufferCreateInfo createInfo = {};
+    createInfo.renderPass = renderPass;
+    createInfo.attachmentCount = attachments.size32();
+    createInfo.pAttachments = attachments.data();
+    createInfo.width = width;
+    createInfo.height = height;
+    createInfo.layers = layers;
+    return CreateFramebuffer(createInfo);
 }
 
 rad::Ref<ComputePipeline> Device::CreateComputePipeline(

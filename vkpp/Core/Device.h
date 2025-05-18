@@ -15,6 +15,8 @@ class Buffer;
 class BufferView;
 class Image;
 class ImageView;
+class RenderPass;
+class Framebuffer;
 class ShaderStageInfo;
 class Pipeline;
 class GraphicsPipeline;
@@ -85,6 +87,11 @@ public:
         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eColorAttachment);
     rad::Ref<Image> CreateImage2DDepthStencilAttachment(vk::Format format, uint32_t width, uint32_t height,
         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eDepthStencilAttachment);
+
+    rad::Ref<RenderPass> CreateRenderPass(const vk::RenderPassCreateInfo& createInfo);
+    rad::Ref<Framebuffer> CreateFramebuffer(const vk::FramebufferCreateInfo& createInfo);
+    rad::Ref<Framebuffer> CreateFramebuffer(vk::RenderPass renderPass, rad::ArrayRef<vk::ImageView> attachments,
+        uint32_t width, uint32_t height, uint32_t layers = 1);
 
     rad::Ref<ComputePipeline> CreateComputePipeline(
         rad::Ref<ShaderStageInfo> shaderStage, vk::PipelineLayout layout);

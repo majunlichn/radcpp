@@ -29,8 +29,6 @@ Image::Image(
         m_sharingMode = imageInfo.sharingMode;
         vmaGetAllocationMemoryProperties(m_device->m_allocator, m_alloc,
             reinterpret_cast<VkMemoryPropertyFlags*>(&m_memPropFlags));
-
-
     }
 }
 

@@ -130,4 +130,6 @@ bool IsSignedIntegerType(vk::ComponentTypeKHR type);
 bool IsUnsignedIntegerType(vk::ComponentTypeKHR type);
 bool IsIntegerType(vk::ComponentTypeKHR type);
 
+vk::ImageAspectFlags GetImageAspectFromFormat(vk::Format format);
+
 } // namespace vkpp

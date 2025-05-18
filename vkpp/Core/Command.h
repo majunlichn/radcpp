@@ -6,6 +6,10 @@ namespace vkpp
 {
 
 class Device;
+class Buffer;
+class BufferView;
+class Image;
+class ImageView;
 class Pipeline;
 
 class CommandPool : public rad::RefCounted<CommandPool>
@@ -326,6 +330,23 @@ public:
     void SetMemoryBarrier_ComputeWriteToGraphicsIndirectCommandRead();
     // Dispatch writes into a storage image. Draw samples that image in a fragment shader.
     void SetImageBarrier_ComputeWriteToGraphicsSample(vk::Image image, const vk::ImageSubresourceRange& range);
+
+    void TransitLayout(
+        Image* image,
+        vk::PipelineStageFlags2     srcStageMask,
+        vk::PipelineStageFlags2     dstStageMask,
+        vk::AccessFlags2            srcAccessMask,
+        vk::AccessFlags2            dstAccessMask,
+        vk::ImageLayout             oldLayout,
+        vk::ImageLayout             newLayout,
+        const vk::ImageSubresourceRange* subresourceRange = nullptr);
+    void TransitLayoutFromCurrent(
+        Image* image,
+        vk::PipelineStageFlags2     dstStageMask,
+        vk::AccessFlags2            dstAccessMask,
+        vk::ImageLayout             newLayout,
+        const vk::ImageSubresourceRange* subresourceRange = nullptr);
+
     // Draw writes to a color attachment. Dispatch samples from that image.
     void SetImageBarrier_ColorAttachmentToComputeSample(vk::Image image, const vk::ImageSubresourceRange& range);
     // Draw writes to a depth attachment. Dispatch samples from that image.
@@ -417,11 +438,24 @@ public:
         m_wrapper.endRenderPass();
     }
 
+    void BeginRendering(const vk::RenderingInfo& renderingInfo);
+    void BeginRendering(
+        const vk::Rect2D& renderArea,
+        uint32_t layerCount,
+        uint32_t viewMask,
+        rad::ArrayRef<vk::RenderingAttachmentInfo> colorAttachments,
+        const vk::RenderingAttachmentInfo* depthAttachment = nullptr,
+        const vk::RenderingAttachmentInfo* stencilAttachment = nullptr);
+    void EndRendering();
+
     void ExecuteCommands(rad::ArrayRef<vk::CommandBuffer> cmdBuffers)
     {
         m_wrapper.executeCommands(cmdBuffers);
     }
 
 }; // class CommandBuffer
+
+vk::RenderingAttachmentInfo MakeRenderingAttachmentInfo(
+    ImageView* view, vk::AttachmentLoadOp loadOp, vk::AttachmentStoreOp storeOp, const vk::ClearValue& clearValue);
 
 } // namespace vkpp

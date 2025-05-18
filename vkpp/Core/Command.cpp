@@ -30,7 +30,8 @@ vk::raii::CommandBuffers CommandPool::Allocate(vk::CommandBufferLevel level, uin
     return vk::raii::CommandBuffers(m_device->m_wrapper, allocateInfo);
 }
 
-CommandBuffer::CommandBuffer(rad::Ref<Device> device, vk::CommandPool cmdPoolHandle, vk::CommandBuffer cmdBufferHandle) :
+CommandBuffer::CommandBuffer(
+    rad::Ref<Device> device, vk::CommandPool cmdPoolHandle, vk::CommandBuffer cmdBufferHandle) :
     m_device(std::move(device))
 {
     m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, cmdBufferHandle, cmdPoolHandle);
@@ -41,7 +42,7 @@ CommandBuffer::CommandBuffer(
     m_device(cmdPool->m_device),
     m_cmdPool(std::move(cmdPool))
 {
-    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, cmdBufferHandle, cmdPool->GetHandle());
+    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, cmdBufferHandle, m_cmdPool->GetHandle());
 }
 
 CommandBuffer::~CommandBuffer()
@@ -170,6 +171,62 @@ void CommandBuffer::SetImageBarrier_ComputeWriteToGraphicsSample(
     m_wrapper.pipelineBarrier2(dependency);
 }
 
+void CommandBuffer::TransitLayout(
+    Image* image,
+    vk::PipelineStageFlags2     srcStageMask,
+    vk::PipelineStageFlags2     dstStageMask,
+    vk::AccessFlags2            srcAccessMask,
+    vk::AccessFlags2            dstAccessMask,
+    vk::ImageLayout             oldLayout,
+    vk::ImageLayout             newLayout,
+    const vk::ImageSubresourceRange* subresourceRange)
+{
+    vk::ImageMemoryBarrier2 imageBarrier = {};
+    imageBarrier.srcStageMask = srcStageMask;
+    imageBarrier.srcAccessMask = srcAccessMask;
+    imageBarrier.dstStageMask = dstStageMask;
+    imageBarrier.dstAccessMask = dstAccessMask;
+    imageBarrier.oldLayout = oldLayout;
+    imageBarrier.newLayout = newLayout;
+    imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarrier.image = image->GetHandle();
+    if (subresourceRange)
+    {
+        imageBarrier.subresourceRange = *subresourceRange;
+    }
+    else
+    {
+        imageBarrier.subresourceRange.aspectMask = GetImageAspectFromFormat(image->GetFormat());
+        imageBarrier.subresourceRange.baseMipLevel = 0;
+        imageBarrier.subresourceRange.levelCount = image->GetMipLevels();
+        imageBarrier.subresourceRange.baseArrayLayer = 0;
+        imageBarrier.subresourceRange.layerCount = image->GetArrayLayers();
+    }
+
+    vk::DependencyInfoKHR dependency;
+    dependency.setImageMemoryBarriers(imageBarrier);
+    this->SetPipelineBarrier2(dependency);
+
+    image->SetCurrentPipelineStage(dstStageMask);
+    image->SetCurrentAccessFlags(dstAccessMask);
+    image->SetCurrentLayout(newLayout);
+}
+
+void CommandBuffer::TransitLayoutFromCurrent(
+    Image* image,
+    vk::PipelineStageFlags2     dstStageMask,
+    vk::AccessFlags2            dstAccessMask,
+    vk::ImageLayout             newLayout,
+    const vk::ImageSubresourceRange* subresourceRange)
+{
+    TransitLayout(image,
+        image->GetCurrentPipelineStage(), dstStageMask,
+        image->GetCurrentAccessMask(), dstAccessMask,
+        image->GetCurrentLayout(), newLayout,
+        subresourceRange);
+}
+
 void CommandBuffer::SetImageBarrier_ColorAttachmentToComputeSample(
     vk::Image image, const vk::ImageSubresourceRange& range)
 {
@@ -267,6 +324,47 @@ void CommandBuffer::SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlag
     vk::DependencyInfo dependency;
     dependency.setMemoryBarriers(barrier);
     m_wrapper.pipelineBarrier2(dependency);
+}
+
+void CommandBuffer::BeginRendering(const vk::RenderingInfo& renderingInfo)
+{
+    m_wrapper.beginRendering(renderingInfo);
+}
+
+void CommandBuffer::BeginRendering(
+    const vk::Rect2D& renderArea,
+    uint32_t layerCount,
+    uint32_t viewMask,
+    rad::ArrayRef<vk::RenderingAttachmentInfo> colorAttachments,
+    const vk::RenderingAttachmentInfo* depthAttachment,
+    const vk::RenderingAttachmentInfo* stencilAttachment)
+{
+    vk::RenderingInfoKHR renderingInfo = {};
+    renderingInfo.renderArea = renderArea;
+    renderingInfo.layerCount = 1;
+    renderingInfo.viewMask = 0;
+    renderingInfo.colorAttachmentCount = colorAttachments.size32();
+    renderingInfo.pColorAttachments = colorAttachments.data();
+    renderingInfo.pDepthAttachment = depthAttachment;
+    renderingInfo.pStencilAttachment = stencilAttachment;
+    BeginRendering(renderingInfo);
+}
+
+void CommandBuffer::EndRendering()
+{
+    m_wrapper.endRendering();
+}
+
+vk::RenderingAttachmentInfo MakeRenderingAttachmentInfo(
+    ImageView* view, vk::AttachmentLoadOp loadOp, vk::AttachmentStoreOp storeOp, const vk::ClearValue& clearValue)
+{
+    vk::RenderingAttachmentInfo attachInfo = {};
+    attachInfo.imageView = view->GetHandle();
+    attachInfo.imageLayout = view->GetImage()->GetCurrentLayout();
+    attachInfo.loadOp = loadOp;
+    attachInfo.storeOp = storeOp;
+    attachInfo.clearValue = clearValue;
+    return attachInfo;
 }
 
 } // namespace vkpp

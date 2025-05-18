@@ -154,4 +154,28 @@ bool IsIntegerType(vk::ComponentTypeKHR type)
     return IsSignedIntegerType(type) || IsUnsignedIntegerType(type);
 }
 
+vk::ImageAspectFlags GetImageAspectFromFormat(vk::Format format)
+{
+    if (vkuFormatIsColor(static_cast<VkFormat>(format)))
+    {
+        return vk::ImageAspectFlagBits::eColor;
+    }
+    else if (vkuFormatIsDepthOnly(static_cast<VkFormat>(format)))
+    {
+        return vk::ImageAspectFlagBits::eDepth;
+    }
+    else if (vkuFormatIsStencilOnly(static_cast<VkFormat>(format)))
+    {
+        return vk::ImageAspectFlagBits::eStencil;
+    }
+    else if (vkuFormatIsDepthAndStencil(static_cast<VkFormat>(format)))
+    {
+        return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+    }
+    else
+    {
+        return vk::ImageAspectFlagBits::eNone;
+    }
+}
+
 } // namespace vkpp
