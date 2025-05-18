@@ -5,6 +5,9 @@ set(VKPP_HEADERS
     Core/Instance.h
     Core/Device.h
     Core/Command.h
+    Core/Fence.h
+    Core/Semaphore.h
+    Core/Event.h
     Core/Buffer.h
     Core/Image.h
     Core/RenderPass.h
@@ -24,6 +27,9 @@ set(VKPP_SOURCE_FILES
     Core/Instance.cpp
     Core/Device.cpp
     Core/Command.cpp
+    Core/Fence.cpp
+    Core/Semaphore.cpp
+    Core/Event.cpp
     Core/Buffer.cpp
     Core/Image.cpp
     Core/RenderPass.cpp

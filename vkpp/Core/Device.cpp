@@ -1,6 +1,9 @@
 #include <vkpp/Core/Device.h>
 #include <vkpp/Core/Instance.h>
 #include <vkpp/Core/Command.h>
+#include <vkpp/Core/Fence.h>
+#include <vkpp/Core/Semaphore.h>
+#include <vkpp/Core/Event.h>
 #include <vkpp/Core/Descriptor.h>
 #include <vkpp/Core/Buffer.h>
 #include <vkpp/Core/Image.h>
@@ -239,6 +242,37 @@ rad::Ref<CommandPool> Device::CreateCommandPool(
     QueueFamily queueFamily, vk::CommandPoolCreateFlags flags)
 {
     return RAD_NEW CommandPool(this, queueFamily, flags);
+}
+
+rad::Ref<Fence> Device::CreateFence(vk::FenceCreateFlags flags)
+{
+    vk::FenceCreateInfo createInfo = {};
+    createInfo.flags = flags;
+    return RAD_NEW Fence(this, createInfo);
+}
+
+rad::Ref<Fence> Device::CreateFenceSignaled()
+{
+    return CreateFence(vk::FenceCreateFlagBits::eSignaled);
+}
+
+rad::Ref<Semaphore> Device::CreateSemaphore(vk::SemaphoreCreateFlags flags)
+{
+    vk::SemaphoreCreateInfo createInfo = {};
+    createInfo.flags = flags;
+    return RAD_NEW Semaphore(this, createInfo);
+}
+
+rad::Ref<Event> Device::CreateEvent(vk::EventCreateFlags flags)
+{
+    vk::EventCreateInfo createInfo = {};
+    createInfo.flags = flags;
+    return RAD_NEW Event(this, createInfo);
+}
+
+void Device::WaitIdle()
+{
+    m_wrapper.waitIdle();
 }
 
 rad::Ref<DescriptorPool> Device::CreateDescriptorPool(

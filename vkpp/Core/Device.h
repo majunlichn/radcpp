@@ -10,6 +10,9 @@ namespace vkpp
 class Instance;
 class CommandPool;
 class CommandBuffer;
+class Fence;
+class Semaphore;
+class Event;
 class DescriptorPool;
 class Buffer;
 class BufferView;
@@ -68,6 +71,12 @@ public:
     rad::Ref<CommandBuffer> AllocateTemporaryCommandBuffer(QueueFamily queueFamily);
 
     rad::Ref<CommandPool> CreateCommandPool(QueueFamily queueFamily, vk::CommandPoolCreateFlags flags);
+
+    rad::Ref<Fence> CreateFence(vk::FenceCreateFlags flags = {});
+    rad::Ref<Fence> CreateFenceSignaled();
+    rad::Ref<Semaphore> CreateSemaphore(vk::SemaphoreCreateFlags flags = {});
+    rad::Ref<Event> CreateEvent(vk::EventCreateFlags flags);
+    void WaitIdle();
 
     rad::Ref<DescriptorPool> CreateDescriptorPool(
         uint32_t maxSets, rad::ArrayRef<vk::DescriptorPoolSize> poolSizes,
