@@ -13,6 +13,8 @@ class Image : public rad::RefCounted<Image>
 public:
     Image(rad::Ref<Device> device,
         const vk::ImageCreateInfo& imageInfo, const VmaAllocationCreateInfo& allocCreateInfo);
+    Image(rad::Ref<Device> device,
+        const vk::ImageCreateInfo& imageInfo, vk::Image imageHandle);
     ~Image();
 
     rad::Ref<ImageView> CreateView(
@@ -20,7 +22,9 @@ public:
         vk::ComponentMapping components = vk::ComponentMapping());
     rad::Ref<ImageView> CreateView(
         vk::ImageViewType type, vk::Format format);
-    rad::Ref<ImageView> CreateView();
+    rad::Ref<ImageView> CreateView(vk::ImageViewType type);
+    rad::Ref<ImageView> CreateView2D(
+        uint32_t baseMipLevel = 0, uint32_t levelCount = 1, uint32_t baseArrayLayer = 0);
 
     vk::Image GetHandle() const { return m_handle; }
     vk::Format GetFormat() const { return m_format; }
@@ -42,6 +46,7 @@ public:
     vk::Image m_handle;
     VmaAllocation m_alloc = nullptr;
     VmaAllocationInfo m_allocInfo = {};
+    vk::MemoryPropertyFlags m_memPropFlags = {};
 
     vk::ImageCreateFlags        m_flags = {};
     vk::ImageType               m_imageType = vk::ImageType::e1D;
@@ -54,9 +59,7 @@ public:
     vk::ImageUsageFlags         m_usage = {};
     vk::SharingMode             m_sharingMode = vk::SharingMode::eExclusive;
 
-    vk::MemoryPropertyFlags     m_memPropFlags;
-
-    // Track image layout
+    // Track image layout transition:
     vk::PipelineStageFlags2     m_currentPipelineStage = vk::PipelineStageFlagBits2::eAllCommands;
     vk::AccessFlags2            m_currentAccessFlags = vk::AccessFlagBits2::eNone;
     vk::ImageLayout             m_currentLayout = vk::ImageLayout::eUndefined;

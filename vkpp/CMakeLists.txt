@@ -17,6 +17,7 @@ set(VKPP_HEADERS
     Core/ShaderIncluder.h
     Core/ShaderCompiler.h
     Core/Pipeline.h
+    Core/Swapchain.h
     Compute/Tensor.h
     Compute/TensorOp.h
 )
@@ -37,6 +38,7 @@ set(VKPP_SOURCE_FILES
     Core/Descriptor.cpp
     Core/ShaderCompiler.cpp
     Core/Pipeline.cpp
+    Core/Swapchain.cpp
     Compute/Tensor.cpp
     Compute/TensorOp.cpp
 )

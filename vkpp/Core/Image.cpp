@@ -32,14 +32,33 @@ Image::Image(
     }
 }
 
+Image::Image(rad::Ref<Device> device, const vk::ImageCreateInfo& imageInfo, vk::Image imageHandle) :
+    m_device(std::move(device))
+{
+    m_handle = imageHandle;
+
+    m_imageType = imageInfo.imageType;
+    m_format = imageInfo.format;
+    m_extent = imageInfo.extent;
+    m_mipLevels = imageInfo.mipLevels;
+    m_arrayLayers = imageInfo.arrayLayers;
+    m_samples = imageInfo.samples;
+    m_tiling = imageInfo.tiling;
+    m_usage = imageInfo.usage;
+    m_sharingMode = imageInfo.sharingMode;
+
+    m_alloc = nullptr;  // not managed
+    m_memPropFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+}
+
 Image::~Image()
 {
     if (m_handle && m_alloc)
     {
         vmaDestroyImage(m_device->m_allocator, m_handle, m_alloc);
-        m_handle = nullptr;
-        m_alloc = nullptr;
     }
+    m_handle = nullptr;
+    m_alloc = nullptr;
 }
 
 rad::Ref<ImageView> Image::CreateView(
@@ -66,22 +85,20 @@ rad::Ref<ImageView> Image::CreateView(vk::ImageViewType type, vk::Format format)
     return CreateView(type, format, range);
 }
 
-rad::Ref<ImageView> Image::CreateView()
+rad::Ref<ImageView> Image::CreateView(vk::ImageViewType type)
 {
-    vk::ImageViewType viewType;
-    if (m_imageType == vk::ImageType::e1D)
-    {
-        viewType = vk::ImageViewType::e1D;
-    }
-    else if (m_imageType == vk::ImageType::e2D)
-    {
-        viewType = vk::ImageViewType::e2D;
-    }
-    else if (m_imageType == vk::ImageType::e3D)
-    {
-        viewType = vk::ImageViewType::e3D;
-    }
-    return CreateView(viewType, m_format);
+    return CreateView(type, m_format);
+}
+
+rad::Ref<ImageView> Image::CreateView2D(uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer)
+{
+    vk::ImageSubresourceRange range = {};
+    range.aspectMask = GetImageAspectFromFormat(m_format);
+    range.baseMipLevel = baseMipLevel;
+    range.levelCount = levelCount;
+    range.baseArrayLayer = baseArrayLayer;
+    range.layerCount = 1;
+    return CreateView(vk::ImageViewType::e2D, m_format, range);
 }
 
 ImageView::ImageView(rad::Ref<Image> image, const vk::ImageViewCreateInfo& createInfo) :
