@@ -6,6 +6,7 @@ namespace vkpp
 {
 
 class Device;
+class CommandBuffer;
 class Buffer;
 class BufferView;
 class Image;
@@ -21,12 +22,12 @@ public:
     vk::CommandPool GetHandle() const { return static_cast<vk::CommandPool>(m_wrapper); }
     const DeviceDispatcher* GetDispatcher() const;
 
-    vk::raii::CommandBuffers Allocate(vk::CommandBufferLevel level, uint32_t count);
-    vk::raii::CommandBuffers AllocatePrimary(uint32_t count)
+    std::vector<rad::Ref<CommandBuffer>> Allocate(vk::CommandBufferLevel level, uint32_t count);
+    std::vector<rad::Ref<CommandBuffer>> AllocatePrimary(uint32_t count)
     {
         return Allocate(vk::CommandBufferLevel::ePrimary, count);
     }
-    vk::raii::CommandBuffers AllocateSecondary(uint32_t count)
+    std::vector<rad::Ref<CommandBuffer>> AllocateSecondary(uint32_t count)
     {
         return Allocate(vk::CommandBufferLevel::eSecondary, count);
     }

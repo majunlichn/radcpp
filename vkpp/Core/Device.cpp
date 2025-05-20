@@ -231,10 +231,12 @@ rad::Ref<CommandBuffer> Device::AllocateTemporaryCommandBuffer(QueueFamily queue
     allocateInfo.commandBufferCount = 1;
     vk::CommandPool cmdPoolHandle = *cmdPool;
     vk::CommandBuffer cmdBufferHandle = VK_NULL_HANDLE;
-    m_wrapper.getDispatcher()->vkAllocateCommandBuffers(
-        this->GetHandle(),
-        reinterpret_cast<const VkCommandBufferAllocateInfo*>(&allocateInfo),
-        reinterpret_cast<VkCommandBuffer*>(&cmdBufferHandle));
+    VK_CHECK(
+        m_wrapper.getDispatcher()->vkAllocateCommandBuffers(
+            this->GetHandle(),
+            reinterpret_cast<const VkCommandBufferAllocateInfo*>(&allocateInfo),
+            reinterpret_cast<VkCommandBuffer*>(&cmdBufferHandle))
+    );
     return RAD_NEW CommandBuffer(this, cmdPoolHandle, cmdBufferHandle);
 }
 
@@ -286,15 +288,15 @@ rad::Ref<DescriptorPool> Device::CreateDescriptorPool(
     return RAD_NEW DescriptorPool(this, createInfo);
 }
 
-vk::raii::DescriptorSetLayout Device::CreateDescriptorSetLayout(
+rad::Ref<DescriptorSetLayout>  Device::CreateDescriptorSetLayout(
     rad::ArrayRef<vk::DescriptorSetLayoutBinding> bindings)
 {
     vk::DescriptorSetLayoutCreateInfo createInfo = {};
     createInfo.setBindings(bindings);
-    return vk::raii::DescriptorSetLayout(this->m_wrapper, createInfo);
+    return RAD_NEW DescriptorSetLayout(this, createInfo);
 }
 
-vk::raii::PipelineLayout Device::CreatePipelineLayout(
+rad::Ref<PipelineLayout> Device::CreatePipelineLayout(
     rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
     rad::ArrayRef<vk::PushConstantRange> pushConstantRanges)
 {
@@ -304,7 +306,7 @@ vk::raii::PipelineLayout Device::CreatePipelineLayout(
     createInfo.pSetLayouts = setLayouts.data();
     createInfo.pushConstantRangeCount = pushConstantRanges.size32();
     createInfo.pPushConstantRanges = pushConstantRanges.data();
-    return vk::raii::PipelineLayout(m_wrapper, createInfo);
+    return RAD_NEW PipelineLayout(this, createInfo);
 }
 
 vk::Format Device::FindFormat(
@@ -387,6 +389,21 @@ rad::Ref<Framebuffer> Device::CreateFramebuffer(
     createInfo.height = height;
     createInfo.layers = layers;
     return CreateFramebuffer(createInfo);
+}
+
+rad::Ref<PipelineLayout> Device::CreateLayout(const vk::PipelineLayoutCreateInfo& createInfo)
+{
+    return RAD_NEW PipelineLayout(this, createInfo);
+}
+
+rad::Ref<PipelineLayout> Device::CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
+    rad::ArrayRef<vk::PushConstantRange> pushConstantRanges)
+{
+    vk::PipelineLayoutCreateInfo createInfo;
+    createInfo.flags = flags;
+    createInfo.setSetLayouts(setLayouts);
+    createInfo.setPushConstantRanges(pushConstantRanges);
+    return CreateLayout(createInfo);
 }
 
 rad::Ref<ComputePipeline> Device::CreateComputePipeline(

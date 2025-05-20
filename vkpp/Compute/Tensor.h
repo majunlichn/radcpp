@@ -62,11 +62,11 @@ public:
     VkDeviceSize m_sizeInBytes = 0;
 
     template <rad::TriviallyCopyable T>
-    std::vector<T> GenerateBufferData(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const;
+    std::vector<T> GenerateBufferData(std::function<T(std::initializer_list<size_t> coord)> generator) const;
     template <rad::TriviallyCopyable T>
-    std::vector<T> GenerateBufferData4D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const;
+    std::vector<T> GenerateBufferData4D(std::function<T(std::initializer_list<size_t> coord)> generator) const;
     template <rad::TriviallyCopyable T>
-    std::vector<T> GenerateBufferData5D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const;
+    std::vector<T> GenerateBufferData5D(std::function<T(std::initializer_list<size_t> coord)> generator) const;
 
     void Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize);
     void Read(void* data) { Read(data, 0, m_sizeInBytes); }
@@ -82,7 +82,7 @@ public:
 }; // class Tensor
 
 template<rad::TriviallyCopyable T>
-inline std::vector<T> Tensor::GenerateBufferData(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
+inline std::vector<T> Tensor::GenerateBufferData(std::function<T(std::initializer_list<size_t> coord)> generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
     assert((m_sizes.size() == 4) || (m_sizes.size() == 5));
@@ -98,7 +98,7 @@ inline std::vector<T> Tensor::GenerateBufferData(std::function<T(size_t index, s
 }
 
 template<rad::TriviallyCopyable T>
-inline std::vector<T> Tensor::GenerateBufferData4D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
+inline std::vector<T> Tensor::GenerateBufferData4D(std::function<T(std::initializer_list<size_t> coord)> generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
     std::vector<T> buffer(m_sizeInBytes / GetElementSizeInBytes(), T(0));
@@ -111,7 +111,7 @@ inline std::vector<T> Tensor::GenerateBufferData4D(std::function<T(size_t index,
                 for (size_t w = 0; w < m_sizes[3]; ++w)
                 {
                     size_t index = n * m_strides[0] + c * m_strides[1] + h * m_strides[2] + w * m_strides[3];
-                    buffer[index] = generator(index, { n, c, h, w });
+                    buffer[index] = generator({ n, c, h, w });
                 }
             }
         }
@@ -120,7 +120,7 @@ inline std::vector<T> Tensor::GenerateBufferData4D(std::function<T(size_t index,
 }
 
 template<rad::TriviallyCopyable T>
-inline std::vector<T> Tensor::GenerateBufferData5D(std::function<T(size_t index, std::initializer_list<size_t> coord)> generator) const
+inline std::vector<T> Tensor::GenerateBufferData5D(std::function<T(std::initializer_list<size_t> coord)> generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
     std::vector<T> buffer(m_sizeInBytes / GetElementSizeInBytes(), T(0));
@@ -136,7 +136,7 @@ inline std::vector<T> Tensor::GenerateBufferData5D(std::function<T(size_t index,
                     {
                         size_t index = n * m_strides[0] + c * m_strides[1] +
                             d * m_strides[2] + h * m_strides[3] + w * m_strides[4];
-                        buffer[index] = generator(index, { n, c, d, h, w });
+                        buffer[index] = generator({ n, c, d, h, w });
                     }
                 }
             }
@@ -150,7 +150,7 @@ inline void Tensor::FillConstant(const T& value)
 {
     assert(sizeof(T) == GetElementSizeInBytes());
     std::vector<T> bufferData = GenerateBufferData<T>(
-        [&](size_t index, std::initializer_list<size_t> coord) { return value; });
+        [&](std::initializer_list<size_t> coord) { return value; });
     m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
 }
 

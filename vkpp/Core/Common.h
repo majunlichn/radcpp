@@ -75,7 +75,7 @@ inline bool IsVersionMatchOrGreater(uint32_t version, uint32_t major, uint32_t m
 template<typename Layers>
 bool HasLayer(Layers layers, std::string_view name)
 {
-    for (const VkLayerProperties& layer : layers)
+    for (const auto& layer : layers)
     {
         if (rad::StrEqual(layer.layerName, name))
         {
@@ -88,7 +88,7 @@ bool HasLayer(Layers layers, std::string_view name)
 template<typename Extensions>
 bool HasExtension(Extensions extensions, std::string_view name)
 {
-    for (const VkExtensionProperties& extension : extensions)
+    for (const auto& extension : extensions)
     {
         if (rad::StrEqual(extension.extensionName, name))
         {
@@ -120,9 +120,9 @@ vk::ImageAspectFlags GetDefaultImageAspectFlags(vk::Format format);
 
 spdlog::logger* GetLogger();
 #define VKPP_LOG(LogLevel, ...) SPDLOG_LOGGER_CALL(vkpp::GetLogger(), spdlog::level::LogLevel, __VA_ARGS__)
-void ReportError(VkResult result, const char* expr, std::source_location sourceLoc = std::source_location::current());
-#define VK_CHECK(Expr) \
-    do { const VkResult result_ = static_cast<VkResult>(Expr); if (result_ < 0) { vkpp::ReportError(result_, #Expr); } } while(0)
+void ReportError(vk::Result result, const char* call, std::source_location sourceLoc = std::source_location::current());
+#define VK_CHECK(Call) \
+    do { const vk::Result result_ = static_cast<vk::Result>(Call); if (result_ != vk::Result::eSuccess) { vkpp::ReportError(result_, #Call); } } while(0)
 
 VkDeviceSize GetComponentSizeInBytes(vk::ComponentTypeKHR type);
 bool IsFloatingPointType(vk::ComponentTypeKHR type);

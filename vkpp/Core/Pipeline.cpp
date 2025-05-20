@@ -30,19 +30,14 @@ rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromGLSL(
     return shaderStage;
 }
 
-void Pipeline::CreateLayout(const vk::PipelineLayoutCreateInfo& createInfo)
+PipelineLayout::PipelineLayout(rad::Ref<Device> device, const vk::PipelineLayoutCreateInfo& createInfo) :
+    m_device(std::move(device))
 {
-    m_layout = m_device->m_wrapper.createPipelineLayout(createInfo);
+    m_wrapper = m_device->m_wrapper.createPipelineLayout(createInfo);
 }
 
-void Pipeline::CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
-    rad::ArrayRef<vk::PushConstantRange> pushConstantRanges)
+PipelineLayout::~PipelineLayout()
 {
-    vk::PipelineLayoutCreateInfo createInfo;
-    createInfo.flags = flags;
-    createInfo.setSetLayouts(setLayouts);
-    createInfo.setPushConstantRanges(pushConstantRanges);
-    CreateLayout(createInfo);
 }
 
 rad::Ref<ShaderStageInfo> Pipeline::CreateShaderStageFromGLSL(

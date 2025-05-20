@@ -24,10 +24,22 @@ const DeviceDispatcher* CommandPool::GetDispatcher() const
     return m_device->GetDispatcher();
 }
 
-vk::raii::CommandBuffers CommandPool::Allocate(vk::CommandBufferLevel level, uint32_t count)
+std::vector<rad::Ref<CommandBuffer>> CommandPool::Allocate(vk::CommandBufferLevel level, uint32_t count)
 {
     vk::CommandBufferAllocateInfo allocateInfo(m_wrapper, level, count);
-    return vk::raii::CommandBuffers(m_device->m_wrapper, allocateInfo);
+    std::vector<vk::CommandBuffer> cmdBufferHandles(count);
+    VK_CHECK(
+        m_device->m_wrapper.getDispatcher()->vkAllocateCommandBuffers(
+            m_device->GetHandle(),
+            reinterpret_cast<const VkCommandBufferAllocateInfo*>(&allocateInfo),
+            reinterpret_cast<VkCommandBuffer*>(cmdBufferHandles.data()))
+    );
+    std::vector<rad::Ref<CommandBuffer>> cmdBuffers;
+    for (size_t i = 0; i < count; ++i)
+    {
+        cmdBuffers[i] = RAD_NEW CommandBuffer(this, cmdBufferHandles[i]);
+    }
+    return cmdBuffers;
 }
 
 CommandBuffer::CommandBuffer(

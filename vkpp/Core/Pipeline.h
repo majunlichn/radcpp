@@ -58,6 +58,19 @@ public:
 
 }; // class ShaderStageInfo
 
+class PipelineLayout : public rad::RefCounted<PipelineLayout>
+{
+public:
+    PipelineLayout(rad::Ref<Device> device, const vk::PipelineLayoutCreateInfo& createInfo);
+    ~PipelineLayout();
+
+    vk::PipelineLayout GetHandle() const { return m_wrapper; }
+
+    rad::Ref<Device> m_device;
+    vk::raii::PipelineLayout m_wrapper = { nullptr };
+
+}; // class PipelineLayout
+
 class Pipeline : public rad::RefCounted<Pipeline>
 {
 public:
@@ -67,10 +80,6 @@ public:
     vk::Pipeline GetHandle() const { return m_wrapper; };
     vk::PipelineBindPoint GetBindPoint() const { return m_bindPoint; };
 
-    void CreateLayout(const vk::PipelineLayoutCreateInfo& createInfo);
-    void CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
-        rad::ArrayRef<vk::PushConstantRange> pushConstantRanges);
-
     rad::Ref<ShaderStageInfo> CreateShaderStageFromGLSL(
         vk::ShaderStageFlagBits stage, const std::string& fileName, const std::string& source,
         const std::string& entryPoint = "main", rad::Span<ShaderMacro> macros = {},
@@ -79,7 +88,7 @@ public:
 
     rad::Ref<Device> m_device;
     vk::raii::Pipeline m_wrapper = { nullptr };
-    vk::raii::PipelineLayout m_layout = { nullptr };
+    rad::Ref<PipelineLayout> m_layout;
 
     vk::PipelineBindPoint m_bindPoint;
 

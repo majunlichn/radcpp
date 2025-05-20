@@ -14,6 +14,8 @@ class Fence;
 class Semaphore;
 class Event;
 class DescriptorPool;
+class DescriptorSetLayout;
+class DescriptorSet;
 class Buffer;
 class BufferView;
 class Image;
@@ -21,6 +23,7 @@ class ImageView;
 class RenderPass;
 class Framebuffer;
 class ShaderStageInfo;
+class PipelineLayout;
 class Pipeline;
 class GraphicsPipeline;
 class ComputePipeline;
@@ -81,9 +84,9 @@ public:
     rad::Ref<DescriptorPool> CreateDescriptorPool(
         uint32_t maxSets, rad::ArrayRef<vk::DescriptorPoolSize> poolSizes,
         vk::DescriptorPoolCreateFlags flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
-    vk::raii::DescriptorSetLayout CreateDescriptorSetLayout(
+    rad::Ref<DescriptorSetLayout> CreateDescriptorSetLayout(
         rad::ArrayRef<vk::DescriptorSetLayoutBinding> bindings);
-    vk::raii::PipelineLayout CreatePipelineLayout(
+    rad::Ref<PipelineLayout> CreatePipelineLayout(
         rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
         rad::ArrayRef<vk::PushConstantRange> pushConstantRanges = {});
 
@@ -101,6 +104,10 @@ public:
     rad::Ref<Framebuffer> CreateFramebuffer(const vk::FramebufferCreateInfo& createInfo);
     rad::Ref<Framebuffer> CreateFramebuffer(vk::RenderPass renderPass, rad::ArrayRef<vk::ImageView> attachments,
         uint32_t width, uint32_t height, uint32_t layers = 1);
+
+    rad::Ref<PipelineLayout> CreateLayout(const vk::PipelineLayoutCreateInfo& createInfo);
+    rad::Ref<PipelineLayout> CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
+        rad::ArrayRef<vk::PushConstantRange> pushConstantRanges);
 
     rad::Ref<ComputePipeline> CreateComputePipeline(
         rad::Ref<ShaderStageInfo> shaderStage, vk::PipelineLayout layout);

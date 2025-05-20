@@ -22,7 +22,7 @@ TEST(Tensor, ElementWise)
     std::default_random_engine eng(rd());
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
     std::vector<uint16_t> initData = tensor->GenerateBufferData<uint16_t>(
-        [&](size_t index, std::initializer_list<size_t> coord) { return rad::fp16_ieee_from_fp32_value(dist(eng)); });
+        [&](std::initializer_list<size_t> coord) { return rad::fp16_ieee_from_fp32_value(dist(eng)); });
     tensor->Write(initData.data());
 
     rad::Ref<vkpp::TensorOpElementWiseUnary> op = RAD_NEW vkpp::TensorOpElementWiseUnary(g_device);

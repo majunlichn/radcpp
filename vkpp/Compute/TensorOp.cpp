@@ -44,14 +44,14 @@ void TensorOp::CreatePipelineLayouts(size_t tensorCount,
         bindings.emplace_back(i + 1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute);
     }
     m_descSetLayout = m_device->CreateDescriptorSetLayout(bindings);
-    m_pipelineLayout = m_device->CreatePipelineLayout({ m_descSetLayout }, pushConstantRanges);
+    m_pipelineLayout = m_device->CreatePipelineLayout({ m_descSetLayout->GetHandle() }, pushConstantRanges);
 
     m_descPool = m_device->CreateDescriptorPool(1,
         {
             vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
             vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, tensorCount),
         });
-    m_descSets = m_descPool->Allocate({ m_descSetLayout });
+    m_descSet = m_descPool->Allocate({ m_descSetLayout->GetHandle() })[0];
 }
 
 void TensorOp::SetUniforms(const void* data, size_t dataSize)
@@ -59,20 +59,18 @@ void TensorOp::SetUniforms(const void* data, size_t dataSize)
     if (!m_uniformBuffer || (m_uniformBuffer->GetSize() != dataSize))
     {
         m_uniformBuffer = Buffer::CreateUniform(m_device, dataSize);
-        DescriptorUpdater(m_descSets[0])
-            .UpdateBuffers(0, 0, vk::DescriptorType::eUniformBuffer, m_uniformBuffer.get());
+        m_descSet->UpdateBuffers(0, 0, vk::DescriptorType::eUniformBuffer, m_uniformBuffer.get());
     }
     m_uniformBuffer->Write(data, 0, dataSize);
 }
 
 void TensorOp::SetTensor(uint32_t binding, Tensor* tensor)
 {
-    DescriptorUpdater updater(m_descSets[0]);
     vk::DescriptorBufferInfo bufferInfo = {};
     bufferInfo.buffer = tensor->m_buffer->GetHandle();
     bufferInfo.offset = tensor->m_bufferOffset;
     bufferInfo.range = tensor->m_sizeInBytes;
-    updater.UpdateBuffers(binding, 0, vk::DescriptorType::eStorageBuffer, bufferInfo);
+    m_descSet->UpdateBuffers(binding, 0, vk::DescriptorType::eStorageBuffer, bufferInfo);
     m_bindings[binding] = tensor;
 }
 
@@ -87,8 +85,8 @@ void TensorOp::Execute(glm::uvec3 groupCount)
     }
 
     cmdBuffer->BindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline->m_wrapper);
-    cmdBuffer->BindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout, 0,
-        { m_descSets[0] }, {});
+    cmdBuffer->BindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout->GetHandle(), 0,
+        { m_descSet->GetHandle() }, {});
     cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
     cmdBuffer->End();
 
@@ -128,7 +126,8 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
     );
 
     CreatePipelineLayouts(2);
-    m_pipeline = m_device->CreateComputePipeline(shaderStage, m_pipelineLayout);
+    m_pipeline = m_device->CreateComputePipeline(shaderStage, m_pipelineLayout->GetHandle());
+    m_pipeline->m_layout = m_pipelineLayout;
 
     UpdateUniforms();
 

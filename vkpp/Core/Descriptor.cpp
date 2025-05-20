@@ -18,28 +18,52 @@ DescriptorPool::~DescriptorPool()
 {
 }
 
-vk::raii::DescriptorSets DescriptorPool::Allocate(vk::ArrayProxy<vk::DescriptorSetLayout> layouts)
+std::vector<rad::Ref<DescriptorSet>> DescriptorPool::Allocate(vk::ArrayProxy<vk::DescriptorSetLayout> layouts)
 {
-    vk::DescriptorSetAllocateInfo allocInfo = {};
-    allocInfo.descriptorPool = m_wrapper;
-    allocInfo.setSetLayouts(layouts);
-    return vk::raii::DescriptorSets(m_device->m_wrapper, allocInfo);
+    vk::DescriptorSetAllocateInfo allocateInfo = {};
+    allocateInfo.descriptorPool = m_wrapper;
+    allocateInfo.setSetLayouts(layouts);
+    std::vector<vk::DescriptorSet> descSetsHandles(layouts.size());
+    VK_CHECK(
+        m_device->m_wrapper.getDispatcher()->vkAllocateDescriptorSets(m_device->GetHandle(),
+            reinterpret_cast<const VkDescriptorSetAllocateInfo*>(&allocateInfo),
+            reinterpret_cast<VkDescriptorSet*>(descSetsHandles.data()))
+    );
+    std::vector<rad::Ref<DescriptorSet>> descSets(descSetsHandles.size());
+    for (size_t i = 0; i < descSets.size(); ++i)
+    {
+        descSets[i] = RAD_NEW DescriptorSet(this, descSetsHandles[i]);
+    }
+    return descSets;
 }
 
-void DescriptorUpdater::UpdateBuffers(
+DescriptorSet::DescriptorSet(rad::Ref<Device> device, vk::DescriptorPool descPoolHandle, vk::DescriptorSet descSetHandle) :
+    m_device(std::move(device))
+{
+    m_wrapper = vk::raii::DescriptorSet(m_device->m_wrapper, descSetHandle, descPoolHandle);
+}
+
+DescriptorSet::DescriptorSet(rad::Ref<DescriptorPool> descPool, vk::DescriptorSet descSetHandle) :
+    m_device(descPool->m_device),
+    m_descPool(std::move(descPool))
+{
+    m_wrapper = vk::raii::DescriptorSet(m_device->m_wrapper, descSetHandle, m_descPool->GetHandle());
+}
+
+void DescriptorSet::UpdateBuffers(
     uint32_t binding, uint32_t arrayElement, vk::DescriptorType type,
     vk::ArrayProxy<const vk::DescriptorBufferInfo> bufferInfos)
 {
     vk::WriteDescriptorSet write;
-    write.dstSet = m_descSet;
+    write.dstSet = m_wrapper;
     write.dstBinding = binding;
     write.dstArrayElement = arrayElement;
     write.descriptorType = type;
     write.setBufferInfo(bufferInfos);
-    m_descSet.getDevice().updateDescriptorSets(write, {}, *m_descSet.getDispatcher());
+    m_device->m_wrapper.updateDescriptorSets(write, {});
 }
 
-void DescriptorUpdater::UpdateBuffers(
+void DescriptorSet::UpdateBuffers(
     uint32_t binding, uint32_t arrayElement, vk::DescriptorType type,
     vk::ArrayProxy<Buffer*> buffers)
 {
@@ -52,12 +76,22 @@ void DescriptorUpdater::UpdateBuffers(
     }
 
     vk::WriteDescriptorSet write = {};
-    write.dstSet = m_descSet;
+    write.dstSet = m_wrapper;
     write.dstBinding = binding;
     write.dstArrayElement = arrayElement;
     write.descriptorType = type;
     write.setBufferInfo(bufferInfos);
-    m_descSet.getDevice().updateDescriptorSets(write, {}, *m_descSet.getDispatcher());
+    m_device->m_wrapper.updateDescriptorSets(write, {});
+}
+
+DescriptorSetLayout::DescriptorSetLayout(rad::Ref<Device> device, const vk::DescriptorSetLayoutCreateInfo& createInfo) :
+    m_device(std::move(device))
+{
+    m_wrapper = m_device->m_wrapper.createDescriptorSetLayout(createInfo);
+}
+
+DescriptorSetLayout::~DescriptorSetLayout()
+{
 }
 
 } // namespace vkpp

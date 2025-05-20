@@ -192,7 +192,7 @@ void Tensor::FillRandom(float minValue, float maxValue)
     if (m_dataType == vk::ComponentTypeKHR::eFloat16)
     {
         std::vector<uint16_t> bufferData = GenerateBufferData<uint16_t>(
-            [&](size_t index, std::initializer_list<size_t> coord)
+            [&](std::initializer_list<size_t> coord)
             { return rad::fp16_ieee_from_fp32_value(dist(eng)); }
         );
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
@@ -200,20 +200,20 @@ void Tensor::FillRandom(float minValue, float maxValue)
     else if (m_dataType == vk::ComponentTypeKHR::eFloat32)
     {
         std::vector<float> bufferData = GenerateBufferData<float>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return dist(eng); });
+            [&](std::initializer_list<size_t> coord) { return dist(eng); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloat64)
     {
         std::uniform_real_distribution<double> dist64(minValue, maxValue);
         std::vector<double> bufferData = GenerateBufferData<double>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return dist64(eng); });
+            [&](std::initializer_list<size_t> coord) { return dist64(eng); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
     {
         std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
-            [&](size_t index, std::initializer_list<size_t> coord)
+            [&](std::initializer_list<size_t> coord)
             { return rad::fp8e4m3fn_from_fp32_value(dist(eng)); }
         );
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
@@ -221,7 +221,7 @@ void Tensor::FillRandom(float minValue, float maxValue)
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
     {
         std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
-            [&](size_t index, std::initializer_list<size_t> coord)
+            [&](std::initializer_list<size_t> coord)
             { return rad::fp8e5m2_from_fp32_value(dist(eng)); }
         );
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
@@ -238,25 +238,25 @@ void Tensor::FillRandom(int minValue, int maxValue)
     if (m_dataType == vk::ComponentTypeKHR::eSint8)
     {
         std::vector<int8_t> bufferData = GenerateBufferData<int8_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return int8_t(dist(eng)); });
+            [&](std::initializer_list<size_t> coord) { return int8_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint16)
     {
         std::vector<int16_t> bufferData = GenerateBufferData<int16_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return int16_t(dist(eng)); });
+            [&](std::initializer_list<size_t> coord) { return int16_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint32)
     {
         std::vector<int32_t> bufferData = GenerateBufferData<int32_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return int32_t(dist(eng)); });
+            [&](std::initializer_list<size_t> coord) { return int32_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint64)
     {
         std::vector<int64_t> bufferData = GenerateBufferData<int64_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return int64_t(dist(eng)); });
+            [&](std::initializer_list<size_t> coord) { return int64_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint8)
@@ -264,7 +264,7 @@ void Tensor::FillRandom(int minValue, int maxValue)
         assert(minValue >= 0);
         assert(maxValue > 0);
         std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return uint8_t(dist(eng)); });
+            [&](std::initializer_list<size_t> coord) { return uint8_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint16)
@@ -272,7 +272,7 @@ void Tensor::FillRandom(int minValue, int maxValue)
         assert(minValue >= 0);
         assert(maxValue > 0);
         std::vector<uint16_t> bufferData = GenerateBufferData<uint16_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return uint16_t(dist(eng)); });
+            [&](std::initializer_list<size_t> coord) { return uint16_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint32)
@@ -280,7 +280,7 @@ void Tensor::FillRandom(int minValue, int maxValue)
         assert(minValue >= 0);
         assert(maxValue > 0);
         std::vector<uint32_t> bufferData = GenerateBufferData<uint32_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return uint32_t(dist(eng)); });
+            [&](std::initializer_list<size_t> coord) { return uint32_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint64)
@@ -288,7 +288,7 @@ void Tensor::FillRandom(int minValue, int maxValue)
         assert(minValue >= 0);
         assert(maxValue > 0);
         std::vector<uint64_t> bufferData = GenerateBufferData<uint64_t>(
-            [&](size_t index, std::initializer_list<size_t> coord) { return uint64_t(dist(eng)); });
+            [&](std::initializer_list<size_t> coord) { return uint64_t(dist(eng)); });
         m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
     }
 }

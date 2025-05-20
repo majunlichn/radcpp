@@ -35,12 +35,12 @@ public:
 
     rad::Ref<Device> m_device;
     rad::Ref<Buffer> m_uniformBuffer;
-    vk::raii::DescriptorSetLayout m_descSetLayout = { nullptr };
-    vk::raii::PipelineLayout m_pipelineLayout = { nullptr };
+    rad::Ref<DescriptorSetLayout> m_descSetLayout;
+    rad::Ref<PipelineLayout> m_pipelineLayout;
     rad::Ref<vkpp::Pipeline> m_pipeline;
 
     rad::Ref<DescriptorPool> m_descPool;
-    vk::raii::DescriptorSets m_descSets = { nullptr };
+    rad::Ref<DescriptorSet> m_descSet;
 
     std::map<uint32_t, Tensor*> m_bindings;
 

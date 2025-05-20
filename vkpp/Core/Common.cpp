@@ -67,15 +67,12 @@ spdlog::logger* GetLogger()
     return VulkanLogger.get();
 }
 
-void ReportError(VkResult result, const char* expr, std::source_location sourceLoc)
+void ReportError(vk::Result result, const char* call, std::source_location sourceLoc)
 {
-    if (result < 0)
-    {
-        VKPP_LOG(err, "{} failed with {} ({}, line {}, function {}).",
-            expr, string_VkResult(result),
-            sourceLoc.file_name(), sourceLoc.line(), sourceLoc.function_name());
-        throw vk::SystemError(std::error_code(static_cast<int>(result), vk::errorCategory()), string_VkResult(result));
-    }
+    VKPP_LOG(err, "{} failed with {} ({}, line {}, function {}).",
+        call, string_VkResult(static_cast<VkResult>(result)),
+        sourceLoc.file_name(), sourceLoc.line(), sourceLoc.function_name());
+    throw vk::SystemError(vk::make_error_code(result), string_VkResult(static_cast<VkResult>(result)));
 }
 
 VkDeviceSize GetComponentSizeInBytes(vk::ComponentTypeKHR type)
