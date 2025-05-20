@@ -3,6 +3,7 @@
 #include <vkpp/Core/Fence.h>
 #include <vkpp/Core/Semaphore.h>
 #include <vkpp/Core/Image.h>
+#include <vkpp/Core/Surface.h>
 
 namespace vkpp
 {

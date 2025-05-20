@@ -35,6 +35,7 @@ public:
         const std::set<std::string>& requiredExtensions);
     ~Device();
 
+    vk::PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
     vk::Device GetHandle() const { return static_cast<vk::Device>(m_wrapper); }
     const DeviceDispatcher* GetDispatcher() const { return m_wrapper.getDispatcher(); }
 
@@ -63,6 +64,11 @@ public:
     const vk::QueueFamilyProperties& GetQueueFamilyProperties(QueueFamily queueFamily) const
     {
         return m_queueFamilyProperties[GetQueueFamilyIndex(queueFamily)];
+    }
+
+    vk::Queue GetQueue(QueueFamily queueFamily)
+    {
+        return m_queues[rad::ToUnderlying(queueFamily)];
     }
 
     std::set<std::string, rad::StringLess> m_enabledExtensions;
