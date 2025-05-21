@@ -36,20 +36,29 @@ public:
     rad::Ref<vkpp::Device> m_device;
     ImGuiContext* m_context = nullptr;
 
-    rad::Ref<vkpp::Buffer> m_uniformBuffers;
-
     rad::Ref<vkpp::Image> m_renderTarget;
     rad::Ref<vkpp::ImageView> m_renderTargetView;
     rad::Ref<vkpp::Image> m_overlay;
     rad::Ref<vkpp::ImageView> m_overlayView;
 
-    rad::Ref<vkpp::DescriptorPool> m_descPool;
-
     static constexpr size_t FrameLag = 2;
+
+    rad::Ref<vkpp::Buffer> m_uniformBuffers[FrameLag];
+    void* m_uniforms[FrameLag] = {};
+
+    rad::Ref<vkpp::DescriptorPool> m_descPool;
+    rad::Ref<vkpp::DescriptorSet> m_descSets[FrameLag];
+
+    rad::Ref<vkpp::CommandPool> m_cmdPool;
+    rad::Ref<vkpp::CommandPool> m_presentCmdPool;
     rad::Ref<vkpp::CommandBuffer> m_cmdBuffers[FrameLag];
+    rad::Ref<vkpp::CommandBuffer> m_cmdBuffers_GraphicsToPresent[FrameLag];
     uint32_t m_cmdBufferIndex = 0;
     rad::Ref<vkpp::Fence> m_fences[FrameLag];
     rad::Ref<vkpp::Semaphore> m_imageAcquiredSemaphores[FrameLag];
+
+    std::vector<rad::Ref<vkpp::Semaphore>> m_drawCompletedSemaphores;
+    std::vector<rad::Ref<vkpp::Semaphore>> m_swapchainImageOwnershipSemaphores;
 
 }; // class VulkanGuiContext
 

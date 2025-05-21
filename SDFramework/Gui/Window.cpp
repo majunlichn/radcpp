@@ -13,9 +13,9 @@ Window::~Window()
     Destroy();
 }
 
-bool Window::Create(const char* title, int w, int h, SDL_WindowFlags flags)
+bool Window::Create(std::string_view title, int w, int h, SDL_WindowFlags flags)
 {
-    m_handle = SDL_CreateWindow(title, w, h, flags);
+    m_handle = SDL_CreateWindow(title.data(), w, h, flags);
     if (m_handle)
     {
         m_id = SDL_GetWindowID(m_handle);

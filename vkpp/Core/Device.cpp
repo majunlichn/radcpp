@@ -10,6 +10,8 @@
 #include <vkpp/Core/RenderPass.h>
 #include <vkpp/Core/Framebuffer.h>
 #include <vkpp/Core/Pipeline.h>
+#include <vkpp/Core/Surface.h>
+#include <vkpp/Core/Swapchain.h>
 
 namespace vkpp
 {
@@ -222,6 +224,21 @@ Device::~Device()
     }
 }
 
+vk::SurfaceCapabilitiesKHR Device::GetCapabilities(vk::SurfaceKHR surface) const
+{
+    return m_physicalDevice.getSurfaceCapabilitiesKHR(surface);
+}
+
+std::vector<vk::SurfaceFormatKHR> Device::GetSurfaceFormats(vk::SurfaceKHR surface) const
+{
+    return m_physicalDevice.getSurfaceFormatsKHR(surface);
+}
+
+std::vector<vk::PresentModeKHR> Device::GetPresentModes(vk::SurfaceKHR surface) const
+{
+    return m_physicalDevice.getSurfacePresentModesKHR(surface);
+}
+
 rad::Ref<CommandBuffer> Device::AllocateTemporaryCommandBuffer(QueueFamily queueFamily)
 {
     vk::raii::CommandPool* cmdPool = m_cmdPools[rad::ToUnderlying(queueFamily)].get();
@@ -416,6 +433,11 @@ rad::Ref<ComputePipeline> Device::CreateComputePipeline(
     pipelineInfo.basePipelineHandle = nullptr;
     pipelineInfo.basePipelineIndex = 0;
     return RAD_NEW ComputePipeline(this, pipelineInfo, nullptr);
+}
+
+rad::Ref<Swapchain> Device::CreateSwapchain(const vk::SwapchainCreateInfoKHR& createInfo)
+{
+    return RAD_NEW Swapchain(this, createInfo);
 }
 
 void Device::Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)

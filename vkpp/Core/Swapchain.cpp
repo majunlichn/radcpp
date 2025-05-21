@@ -8,7 +8,7 @@
 namespace vkpp
 {
 
-Swapchain::Swapchain(rad::Ref<Device> device, vk::SwapchainCreateInfoKHR& createInfo) :
+Swapchain::Swapchain(rad::Ref<Device> device, const vk::SwapchainCreateInfoKHR& createInfo) :
     m_device(std::move(device))
 {
     m_wrapper = m_device->m_wrapper.createSwapchainKHR(createInfo);

@@ -15,7 +15,7 @@ class Surface;
 class Swapchain : public rad::RefCounted<Swapchain>
 {
 public:
-    Swapchain(rad::Ref<Device> device, vk::SwapchainCreateInfoKHR& createInfo);
+    Swapchain(rad::Ref<Device> device, const vk::SwapchainCreateInfoKHR& createInfo);
     ~Swapchain();
 
     // Retain the surface.

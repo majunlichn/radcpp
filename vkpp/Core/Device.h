@@ -27,6 +27,8 @@ class PipelineLayout;
 class Pipeline;
 class GraphicsPipeline;
 class ComputePipeline;
+class Surface;
+class Swapchain;
 
 class Device : public rad::RefCounted<Device>
 {
@@ -45,6 +47,10 @@ public:
     vk::raii::PhysicalDevice m_physicalDevice;
     vk::raii::Device m_wrapper = { nullptr };
     std::array<uint32_t, size_t(QueueFamily::Count)> m_queueFamilyIndices;
+
+    vk::SurfaceCapabilitiesKHR GetCapabilities(vk::SurfaceKHR surface) const;
+    std::vector<vk::SurfaceFormatKHR> GetSurfaceFormats(vk::SurfaceKHR surface) const;
+    std::vector<vk::PresentModeKHR> GetPresentModes(vk::SurfaceKHR surface) const;
 
     uint32_t GetQueueFamilyIndex(QueueFamily queueFamily) const
     {
@@ -117,6 +123,8 @@ public:
 
     rad::Ref<ComputePipeline> CreateComputePipeline(
         rad::Ref<ShaderStageInfo> shaderStage, vk::PipelineLayout layout);
+
+    rad::Ref<Swapchain> CreateSwapchain(const vk::SwapchainCreateInfoKHR& createInfo);
 
     vk::PhysicalDeviceProperties m_properties;
     vk::PhysicalDeviceProperties2 m_properties2;

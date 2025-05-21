@@ -15,7 +15,7 @@ public:
     Window();
     ~Window();
 
-    virtual bool Create(const char* title, int w, int h, SDL_WindowFlags flags);
+    virtual bool Create(std::string_view title, int w, int h, SDL_WindowFlags flags);
     virtual void Destroy();
 
     SDL_Window* GetHandle() { return m_handle; }

@@ -2,8 +2,8 @@
 
 #include <SDFramework/Gui/Window.h>
 #include <vkpp/Core/Instance.h>
-#include <vkpp/Core/Surface.h>
 #include <vkpp/Core/Device.h>
+#include <vkpp/Core/Surface.h>
 #include <vkpp/Core/Swapchain.h>
 
 namespace sdf
@@ -15,7 +15,7 @@ public:
     VulkanWindow(rad::Ref<vkpp::Instance> instance);
     ~VulkanWindow();
 
-    virtual bool Create(const char* title, int w, int h, SDL_WindowFlags flags) override;
+    virtual bool Create(std::string_view title, int w, int h, SDL_WindowFlags flags) override;
     virtual void Destroy() override;
 
     vkpp::Surface* GetSurface() const { return m_surface.get(); }
@@ -29,12 +29,11 @@ private:
     rad::Ref<vkpp::Surface> m_surface;
     rad::Ref<vkpp::Device> m_device;
 
-    vk::SurfaceCapabilitiesKHR m_surfaceCaps;
-    std::vector<vk::SurfaceFormatKHR> m_surfaceFormats;
-    std::vector<vk::PresentModeKHR> m_presentModes;
-    vk::SurfaceFormatKHR m_surfaceFormat = {};
-    vk::PresentModeKHR m_presentMode = vk::PresentModeKHR::eFifo;
     rad::Ref<vkpp::Swapchain> m_swapchain;
+    vk::PresentModeKHR m_presentMode = vk::PresentModeKHR::eFifo;
+    bool m_isMinimized = false;
+    bool m_isFirstSwapchainFrame = false;
+
 
 }; // class VulkanWindow
 
