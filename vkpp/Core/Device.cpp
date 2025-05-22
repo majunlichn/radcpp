@@ -345,7 +345,28 @@ vk::Format Device::FindFormat(
     return vk::Format::eUndefined;
 }
 
-rad::Ref<Image> Device::CreateImage2DColorAttachment(
+rad::Ref<Image> Device::CreateImage2D_Sampled(vk::Format format, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
+{
+    vk::ImageCreateInfo imageInfo;
+    imageInfo.imageType = vk::ImageType::e2D;
+    imageInfo.format = format;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = GetMaxMipLevel(width, height);
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = vk::SampleCountFlagBits::e1;
+    imageInfo.tiling = vk::ImageTiling::eOptimal;
+    imageInfo.usage = usage;
+    imageInfo.initialLayout = vk::ImageLayout::ePreinitialized;
+    VmaAllocationCreateInfo allocCreateInfo = {};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    rad::Ref<Image> image = RAD_NEW Image(this, imageInfo, allocCreateInfo);
+    image->SetCurrentLayout(imageInfo.initialLayout);
+    return image;
+}
+
+rad::Ref<Image> Device::CreateImage2D_ColorAttachment(
     vk::Format format, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
 {
     vk::ImageCreateInfo imageInfo;
@@ -365,7 +386,7 @@ rad::Ref<Image> Device::CreateImage2DColorAttachment(
     return RAD_NEW Image(this, imageInfo, allocCreateInfo);
 }
 
-rad::Ref<Image> Device::CreateImage2DDepthStencilAttachment(
+rad::Ref<Image> Device::CreateImage2D_DepthStencilAttachment(
     vk::Format format, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
 {
     vk::ImageCreateInfo imageInfo;

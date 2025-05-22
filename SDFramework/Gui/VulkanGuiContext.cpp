@@ -32,7 +32,7 @@ bool VulkanGuiContext::Init()
     int height = 0;
     m_window->GetSizeInPixels(&width, &height);
     vk::Format renderTargetFormat = vk::Format::eR8G8B8A8Unorm;
-    m_renderTarget = m_device->CreateImage2DColorAttachment(
+    m_renderTarget = m_device->CreateImage2D_ColorAttachment(
         renderTargetFormat, width, height, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment);
     m_renderTargetView = m_renderTarget->CreateView2D();
 

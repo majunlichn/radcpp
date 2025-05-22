@@ -11,19 +11,20 @@
 class CubeDemo : public sdf::VulkanWindow
 {
 public:
-    CubeDemo(rad::Ref<vkpp::Instance> instance);
+    CubeDemo();
     ~CubeDemo();
 
-    bool Init(int argc, char* argv);
+    bool Init(int argc, char* argv[]);
+    void ParseCommandLine(int argc, char* argv[]);
 
-    std::string m_name = "vkcube";
+    std::string m_name = "Vulkan Cube";
     bool m_initialized = false;
     bool m_swapchainReady = false;
     bool m_isMinimized = false;
     bool m_useStagingBuffer = false;
     bool m_separatePresentQueue = false;
     bool m_invalidGpuSelection = false;
-    int32_t m_gpuNumber = 0;
+    int32_t m_gpuIndex = 0;
 
     // If true, the Demo renders on the protected memory.
     bool m_protectedOutput = false;

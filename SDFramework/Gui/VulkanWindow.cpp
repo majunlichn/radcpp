@@ -4,8 +4,7 @@
 namespace sdf
 {
 
-VulkanWindow::VulkanWindow(rad::Ref<vkpp::Instance> instance) :
-    m_instance(instance)
+VulkanWindow::VulkanWindow()
 {
 }
 
@@ -41,7 +40,7 @@ rad::Ref<vkpp::Surface> VulkanWindow::CreateSurface()
     return RAD_NEW vkpp::Surface(m_instance, surfaceHandle);
 }
 
-rad::Ref<vkpp::Swapchain> VulkanWindow::CreateSwapchain(int width, int height)
+rad::Ref<vkpp::Swapchain> VulkanWindow::CreateSwapchain(uint32_t width, uint32_t height)
 {
     assert(m_surface != nullptr);
 

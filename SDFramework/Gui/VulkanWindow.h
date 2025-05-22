@@ -12,7 +12,7 @@ namespace sdf
 class VulkanWindow : public Window
 {
 public:
-    VulkanWindow(rad::Ref<vkpp::Instance> instance);
+    VulkanWindow();
     ~VulkanWindow();
 
     virtual bool Create(std::string_view title, int w, int h, SDL_WindowFlags flags) override;
@@ -21,9 +21,9 @@ public:
     vkpp::Surface* GetSurface() const { return m_surface.get(); }
     vkpp::Swapchain* GetSwapchain() const { return m_swapchain.get(); }
 
-private:
+protected:
     rad::Ref<vkpp::Surface> CreateSurface();
-    rad::Ref<vkpp::Swapchain> CreateSwapchain(int width, int height);
+    rad::Ref<vkpp::Swapchain> CreateSwapchain(uint32_t width, uint32_t height);
 
     rad::Ref<vkpp::Instance> m_instance;
     rad::Ref<vkpp::Surface> m_surface;
@@ -33,7 +33,6 @@ private:
     vk::PresentModeKHR m_presentMode = vk::PresentModeKHR::eFifo;
     bool m_isMinimized = false;
     bool m_isFirstSwapchainFrame = false;
-
 
 }; // class VulkanWindow
 

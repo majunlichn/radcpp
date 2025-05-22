@@ -6,7 +6,6 @@
 #include <SDL3/SDL_main.h>
 
 rad::Ref<sdf::Application> g_app;
-rad::Ref<vkpp::Instance> g_instance;
 rad::Ref<CubeDemo> g_demo;
 
 SDL_AppResult SDL_AppInit(void** appState, int argc, char** argv)
@@ -21,13 +20,8 @@ SDL_AppResult SDL_AppInit(void** appState, int argc, char** argv)
     {
         return SDL_APP_FAILURE;
     }
-    g_instance = RAD_NEW vkpp::Instance();
-    if (!g_instance->Init(g_demo->m_name, g_instance->GetApiVersion()))
-    {
-        return SDL_APP_FAILURE;
-    }
-    g_demo = RAD_NEW CubeDemo(g_instance);
-    if (!g_demo->Create(g_demo->m_name, g_demo->m_width, g_demo->m_height, SDL_WINDOW_VULKAN))
+    g_demo = RAD_NEW CubeDemo();
+    if (!g_demo->Init(argc, argv))
     {
         return SDL_APP_FAILURE;
     }

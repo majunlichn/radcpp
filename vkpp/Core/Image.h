@@ -17,15 +17,6 @@ public:
         const vk::ImageCreateInfo& imageInfo, vk::Image imageHandle);
     ~Image();
 
-    rad::Ref<ImageView> CreateView(
-        vk::ImageViewType type, vk::Format format, const vk::ImageSubresourceRange& range,
-        vk::ComponentMapping components = vk::ComponentMapping());
-    rad::Ref<ImageView> CreateView(
-        vk::ImageViewType type, vk::Format format);
-    rad::Ref<ImageView> CreateView(vk::ImageViewType type);
-    rad::Ref<ImageView> CreateView2D(
-        uint32_t baseMipLevel = 0, uint32_t levelCount = 1, uint32_t baseArrayLayer = 0);
-
     vk::Image GetHandle() const { return m_handle; }
     vk::Format GetFormat() const { return m_format; }
     uint32_t GetWidth() const { return m_extent.width; }
@@ -41,6 +32,15 @@ public:
     void SetCurrentPipelineStage(vk::PipelineStageFlags2 stage) { m_currentPipelineStage = stage; }
     void SetCurrentAccessFlags(vk::AccessFlags2 accessFlags) { m_currentAccessFlags = accessFlags; }
     void SetCurrentLayout(vk::ImageLayout layout) { m_currentLayout = layout; }
+
+    rad::Ref<ImageView> CreateView(
+        vk::ImageViewType type, vk::Format format, const vk::ImageSubresourceRange& range,
+        vk::ComponentMapping components = vk::ComponentMapping());
+    rad::Ref<ImageView> CreateView(
+        vk::ImageViewType type, vk::Format format);
+    rad::Ref<ImageView> CreateView(vk::ImageViewType type);
+    rad::Ref<ImageView> CreateView2D(
+        uint32_t baseMipLevel = 0, uint32_t levelCount = 1, uint32_t baseArrayLayer = 0);
 
     rad::Ref<Device> m_device;
     vk::Image m_handle;
@@ -85,5 +85,8 @@ public:
     vk::ComponentMapping m_components;
 
 }; // class ImageView
+
+rad::Ref<Image> CreateTextureFromFile_R8G8B8A8_SRGB(rad::Ref<Device> device, std::string_view fileName);
+rad::Ref<Image> CreateTextureFromMemory_R8G8B8A8_SRGB(rad::Ref<Device> device, const void* buffer, size_t bufferSize);
 
 } // namespace vkpp

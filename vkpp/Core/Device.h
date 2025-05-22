@@ -107,9 +107,11 @@ public:
         vk::FormatFeatureFlags optimalTilingFeatures,
         vk::FormatFeatureFlags bufferFeatures);
 
-    rad::Ref<Image> CreateImage2DColorAttachment(vk::Format format, uint32_t width, uint32_t height,
+    rad::Ref<Image> CreateImage2D_Sampled(vk::Format format, uint32_t width, uint32_t height,
+        vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled);
+    rad::Ref<Image> CreateImage2D_ColorAttachment(vk::Format format, uint32_t width, uint32_t height,
         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eColorAttachment);
-    rad::Ref<Image> CreateImage2DDepthStencilAttachment(vk::Format format, uint32_t width, uint32_t height,
+    rad::Ref<Image> CreateImage2D_DepthStencilAttachment(vk::Format format, uint32_t width, uint32_t height,
         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eDepthStencilAttachment);
 
     rad::Ref<RenderPass> CreateRenderPass(const vk::RenderPassCreateInfo& createInfo);
