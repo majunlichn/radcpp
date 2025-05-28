@@ -15,8 +15,8 @@ public:
     Window();
     ~Window();
 
-    bool Create(const char* title, int w, int h, SDL_WindowFlags flags);
-    void Destroy();
+    virtual bool Create(std::string_view title, int w, int h, SDL_WindowFlags flags);
+    virtual void Destroy();
 
     SDL_Window* GetHandle() { return m_handle; }
     SDL_WindowID GetID() const { return m_id; }
@@ -39,6 +39,7 @@ public:
     bool SetPosition(int x, int y);
     bool GetPosition(int* x, int* y);
     bool SetSize(int w, int h);
+    bool Resize(int w, int h);
     bool GetSize(int* w, int* h);
     bool SetAspectRatio(float minAspect, float maxAspect);
     bool GetAspectRatio(float* minAspect, float* maxAspect);

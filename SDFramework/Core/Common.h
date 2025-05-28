@@ -39,4 +39,10 @@ public:
     Uint8* m_data = nullptr;
 }; // class SDL_Buffer
 
+// Prefer triple-buffering.
+static constexpr uint32_t MaxSwapchainImageCount = 3;
+
+// Allow a maximum of two outstanding presentation operations.
+static constexpr uint32_t MaxFrameLag = 2;
+
 } // namespace sdf

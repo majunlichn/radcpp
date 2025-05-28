@@ -25,6 +25,15 @@ set(SDF_SOURCE_FILES
     Media/Camera.h
 )
 
+if (TARGET vkpp)
+    list(APPEND SDF_SOURCE_FILES
+        Gui/VulkanWindow.h
+        Gui/VulkanWindow.cpp
+        Gui/VulkanContext.h
+        Gui/VulkanContext.cpp
+    )
+endif()
+
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SDF_SOURCE_FILES})
 
 add_library(SDFramework STATIC ${SDF_SOURCE_FILES})
@@ -38,3 +47,9 @@ target_link_libraries(SDFramework
     PUBLIC SDL3_mixer::SDL3_mixer
     PUBLIC imgui
 )
+
+if (TARGET vkpp)
+    target_link_libraries(SDFramework
+        PUBLIC vkpp
+    )
+endif()

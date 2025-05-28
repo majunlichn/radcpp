@@ -13,9 +13,9 @@ Window::~Window()
     Destroy();
 }
 
-bool Window::Create(const char* title, int w, int h, SDL_WindowFlags flags)
+bool Window::Create(std::string_view title, int w, int h, SDL_WindowFlags flags)
 {
-    m_handle = SDL_CreateWindow(title, w, h, flags);
+    m_handle = SDL_CreateWindow(title.data(), w, h, flags);
     if (m_handle)
     {
         m_id = SDL_GetWindowID(m_handle);
@@ -199,6 +199,11 @@ bool Window::SetSize(int w, int h)
         SDF_LOG(err, "SDL_SetWindowSize failed: {}", SDL_GetError());
         return false;
     }
+}
+
+bool Window::Resize(int w, int h)
+{
+    return SetSize(w, h);
 }
 
 bool Window::GetSize(int* w, int* h)
