@@ -57,10 +57,85 @@ bool Instance::Init(std::string_view appName, uint32_t appVersion,
     std::string_view engineName, uint32_t engineVersion,
     const std::set<std::string>& requiredLayers, const std::set<std::string>& requiredExtensions)
 {
-    vk::ApplicationInfo applicationInfo(appName.data(), appVersion, engineName.data(), engineVersion, m_apiVersion);
-#if !defined(_DEBUG)
-    vk::StructureChain<vk::InstanceCreateInfo> instanceCreateInfoChain = { {{}, &applicationInfo} };
+    vk::ApplicationInfo appInfo(appName.data(), appVersion, engineName.data(), engineVersion, m_apiVersion);
+
+    vk::InstanceCreateInfo instanceCreateInfo = {};
+    instanceCreateInfo.pApplicationInfo = &appInfo;
+    VK_STRUCTURE_CHAIN_BEGIN(instanceCreateInfo);
+
+    auto supportedLayers = EnumerateInstanceLayers();
+    auto supportedExtensions = EnumerateInstanceExtensions(nullptr);
+
+    for (const std::string& requiredLayer : requiredLayers)
+    {
+        if (HasLayer(supportedLayers, requiredLayer))
+        {
+            m_enabledLayers.insert(requiredLayer);
+        }
+        else
+        {
+            VKPP_LOG(warn, "Instance dones't support layer {}", requiredLayer);
+        }
+    }
+
+    for (const std::string& requiredExtension : requiredExtensions)
+    {
+        if (HasExtension(supportedExtensions, requiredExtension))
+        {
+            m_enabledExtensions.insert(requiredExtension);
+        }
+        else
+        {
+            VKPP_LOG(warn, "Instance extension not supported: {}", requiredExtension);
+        }
+    }
+
+    // Layers/extensions that should be always enabled:
+    if (HasExtension(supportedExtensions, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
+    {
+        m_enabledExtensions.insert(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    }
+    if (HasExtension(supportedExtensions, VK_KHR_SURFACE_EXTENSION_NAME))
+    {
+        m_enabledExtensions.insert(VK_KHR_SURFACE_EXTENSION_NAME);
+    }
+    if (HasExtension(supportedExtensions, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME))
+    {
+        m_enabledExtensions.insert(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+    }
+#if defined(_WIN32)
+    if (HasExtension(supportedExtensions, VK_KHR_WIN32_SURFACE_EXTENSION_NAME))
+    {
+        m_enabledExtensions.insert(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+    }
+#endif
+
+#if defined(_DEBUG)
+    bool enableValidation = true;
 #else
+    bool enableValidation = false;
+#endif
+
+    if (const char* envEnableValidation = std::getenv("VKPP_ENABLE_VALIDATION"))
+    {
+        VKPP_LOG(info, "VKPP_ENABLE_VALIDATION={}.", envEnableValidation);
+        enableValidation = rad::StrToBool(envEnableValidation);
+    }
+
+    if (enableValidation)
+    {
+        if (HasLayer(supportedLayers, "VK_LAYER_KHRONOS_validation") &&
+            HasExtension(supportedExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
+        {
+            m_enabledLayers.insert("VK_LAYER_KHRONOS_validation");
+            m_enabledExtensions.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
+        else
+        {
+            VKPP_LOG(warn, "Cannot enable validation due to missing layer VK_LAYER_KHRONOS_validation or extension VK_EXT_debug_utils!");
+        }
+    }
+
     vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfo =
     {
         {}, // flags
@@ -69,53 +144,38 @@ bool Instance::Init(std::string_view appName, uint32_t appVersion,
         vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
         vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
         vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
-        vkpp::DebugUtilsMessengerCallback
+        DebugUtilsMessengerCallback
     };
 
-    auto supportedLayers = EnumerateInstanceLayers();
-    auto supportedExtensions = EnumerateInstanceExtensions(nullptr);
+    if (m_enabledLayers.contains("VK_LAYER_KHRONOS_validation") &&
+        m_enabledExtensions.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
+    {
+        VK_STRUCTURE_CHAIN_ADD(instanceCreateInfo, debugUtilsMessengerCreateInfo);
+        enableValidation = true;
+    }
+    else
+    {
+        enableValidation = false;
+    }
 
     std::vector<const char*> enabledLayers;
-    for (const std::string& requiredLayer : requiredLayers)
+    for (const std::string& layer : m_enabledLayers)
     {
-        if (vkpp::HasLayer(supportedLayers, requiredLayer))
-        {
-            auto [iter, inserted] = m_enabledLayers.insert(requiredLayer);
-            if (inserted)
-            {
-                enabledLayers.push_back(iter->c_str());
-            }
-        }
-        else
-        {
-            VKPP_LOG(warn, "Instance dones't support layer {}", requiredLayer);
-        }
+        enabledLayers.push_back(layer.c_str());
     }
+    instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(enabledLayers.size());
+    instanceCreateInfo.ppEnabledLayerNames = enabledLayers.data();
 
     std::vector<const char*> enabledExtensions;
-    for (const std::string& requiredExtension : requiredExtensions)
+    for (const std::string& extension : m_enabledExtensions)
     {
-        if (vkpp::HasExtension(supportedExtensions, requiredExtension))
-        {
-            auto [iter, inserted] = m_enabledExtensions.insert(requiredExtension);
-            if (inserted)
-            {
-                enabledExtensions.push_back(iter->c_str());
-            }
-        }
-        else
-        {
-            VKPP_LOG(warn, "Instance extension not supported: {}", requiredExtension);
-        }
+        enabledExtensions.push_back(extension.c_str());
     }
+    instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());
+    instanceCreateInfo.ppEnabledExtensionNames = enabledExtensions.data();
 
-    vk::StructureChain<vk::InstanceCreateInfo, vk::DebugUtilsMessengerCreateInfoEXT> instanceCreateInfoChain =
-    {
-        vk::InstanceCreateInfo{{}, &applicationInfo, enabledLayers, enabledExtensions },
-        debugUtilsMessengerCreateInfo,
-    };
-#endif
-    m_wrapper = m_context.createInstance(instanceCreateInfoChain.get());
+    VK_STRUCTURE_CHAIN_END(instanceCreateInfo);
+    m_wrapper = m_context.createInstance(instanceCreateInfo);
     for (const std::string& layer : m_enabledLayers)
     {
         VKPP_LOG(info, "Instance layer enabled: {}", layer);
@@ -125,14 +185,16 @@ bool Instance::Init(std::string_view appName, uint32_t appVersion,
         VKPP_LOG(info, "Instance extension enabled: {}", extension);
     }
 
-#if defined(_DEBUG)
-    m_debugUtilsMessenger = m_wrapper.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfo);
-#endif
+    if (enableValidation)
+    {
+        m_debugUtilsMessenger = m_wrapper.createDebugUtilsMessengerEXT(debugUtilsMessengerCreateInfo);
+    }
+
     m_physicalDevices = m_wrapper.enumeratePhysicalDevices();
     for (size_t physicalDeviceIndex = 0; physicalDeviceIndex < m_physicalDevices.size(); physicalDeviceIndex++)
     {
         auto& physicalDevice = m_physicalDevices[physicalDeviceIndex];
-        VKPP_LOG(info, "PhysicalDevice#{}: {}", physicalDeviceIndex, physicalDevice.getProperties().deviceName.data());
+        VKPP_LOG(info, "GPU#{}: {}", physicalDeviceIndex, physicalDevice.getProperties().deviceName.data());
         auto queueFamilies = physicalDevice.getQueueFamilyProperties();
         const uint32_t& apiVersion = physicalDevice.getProperties().apiVersion;
         VKPP_LOG(info, "API Version: {}.{}.{}",
@@ -215,6 +277,17 @@ rad::Ref<Device> Instance::CreateDevice(vk::raii::PhysicalDevice& physicalDevice
     if (requiredExtensions.contains("VK_KHR_buffer_device_address"))
     {
         requiredExtensions.erase("VK_EXT_buffer_device_address");
+    }
+
+    if (requiredExtensions.contains("VK_EXT_debug_utils"))
+    {
+        requiredExtensions.erase("VK_EXT_debug_report");
+        requiredExtensions.erase("VK_EXT_debug_marker");
+    }
+
+    if (!requiredExtensions.contains("VK_EXT_debug_report"))
+    {
+        requiredExtensions.erase("VK_EXT_debug_marker");
     }
 
     return CreateDevice(physicalDevice, requiredExtensions);

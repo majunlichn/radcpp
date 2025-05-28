@@ -34,7 +34,7 @@ std::vector<rad::Ref<CommandBuffer>> CommandPool::Allocate(vk::CommandBufferLeve
             reinterpret_cast<const VkCommandBufferAllocateInfo*>(&allocateInfo),
             reinterpret_cast<VkCommandBuffer*>(cmdBufferHandles.data()))
     );
-    std::vector<rad::Ref<CommandBuffer>> cmdBuffers;
+    std::vector<rad::Ref<CommandBuffer>> cmdBuffers(count);
     for (size_t i = 0; i < count; ++i)
     {
         cmdBuffers[i] = RAD_NEW CommandBuffer(this, cmdBufferHandles[i]);

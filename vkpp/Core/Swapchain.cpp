@@ -3,17 +3,19 @@
 #include <vkpp/Core/Fence.h>
 #include <vkpp/Core/Semaphore.h>
 #include <vkpp/Core/Image.h>
+#include <vkpp/Core/Surface.h>
 
 namespace vkpp
 {
 
-Swapchain::Swapchain(rad::Ref<Device> device, vk::SwapchainCreateInfoKHR& createInfo) :
+Swapchain::Swapchain(rad::Ref<Device> device, const vk::SwapchainCreateInfoKHR& createInfo) :
     m_device(std::move(device))
 {
     m_wrapper = m_device->m_wrapper.createSwapchainKHR(createInfo);
 
     m_imageCount = createInfo.minImageCount;
     m_format = createInfo.imageFormat;
+    m_colorSpace = createInfo.imageColorSpace;
     m_width = createInfo.imageExtent.width;
     m_height = createInfo.imageExtent.height;
     m_presentMode = createInfo.presentMode;

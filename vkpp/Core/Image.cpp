@@ -1,5 +1,9 @@
 #include <vkpp/Core/Image.h>
 #include <vkpp/Core/Device.h>
+#include <vkpp/Core/Command.h>
+#include <vkpp/Core/Buffer.h>
+
+#include <rad/IO/Image.h>
 
 namespace vkpp
 {
@@ -113,6 +117,63 @@ ImageView::ImageView(rad::Ref<Image> image, const vk::ImageViewCreateInfo& creat
 
 ImageView::~ImageView()
 {
+}
+
+void UploadData(Device* device, Image* image, rad::ImageU8* imageData)
+{
+    rad::Ref<Buffer> stagingBuffer = Buffer::CreateStagingUpload(device, imageData->m_sizeInBytes);
+    stagingBuffer->WriteHost(imageData->m_data);
+
+    rad::Ref<CommandBuffer> cmdBuffer = device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+    cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+    vk::BufferImageCopy copy = {};
+    copy.bufferOffset = 0;
+    copy.bufferRowLength = imageData->m_width;
+    copy.bufferImageHeight = imageData->m_height;
+    copy.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    copy.imageSubresource.mipLevel = 0;
+    copy.imageSubresource.baseArrayLayer = 0;
+    copy.imageSubresource.layerCount = 1;
+    copy.imageOffset = vk::Offset3D{ 0, 0, 0 };
+    copy.imageExtent = vk::Extent3D{ static_cast<uint32_t>(imageData->m_width), static_cast<uint32_t>(imageData->m_height), 1 };
+    cmdBuffer->TransitLayoutFromCurrent(image,
+        vk::PipelineStageFlagBits2::eCopy,
+        vk::AccessFlagBits2::eTransferWrite,
+        vk::ImageLayout::eTransferDstOptimal);
+    cmdBuffer->CopyBufferToImage(stagingBuffer->GetHandle(), image->GetHandle(), image->GetCurrentLayout(), copy);
+    cmdBuffer->TransitLayoutFromCurrent(image,
+        vk::PipelineStageFlagBits2::eAllCommands,
+        vk::AccessFlagBits2::eShaderRead,
+        vk::ImageLayout::eShaderReadOnlyOptimal);
+    cmdBuffer->End();
+    device->GetQueue(vkpp::QueueFamily::Universal)->
+        ExecuteSync(cmdBuffer->GetHandle(), {}, {});
+}
+
+rad::Ref<Image> CreateTextureFromFile_R8G8B8A8_SRGB(rad::Ref<Device> device, std::string_view fileName)
+{
+    rad::Ref<Image> image;
+    rad::Ref<rad::ImageU8> imageData = RAD_NEW rad::ImageU8();
+    if (imageData->LoadFromFile(fileName, 4))
+    {
+        image = device->CreateImage2D_Sampled(
+            vk::Format::eR8G8B8A8Srgb, imageData->m_width, imageData->m_height);
+        UploadData(device.get(), image.get(), imageData.get());
+    }
+    return image;
+}
+
+rad::Ref<Image> CreateTextureFromMemory_R8G8B8A8_SRGB(rad::Ref<Device> device, const void* buffer, size_t bufferSize)
+{
+    rad::Ref<Image> image;
+    rad::Ref<rad::ImageU8> imageData = RAD_NEW rad::ImageU8();
+    if (imageData->LoadFromMemory(buffer, bufferSize, 4))
+    {
+        image = device->CreateImage2D_Sampled(
+            vk::Format::eR8G8B8A8Srgb, imageData->m_width, imageData->m_height);
+        UploadData(device.get(), image.get(), imageData.get());
+    }
+    return image;
 }
 
 } // namespace vkpp

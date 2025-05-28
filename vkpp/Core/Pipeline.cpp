@@ -5,6 +5,16 @@
 namespace vkpp
 {
 
+ShaderModule::ShaderModule(rad::Ref<Device> device, const vk::ShaderModuleCreateInfo& createInfo) :
+    m_device(std::move(device))
+{
+    m_wrapper = m_device->m_wrapper.createShaderModule(createInfo);
+}
+
+ShaderModule::~ShaderModule()
+{
+}
+
 rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromGLSL(
     rad::Ref<Device> device, vk::ShaderStageFlagBits stage,
     const std::string& fileName, const std::string& source,
@@ -17,9 +27,7 @@ rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromGLSL(
     {
         shaderStage = RAD_NEW ShaderStageInfo();
         shaderStage->m_stage = stage;
-        vk::ShaderModuleCreateInfo shaderModuleInfo = {};
-        shaderModuleInfo.setCode(code);
-        shaderStage->m_module = vk::raii::ShaderModule(device->m_wrapper, shaderModuleInfo);
+        shaderStage->m_module = device->CreateShaderModule(code);
         shaderStage->m_entryPoint = "main";
     }
     else
@@ -49,14 +57,9 @@ rad::Ref<ShaderStageInfo> Pipeline::CreateShaderStageFromGLSL(
     std::vector<uint32_t> code = compiler.CompileGLSL(stage, fileName, source, entryPoint, macros, opt);
     if (!code.empty())
     {
-        vk::ShaderModuleCreateInfo shaderModuleCreateInfo;
-        shaderModuleCreateInfo.codeSize = code.size() * sizeof(uint32_t);
-        shaderModuleCreateInfo.pCode = code.data();
-        vk::raii::ShaderModule shaderModule = m_device->m_wrapper.createShaderModule(shaderModuleCreateInfo);
-
         rad::Ref<ShaderStageInfo> shaderStage = RAD_NEW ShaderStageInfo();
         shaderStage->m_stage = stage;
-        shaderStage->m_module = std::move(shaderModule);
+        shaderStage->m_module = m_device->CreateShaderModule(code);
         shaderStage->m_entryPoint = "main";
 
         return shaderStage;

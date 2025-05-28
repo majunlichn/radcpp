@@ -10,6 +10,7 @@ set(VKPP_HEADERS
     Core/Event.h
     Core/Buffer.h
     Core/Image.h
+    Core/Sampler.h
     Core/RenderPass.h
     Core/Framebuffer.h
     Core/Descriptor.h
@@ -17,6 +18,7 @@ set(VKPP_HEADERS
     Core/ShaderIncluder.h
     Core/ShaderCompiler.h
     Core/Pipeline.h
+    Core/Surface.h
     Core/Swapchain.h
     Compute/Tensor.h
     Compute/TensorOp.h
@@ -33,11 +35,13 @@ set(VKPP_SOURCE_FILES
     Core/Event.cpp
     Core/Buffer.cpp
     Core/Image.cpp
+    Core/Sampler.cpp
     Core/RenderPass.cpp
     Core/Framebuffer.cpp
     Core/Descriptor.cpp
     Core/ShaderCompiler.cpp
     Core/Pipeline.cpp
+    Core/Surface.cpp
     Core/Swapchain.cpp
     Compute/Tensor.cpp
     Compute/TensorOp.cpp

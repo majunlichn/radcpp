@@ -8,6 +8,7 @@ namespace vkpp
 {
 
 class Instance;
+class Queue;
 class CommandPool;
 class CommandBuffer;
 class Fence;
@@ -20,13 +21,17 @@ class Buffer;
 class BufferView;
 class Image;
 class ImageView;
+class Sampler;
 class RenderPass;
 class Framebuffer;
 class ShaderStageInfo;
 class PipelineLayout;
+class ShaderModule;
 class Pipeline;
 class GraphicsPipeline;
 class ComputePipeline;
+class Surface;
+class Swapchain;
 
 class Device : public rad::RefCounted<Device>
 {
@@ -35,8 +40,13 @@ public:
         const std::set<std::string>& requiredExtensions);
     ~Device();
 
+    vk::PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
     vk::Device GetHandle() const { return static_cast<vk::Device>(m_wrapper); }
     const DeviceDispatcher* GetDispatcher() const { return m_wrapper.getDispatcher(); }
+    PFN_vkVoidFunction GetProcAddr(const char* name) const
+    {
+        return m_wrapper.getProcAddr(name);
+    }
 
     const char* GetName() const { return m_properties.deviceName; }
 
@@ -44,6 +54,10 @@ public:
     vk::raii::PhysicalDevice m_physicalDevice;
     vk::raii::Device m_wrapper = { nullptr };
     std::array<uint32_t, size_t(QueueFamily::Count)> m_queueFamilyIndices;
+
+    vk::SurfaceCapabilitiesKHR GetCapabilities(vk::SurfaceKHR surface) const;
+    std::vector<vk::SurfaceFormatKHR> GetSurfaceFormats(vk::SurfaceKHR surface) const;
+    std::vector<vk::PresentModeKHR> GetPresentModes(vk::SurfaceKHR surface) const;
 
     uint32_t GetQueueFamilyIndex(QueueFamily queueFamily) const
     {
@@ -65,6 +79,11 @@ public:
         return m_queueFamilyProperties[GetQueueFamilyIndex(queueFamily)];
     }
 
+    Queue* GetQueue(QueueFamily queueFamily)
+    {
+        return m_queues[rad::ToUnderlying(queueFamily)].get();
+    }
+
     std::set<std::string, rad::StringLess> m_enabledExtensions;
     bool IsExtensionEnabled(std::string_view name) const
     {
@@ -73,7 +92,8 @@ public:
 
     rad::Ref<CommandBuffer> AllocateTemporaryCommandBuffer(QueueFamily queueFamily);
 
-    rad::Ref<CommandPool> CreateCommandPool(QueueFamily queueFamily, vk::CommandPoolCreateFlags flags);
+    rad::Ref<CommandPool> CreateCommandPool(QueueFamily queueFamily,
+        vk::CommandPoolCreateFlags flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 
     rad::Ref<Fence> CreateFence(vk::FenceCreateFlags flags = {});
     rad::Ref<Fence> CreateFenceSignaled();
@@ -95,10 +115,14 @@ public:
         vk::FormatFeatureFlags optimalTilingFeatures,
         vk::FormatFeatureFlags bufferFeatures);
 
-    rad::Ref<Image> CreateImage2DColorAttachment(vk::Format format, uint32_t width, uint32_t height,
+    rad::Ref<Image> CreateImage2D_Sampled(vk::Format format, uint32_t width, uint32_t height,
+        vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled);
+    rad::Ref<Image> CreateImage2D_ColorAttachment(vk::Format format, uint32_t width, uint32_t height,
         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eColorAttachment);
-    rad::Ref<Image> CreateImage2DDepthStencilAttachment(vk::Format format, uint32_t width, uint32_t height,
+    rad::Ref<Image> CreateImage2D_DepthStencilAttachment(vk::Format format, uint32_t width, uint32_t height,
         vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eDepthStencilAttachment);
+
+    rad::Ref<Sampler> CreateSampler(const vk::SamplerCreateInfo& createInfo);
 
     rad::Ref<RenderPass> CreateRenderPass(const vk::RenderPassCreateInfo& createInfo);
     rad::Ref<Framebuffer> CreateFramebuffer(const vk::FramebufferCreateInfo& createInfo);
@@ -109,8 +133,13 @@ public:
     rad::Ref<PipelineLayout> CreateLayout(vk::PipelineLayoutCreateFlags flags, rad::ArrayRef<vk::DescriptorSetLayout> setLayouts,
         rad::ArrayRef<vk::PushConstantRange> pushConstantRanges);
 
+    rad::Ref<ShaderModule> CreateShaderModule(rad::ArrayRef<uint32_t> code);
+    rad::Ref<GraphicsPipeline> CreateGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo);
     rad::Ref<ComputePipeline> CreateComputePipeline(
         rad::Ref<ShaderStageInfo> shaderStage, vk::PipelineLayout layout);
+
+    rad::Ref<Swapchain> CreateSwapchain(const vk::SwapchainCreateInfoKHR& createInfo);
+    vk::Result Present(QueueFamily queueFamily, const vk::PresentInfoKHR& presentInfo);
 
     vk::PhysicalDeviceProperties m_properties;
     vk::PhysicalDeviceProperties2 m_properties2;
@@ -129,15 +158,33 @@ public:
 
     VmaAllocator m_allocator = nullptr;
 
-    vk::Queue m_queues[rad::ToUnderlying(QueueFamily::Count)];
-    void Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence);
-    void ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos);
-    void Execute(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence);
-    void ExecuteSync(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores);
+    rad::Ref<Queue> m_queues[rad::ToUnderlying(QueueFamily::Count)];
 
     // Internal command pools for transient allocation.
     std::shared_ptr<vk::raii::CommandPool> m_cmdPools[rad::ToUnderlying(QueueFamily::Count)];
 
 }; // class Device
+
+class Queue : public rad::RefCounted<Queue>
+{
+public:
+    Queue(Device* device, uint32_t queueFamilyIndex, uint32_t queueIndex);
+    ~Queue();
+
+    vk::Queue GetHandle() const { return m_wrapper; }
+
+    void Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence);
+    void ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos);
+    void Execute(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+        rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence);
+    void ExecuteSync(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+        rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores);
+
+    Device* m_device;
+    uint32_t m_queueFamilyIndex;
+    uint32_t m_queueIndex;
+    vk::raii::Queue m_wrapper = { nullptr };
+
+}; // class Queue
 
 } // namespace vkpp

@@ -52,10 +52,19 @@ public:
     rad::Ref<DescriptorPool> m_descPool;
     vk::raii::DescriptorSet m_wrapper = { nullptr };
 
+    void Update(
+        rad::ArrayRef<vk::WriteDescriptorSet> const& writes,
+        rad::ArrayRef<vk::CopyDescriptorSet> const& copies);
+
     void UpdateBuffers(uint32_t binding, uint32_t arrayElement, vk::DescriptorType type,
         vk::ArrayProxy<const vk::DescriptorBufferInfo> bufferInfos);
     void UpdateBuffers(uint32_t binding, uint32_t arrayElement, vk::DescriptorType type,
         vk::ArrayProxy<Buffer*> buffers);
+
+    void UpdateCombinedImageSamplers(uint32_t binding, uint32_t arrayElement,
+        rad::ArrayRef<vk::DescriptorImageInfo> imageInfos);
+    void UpdateCombinedImageSampler(uint32_t binding, uint32_t arrayElement,
+        vk::Sampler sampler, vk::ImageView imageView, vk::ImageLayout layout);
 
 }; // class DescriptorSet
 

@@ -159,7 +159,8 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
         cmdBuffer->SetPipelineBarrier2(dependency);
         cmdBuffer->End();
 
-        m_device->ExecuteSync({}, { cmdBuffer->GetHandle() }, {});
+        m_device->GetQueue(vkpp::QueueFamily::Universal)->
+            ExecuteSync(cmdBuffer->GetHandle(), {}, {});
         stagingBuffer->ReadHost(data, 0, dataSize);
     }
 }
@@ -191,7 +192,8 @@ void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataS
         cmdBuffer->SetPipelineBarrier2(dependency);
         cmdBuffer->End();
 
-        m_device->ExecuteSync({}, { cmdBuffer->GetHandle() }, {});
+        m_device->GetQueue(vkpp::QueueFamily::Universal)->
+            ExecuteSync(cmdBuffer->GetHandle(), {}, {});
     }
 }
 

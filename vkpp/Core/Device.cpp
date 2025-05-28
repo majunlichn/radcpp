@@ -7,9 +7,12 @@
 #include <vkpp/Core/Descriptor.h>
 #include <vkpp/Core/Buffer.h>
 #include <vkpp/Core/Image.h>
+#include <vkpp/Core/Sampler.h>
 #include <vkpp/Core/RenderPass.h>
 #include <vkpp/Core/Framebuffer.h>
 #include <vkpp/Core/Pipeline.h>
+#include <vkpp/Core/Surface.h>
+#include <vkpp/Core/Swapchain.h>
 
 namespace vkpp
 {
@@ -24,18 +27,18 @@ Device::Device(
     const uint32_t& apiVersion = m_properties.apiVersion;
     if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 1, 0))
     {
-        VK_STRUCTURE_CHAIN_CREATE(m_properties2);
+        VK_STRUCTURE_CHAIN_BEGIN(m_properties2);
         if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
         {
-            VK_STRUCTURE_CHAIN_APPEND(m_properties2, m_vk11Properties);
+            VK_STRUCTURE_CHAIN_ADD(m_properties2, m_vk11Properties);
         }
         if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
         {
-            VK_STRUCTURE_CHAIN_APPEND(m_properties2, m_vk12Properties);
+            VK_STRUCTURE_CHAIN_ADD(m_properties2, m_vk12Properties);
         }
         if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 3, 0))
         {
-            VK_STRUCTURE_CHAIN_APPEND(m_properties2, m_vk13Properties);
+            VK_STRUCTURE_CHAIN_ADD(m_properties2, m_vk13Properties);
         }
         VK_STRUCTURE_CHAIN_END(m_properties2);
         m_physicalDevice.getDispatcher()->vkGetPhysicalDeviceProperties2(
@@ -49,18 +52,18 @@ Device::Device(
     m_features = m_physicalDevice.getFeatures();
     if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 1, 0))
     {
-        VK_STRUCTURE_CHAIN_CREATE(m_features2);
+        VK_STRUCTURE_CHAIN_BEGIN(m_features2);
         if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
         {
-            VK_STRUCTURE_CHAIN_APPEND(m_features2, m_Vulkan11Features);
+            VK_STRUCTURE_CHAIN_ADD(m_features2, m_Vulkan11Features);
         }
         if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
         {
-            VK_STRUCTURE_CHAIN_APPEND(m_features2, m_Vulkan12Features);
+            VK_STRUCTURE_CHAIN_ADD(m_features2, m_Vulkan12Features);
         }
         if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 3, 0))
         {
-            VK_STRUCTURE_CHAIN_APPEND(m_features2, m_Vulkan13Features);
+            VK_STRUCTURE_CHAIN_ADD(m_features2, m_Vulkan13Features);
         }
         VK_STRUCTURE_CHAIN_END(m_features2);
         m_physicalDevice.getDispatcher()->vkGetPhysicalDeviceFeatures2(
@@ -175,7 +178,7 @@ Device::Device(
 
     for (int i = 0; i < rad::ToUnderlying(QueueFamily::Count); i++)
     {
-        m_queues[i] = m_wrapper.getQueue(m_queueFamilyIndices[i], 0);
+        m_queues[i] = RAD_NEW Queue(this, m_queueFamilyIndices[i], 0);
     }
 
     // Vma Initialization
@@ -220,6 +223,21 @@ Device::~Device()
         vmaDestroyAllocator(m_allocator);
         m_allocator = VK_NULL_HANDLE;
     }
+}
+
+vk::SurfaceCapabilitiesKHR Device::GetCapabilities(vk::SurfaceKHR surface) const
+{
+    return m_physicalDevice.getSurfaceCapabilitiesKHR(surface);
+}
+
+std::vector<vk::SurfaceFormatKHR> Device::GetSurfaceFormats(vk::SurfaceKHR surface) const
+{
+    return m_physicalDevice.getSurfaceFormatsKHR(surface);
+}
+
+std::vector<vk::PresentModeKHR> Device::GetPresentModes(vk::SurfaceKHR surface) const
+{
+    return m_physicalDevice.getSurfacePresentModesKHR(surface);
 }
 
 rad::Ref<CommandBuffer> Device::AllocateTemporaryCommandBuffer(QueueFamily queueFamily)
@@ -328,7 +346,28 @@ vk::Format Device::FindFormat(
     return vk::Format::eUndefined;
 }
 
-rad::Ref<Image> Device::CreateImage2DColorAttachment(
+rad::Ref<Image> Device::CreateImage2D_Sampled(vk::Format format, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
+{
+    vk::ImageCreateInfo imageInfo;
+    imageInfo.imageType = vk::ImageType::e2D;
+    imageInfo.format = format;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = GetMaxMipLevel(width, height);
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = vk::SampleCountFlagBits::e1;
+    imageInfo.tiling = vk::ImageTiling::eOptimal;
+    imageInfo.usage = usage;
+    imageInfo.initialLayout = vk::ImageLayout::ePreinitialized;
+    VmaAllocationCreateInfo allocCreateInfo = {};
+    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+    rad::Ref<Image> image = RAD_NEW Image(this, imageInfo, allocCreateInfo);
+    image->SetCurrentLayout(imageInfo.initialLayout);
+    return image;
+}
+
+rad::Ref<Image> Device::CreateImage2D_ColorAttachment(
     vk::Format format, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
 {
     vk::ImageCreateInfo imageInfo;
@@ -348,7 +387,7 @@ rad::Ref<Image> Device::CreateImage2DColorAttachment(
     return RAD_NEW Image(this, imageInfo, allocCreateInfo);
 }
 
-rad::Ref<Image> Device::CreateImage2DDepthStencilAttachment(
+rad::Ref<Image> Device::CreateImage2D_DepthStencilAttachment(
     vk::Format format, uint32_t width, uint32_t height, vk::ImageUsageFlags usage)
 {
     vk::ImageCreateInfo imageInfo;
@@ -366,6 +405,11 @@ rad::Ref<Image> Device::CreateImage2DDepthStencilAttachment(
     VmaAllocationCreateInfo allocCreateInfo = {};
     allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
     return RAD_NEW Image(this, imageInfo, allocCreateInfo);
+}
+
+rad::Ref<Sampler> Device::CreateSampler(const vk::SamplerCreateInfo& createInfo)
+{
+    return RAD_NEW Sampler(this, createInfo);
 }
 
 rad::Ref<RenderPass> Device::CreateRenderPass(const vk::RenderPassCreateInfo& createInfo)
@@ -406,6 +450,18 @@ rad::Ref<PipelineLayout> Device::CreateLayout(vk::PipelineLayoutCreateFlags flag
     return CreateLayout(createInfo);
 }
 
+rad::Ref<ShaderModule> Device::CreateShaderModule(rad::ArrayRef<uint32_t> code)
+{
+    vk::ShaderModuleCreateInfo createInfo = {};
+    createInfo.setCode(code);
+    return RAD_NEW ShaderModule(this, createInfo);
+}
+
+rad::Ref<GraphicsPipeline> Device::CreateGraphicsPipeline(const vk::GraphicsPipelineCreateInfo& createInfo)
+{
+    return RAD_NEW GraphicsPipeline(this, createInfo, nullptr);
+}
+
 rad::Ref<ComputePipeline> Device::CreateComputePipeline(
     rad::Ref<ShaderStageInfo> shaderStage, vk::PipelineLayout layout)
 {
@@ -418,20 +474,47 @@ rad::Ref<ComputePipeline> Device::CreateComputePipeline(
     return RAD_NEW ComputePipeline(this, pipelineInfo, nullptr);
 }
 
-void Device::Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)
+rad::Ref<Swapchain> Device::CreateSwapchain(const vk::SwapchainCreateInfoKHR& createInfo)
 {
-    m_queues[0].submit(submitInfos, fence, *m_wrapper.getDispatcher());
+    return RAD_NEW Swapchain(this, createInfo);
 }
 
-void Device::ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos)
+vk::Result Device::Present(QueueFamily queueFamily, const vk::PresentInfoKHR& presentInfo)
+{
+    vk::Queue queueHandle = GetQueue(queueFamily)->GetHandle();
+    VkResult result = m_wrapper.getDispatcher()->vkQueuePresentKHR(
+        static_cast<VkQueue>(queueHandle),
+        reinterpret_cast<const VkPresentInfoKHR*>(&presentInfo));
+    return static_cast<vk::Result>(result);
+}
+
+Queue::Queue(Device* device, uint32_t queueFamilyIndex, uint32_t queueIndex) :
+    m_device(device),
+    m_queueFamilyIndex(queueFamilyIndex),
+    m_queueIndex(queueIndex)
+{
+    m_wrapper = m_device->m_wrapper.getQueue(queueFamilyIndex, queueIndex);
+}
+
+Queue::~Queue()
+{
+}
+
+void Queue::Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)
+{
+    m_wrapper.submit(submitInfos, fence);
+}
+
+void Queue::ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos)
 {
     vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
-    vk::raii::Fence fence(m_wrapper, fenceInfo);
-    m_queues[0].submit(submitInfos, fence, *m_wrapper.getDispatcher());
-    VK_CHECK(m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
+    vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
+    m_wrapper.submit(submitInfos, fence);
+    VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
 }
 
-void Device::Execute(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence)
+void Queue::Execute(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+    rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence)
 {
     vk::SubmitInfo submitInfo = {};
     rad::SmallVector<vk::Semaphore, 8> waitSemaphoreHandles(waits.size());
@@ -451,12 +534,13 @@ void Device::Execute(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Comm
     Execute(submitInfo, fence);
 }
 
-void Device::ExecuteSync(rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::CommandBuffer> cmdBuffers, rad::ArrayRef<vk::Semaphore> signalSemaphores)
+void Queue::ExecuteSync(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+    rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores)
 {
     vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
-    vk::raii::Fence fence(m_wrapper, fenceInfo);
-    Execute(waits, cmdBuffers, signalSemaphores, fence);
-    VK_CHECK(m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
+    vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
+    Execute(cmdBuffers, waits, signalSemaphores, fence);
+    VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
 }
 
 } // namespace vkpp

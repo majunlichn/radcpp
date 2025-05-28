@@ -9,6 +9,19 @@ namespace vkpp
 
 class Device;
 
+class ShaderModule : public rad::RefCounted<ShaderModule>
+{
+public:
+    ShaderModule(rad::Ref<Device> device, const vk::ShaderModuleCreateInfo& createInfo);
+    ~ShaderModule();
+
+    vk::ShaderModule GetHandle() const { return m_wrapper; }
+
+    rad::Ref<Device> m_device;
+    vk::raii::ShaderModule m_wrapper = { nullptr };
+
+}; // class ShaderModule
+
 class ShaderStageInfo : public rad::RefCounted<ShaderStageInfo>
 {
 public:
@@ -38,7 +51,7 @@ public:
         vk::PipelineShaderStageCreateInfo createInfo = {};
         createInfo.flags = m_flags;
         createInfo.stage = m_stage;
-        createInfo.module = m_module;
+        createInfo.module = m_module->GetHandle();
         createInfo.pName = m_entryPoint.c_str();
         createInfo.pSpecializationInfo = nullptr;
         if (!m_specMapEntries.empty() && !m_specData.empty())
@@ -50,7 +63,7 @@ public:
 
     vk::PipelineShaderStageCreateFlags m_flags = {};
     vk::ShaderStageFlagBits m_stage = vk::ShaderStageFlagBits::eCompute;
-    vk::raii::ShaderModule m_module = { nullptr };
+    rad::Ref<ShaderModule> m_module;
     std::string m_entryPoint;
     vk::SpecializationInfo m_specInfo;
     std::vector<vk::SpecializationMapEntry> m_specMapEntries;
@@ -76,6 +89,7 @@ class Pipeline : public rad::RefCounted<Pipeline>
 public:
     Pipeline(rad::Ref<Device> device, vk::PipelineBindPoint bindPoint) :
         m_device(std::move(device)), m_bindPoint(bindPoint){}
+    virtual ~Pipeline() {}
 
     vk::Pipeline GetHandle() const { return m_wrapper; };
     vk::PipelineBindPoint GetBindPoint() const { return m_bindPoint; };

@@ -10,12 +10,16 @@ class Fence;
 class Semaphore;
 class Image;
 class ImageView;
+class Surface;
 
 class Swapchain : public rad::RefCounted<Swapchain>
 {
 public:
-    Swapchain(rad::Ref<Device> device, vk::SwapchainCreateInfoKHR& createInfo);
+    Swapchain(rad::Ref<Device> device, const vk::SwapchainCreateInfoKHR& createInfo);
     ~Swapchain();
+
+    // Retain the surface.
+    void SetSurface(rad::Ref<Surface> surface) { m_surface = std::move(surface); }
 
     vk::SwapchainKHR GetHandle() const { return m_wrapper; }
     uint32_t GetImageCount() const { return m_imageCount; }
@@ -36,8 +40,10 @@ public:
     ImageView* GetCurrentImageView() { return m_imageViews[m_currentImageIndex].get(); }
 
     rad::Ref<Device>                    m_device;
+    rad::Ref<Surface>                   m_surface;
     vk::raii::SwapchainKHR              m_wrapper = { nullptr };
     vk::Format                          m_format = vk::Format::eUndefined;
+    vk::ColorSpaceKHR                   m_colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
     uint32_t                            m_imageCount = 0;
     uint32_t                            m_width = 0;
     uint32_t                            m_height = 0;

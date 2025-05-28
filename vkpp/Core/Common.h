@@ -30,6 +30,7 @@
 namespace vkpp
 {
 
+using InstanceDispatcher = vk::raii::detail::InstanceDispatcher;
 using DeviceDispatcher = vk::raii::detail::DeviceDispatcher;
 
 enum class QueueFamily
@@ -47,8 +48,8 @@ struct SubmitWaitInfo
     vk::PipelineStageFlagBits dstStageMask;
 };
 
-#define VK_STRUCTURE_CHAIN_CREATE(Head) auto Head##ChainNext = &Head.pNext;
-#define VK_STRUCTURE_CHAIN_APPEND(Head, Next) do { *Head##ChainNext = &Next; Head##ChainNext = &Next.pNext; } while(0)
+#define VK_STRUCTURE_CHAIN_BEGIN(Head) auto Head##ChainNext = &Head.pNext;
+#define VK_STRUCTURE_CHAIN_ADD(Head, Next) do { *Head##ChainNext = &Next; Head##ChainNext = &Next.pNext; } while(0)
 #define VK_STRUCTURE_CHAIN_END(Head) do { *Head##ChainNext = nullptr; } while(0)
 
 template<typename T, typename Head>
@@ -73,7 +74,7 @@ inline bool IsVersionMatchOrGreater(uint32_t version, uint32_t major, uint32_t m
 }
 
 template<typename Layers>
-bool HasLayer(Layers layers, std::string_view name)
+inline bool HasLayer(const Layers& layers, std::string_view name)
 {
     for (const auto& layer : layers)
     {
@@ -85,12 +86,38 @@ bool HasLayer(Layers layers, std::string_view name)
     return false;
 }
 
+template<>
+inline bool HasLayer(const std::vector<const char*>& layers, std::string_view name)
+{
+    for (const auto& layer : layers)
+    {
+        if (rad::StrEqual(layer, name))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 template<typename Extensions>
-bool HasExtension(Extensions extensions, std::string_view name)
+inline bool HasExtension(const Extensions& extensions, std::string_view name)
 {
     for (const auto& extension : extensions)
     {
         if (rad::StrEqual(extension.extensionName, name))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+template<>
+inline bool HasExtension(const std::vector<const char*>& extensions, std::string_view name)
+{
+    for (const auto& extension : extensions)
+    {
+        if (rad::StrEqual(extension, name))
         {
             return true;
         }

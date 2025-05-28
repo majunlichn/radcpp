@@ -14,6 +14,12 @@ public:
     ~Instance();
 
     vk::Instance GetHandle() const { return static_cast<vk::Instance>(m_wrapper); }
+    const InstanceDispatcher* GetDispatcher() const { return m_wrapper.getDispatcher(); }
+
+    PFN_vkVoidFunction GetProcAddr(const char* name) const
+    {
+        return m_wrapper.getProcAddr(name);
+    }
 
     std::vector<VkLayerProperties> EnumerateInstanceLayers();
     std::vector<VkExtensionProperties> EnumerateInstanceExtensions(const char* layerName);

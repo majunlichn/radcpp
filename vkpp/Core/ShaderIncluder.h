@@ -114,7 +114,7 @@ public:
     }
 
     static shaderc_include_result* MakeErrorIncludeResult(const char* message) {
-        return new shaderc_include_result{ "", 0, message, strlen(message) };
+        return RAD_NEW shaderc_include_result{ "", 0, message, strlen(message) };
     }
 
     // Resolves a requested source file of a given type from a requesting
@@ -138,7 +138,7 @@ public:
         // time.  Protect the included_files.
 
         // Read the file and save its full path and contents into stable addresses.
-        FileInfo* new_file_info = new FileInfo{ full_path, {} };
+        FileInfo* new_file_info = RAD_NEW FileInfo{ full_path, {} };
         if (!ReadFile(full_path, &(new_file_info->contents))) {
             return MakeErrorIncludeResult("Cannot read file");
         }
@@ -149,7 +149,7 @@ public:
             included_files_.insert(full_path);
         }
 
-        return new shaderc_include_result{
+        return RAD_NEW shaderc_include_result{
             new_file_info->full_path.data(), new_file_info->full_path.length(),
             new_file_info->contents.data(), new_file_info->contents.size(),
             new_file_info };

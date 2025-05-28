@@ -37,6 +37,18 @@ std::vector<rad::Ref<DescriptorSet>> DescriptorPool::Allocate(vk::ArrayProxy<vk:
     return descSets;
 }
 
+
+DescriptorSetLayout::DescriptorSetLayout(rad::Ref<Device> device, const vk::DescriptorSetLayoutCreateInfo& createInfo) :
+    m_device(std::move(device))
+{
+    m_wrapper = m_device->m_wrapper.createDescriptorSetLayout(createInfo);
+}
+
+DescriptorSetLayout::~DescriptorSetLayout()
+{
+}
+
+
 DescriptorSet::DescriptorSet(rad::Ref<Device> device, vk::DescriptorPool descPoolHandle, vk::DescriptorSet descSetHandle) :
     m_device(std::move(device))
 {
@@ -48,6 +60,13 @@ DescriptorSet::DescriptorSet(rad::Ref<DescriptorPool> descPool, vk::DescriptorSe
     m_descPool(std::move(descPool))
 {
     m_wrapper = vk::raii::DescriptorSet(m_device->m_wrapper, descSetHandle, m_descPool->GetHandle());
+}
+
+void DescriptorSet::Update(
+    rad::ArrayRef<vk::WriteDescriptorSet> const& writes,
+    rad::ArrayRef<vk::CopyDescriptorSet> const& copies)
+{
+    m_device->m_wrapper.updateDescriptorSets(writes, copies);
 }
 
 void DescriptorSet::UpdateBuffers(
@@ -84,14 +103,27 @@ void DescriptorSet::UpdateBuffers(
     m_device->m_wrapper.updateDescriptorSets(write, {});
 }
 
-DescriptorSetLayout::DescriptorSetLayout(rad::Ref<Device> device, const vk::DescriptorSetLayoutCreateInfo& createInfo) :
-    m_device(std::move(device))
+void DescriptorSet::UpdateCombinedImageSamplers(
+    uint32_t binding, uint32_t arrayElement, rad::ArrayRef<vk::DescriptorImageInfo> imageInfos)
 {
-    m_wrapper = m_device->m_wrapper.createDescriptorSetLayout(createInfo);
+    vk::WriteDescriptorSet write = {};
+    write.dstSet = this->GetHandle();
+    write.dstBinding = binding;
+    write.dstArrayElement = arrayElement;
+    write.descriptorCount = imageInfos.size32();
+    write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+    write.pImageInfo = imageInfos.data();
+    m_device->m_wrapper.updateDescriptorSets(write, {});
 }
 
-DescriptorSetLayout::~DescriptorSetLayout()
+void DescriptorSet::UpdateCombinedImageSampler(
+    uint32_t binding, uint32_t arrayElement, vk::Sampler sampler, vk::ImageView imageView, vk::ImageLayout layout)
 {
+    vk::DescriptorImageInfo imageInfo = {};
+    imageInfo.sampler = sampler;
+    imageInfo.imageView = imageView;
+    imageInfo.imageLayout = layout;
+    UpdateCombinedImageSamplers(binding, arrayElement, imageInfo);
 }
 
 } // namespace vkpp

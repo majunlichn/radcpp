@@ -44,14 +44,14 @@ void TensorOp::CreatePipelineLayouts(size_t tensorCount,
         bindings.emplace_back(i + 1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute);
     }
     m_descSetLayout = m_device->CreateDescriptorSetLayout(bindings);
-    m_pipelineLayout = m_device->CreatePipelineLayout({ m_descSetLayout->GetHandle() }, pushConstantRanges);
+    m_pipelineLayout = m_device->CreatePipelineLayout(m_descSetLayout->GetHandle(), pushConstantRanges);
 
     m_descPool = m_device->CreateDescriptorPool(1,
         {
             vk::DescriptorPoolSize(vk::DescriptorType::eUniformBuffer, 1),
             vk::DescriptorPoolSize(vk::DescriptorType::eStorageBuffer, tensorCount),
         });
-    m_descSet = m_descPool->Allocate({ m_descSetLayout->GetHandle() })[0];
+    m_descSet = m_descPool->Allocate(m_descSetLayout->GetHandle())[0];
 }
 
 void TensorOp::SetUniforms(const void* data, size_t dataSize)
@@ -90,7 +90,8 @@ void TensorOp::Execute(glm::uvec3 groupCount)
     cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
     cmdBuffer->End();
 
-    m_device->ExecuteSync(m_executeWaits, { cmdBuffer->GetHandle() }, m_executeSignalSemaphores);
+    m_device->GetQueue(QueueFamily::Universal)->
+        ExecuteSync(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
 }
 
 TensorOpElementWiseUnary::TensorOpElementWiseUnary(rad::Ref<Device> device) :
