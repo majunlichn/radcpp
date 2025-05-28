@@ -1,6 +1,8 @@
 #pragma once
 
 #include <rad/Core/Platform.h>
+#include <rad/Core/Memory.h>
+#include <rad/Core/RefCounted.h>
 #include <rad/Core/String.h>
 
 #include <glm/glm.hpp>
@@ -9,7 +11,7 @@ namespace rad
 {
 
 // 8-bits unsigned-normalized data.
-class ImageU8
+class ImageU8 : public rad::RefCounted<ImageU8>
 {
 public:
     ImageU8();
@@ -25,6 +27,7 @@ public:
     // Load image into 8-bits unorm format, gamma and scale for hdr to ldr convertion.
     // Please refer to: https://github.com/nothings/stb/blob/master/stb_image.h
     bool LoadFromFile(std::string_view filename, int channelCount, float gamma = 2.2f, float scale = 1.0f);
+    bool LoadFromMemory(const void* buffer, size_t bufferSize, int channelCount, float gamma = 2.2f, float scale = 1.0f);
 
     // i in rows; j in colums.
     unsigned char* GetPixel(int i, int j)
@@ -82,7 +85,7 @@ public:
 }; // class ImageU8
 
 // Float32 HDR data.
-class ImageFP32
+class ImageFP32 : public rad::RefCounted<ImageFP32>
 {
 public:
     ImageFP32();

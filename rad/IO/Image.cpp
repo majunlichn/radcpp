@@ -72,6 +72,32 @@ bool ImageU8::LoadFromFile(std::string_view filename, int channelCount, float ga
     m_data = stbi_load(filename.data(), &m_width, &m_height, &m_channelCount, channelCount);
     if (m_data)
     {
+        if (channelCount)
+        {
+            m_channelCount = channelCount;
+        }
+        m_sizeInBytes = size_t(m_width) * size_t(m_height) *
+            size_t(m_channelCount) * sizeof(unsigned char);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool ImageU8::LoadFromMemory(const void* buffer, size_t bufferSize, int channelCount, float gamma, float scale)
+{
+    assert(m_data == nullptr);
+    stbi_hdr_to_ldr_gamma(gamma);
+    stbi_hdr_to_ldr_scale(scale);
+    m_data = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(buffer), bufferSize, &m_width, &m_height, &m_channelCount, channelCount);
+    if (m_data)
+    {
+        if (channelCount)
+        {
+            m_channelCount = channelCount;
+        }
         m_sizeInBytes = size_t(m_width) * size_t(m_height) *
             size_t(m_channelCount) * sizeof(unsigned char);
         return true;
