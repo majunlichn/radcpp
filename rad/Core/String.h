@@ -61,6 +61,8 @@ bool StrIsBin(std::string_view str);
 // Check whether this string is a valid numeric string (a base 10 real number).
 bool StrIsNumeric(std::string_view str);
 
+bool StrToBool(std::string_view str);
+
 std::vector<std::string> StrSplit(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr = true);
 std::vector<std::string_view> StrSplitViews(

@@ -274,6 +274,24 @@ bool StrIsNumeric(std::string_view str)
     return true;
 }
 
+bool StrToBool(std::string_view str)
+{
+    if (rad::StrCaseEqual(str, "1") ||
+        rad::StrCaseEqual(str, "true"))
+    {
+        return true;
+    }
+    else if (rad::StrCaseEqual(str, "0") ||
+        rad::StrCaseEqual(str, "false"))
+    {
+        return false;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 std::vector<std::string> StrSplit(
     std::string_view str, std::string_view delimiters, bool skipEmptySubStr)
 {
