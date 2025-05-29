@@ -20,6 +20,18 @@ void CubeDemo::ParseCommandLine(int argc, char* argv[])
         if (rad::StrCaseEqual(argv[i], "--gpu-index") && (i < argc - 1))
         {
             m_gpuIndex = std::stoi(argv[i + 1]);
+            if (m_gpuIndex < 0)
+            {
+                fprintf(stderr, "Invalid GPU index %d!\n", m_gpuIndex);
+                m_gpuIndex = -1;
+            }
+            i++;
+            continue;
+        }
+
+        if (rad::StrCaseEqual(argv[i], "--gpu-name") && (i < argc - 1))
+        {
+            m_gpuName = argv[i + 1];
             i++;
             continue;
         }
@@ -109,15 +121,25 @@ bool CubeDemo::Init(int argc, char* argv[])
     }
 
     const auto& physicalDevices = m_instance->m_physicalDevices;
-    if ((m_gpuIndex >= 0) && (m_gpuIndex < physicalDevices.size()))
+    if ((m_gpuIndex != -1) && (m_gpuIndex >= physicalDevices.size()))
     {
-        vk::raii::PhysicalDevice physicalDevice = physicalDevices[m_gpuIndex];
-        m_device = m_instance->CreateDevice(physicalDevice);
+        VKPP_LOG(info, "Invalid GPU index {}!", m_gpuIndex);
+        m_gpuIndex = -1;
     }
-    else
+    if (!m_gpuName.empty())
     {
-        m_device = CreateVulkanDevice(m_gpuIndex);
+        for (uint32_t i = 0; i < physicalDevices.size(); i++)
+        {
+            const vk::PhysicalDeviceProperties deviceProps = physicalDevices[i].getProperties();
+            std::string_view deviceName(deviceProps.deviceName);
+            if (deviceName.find(m_gpuName) != deviceName.npos)
+            {
+                m_gpuIndex = i;
+                break;
+            }
+        }
     }
+    m_device = CreateVulkanDevice(m_gpuIndex);
 
     VKPP_LOG(info, "Logical device created on GPU#{}: {}", m_gpuIndex, m_device->GetName());
 

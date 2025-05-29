@@ -20,17 +20,12 @@ public:
     virtual bool Create(std::string_view title, int w, int h, SDL_WindowFlags flags) override;
     virtual void Destroy() override;
 
+    static std::set<std::string> GetVulkanInstanceExtensionsRequired();
+    rad::Ref<vkpp::Instance> CreateVulkanInstance(std::string_view appName, uint32_t appVersion);
     vkpp::Surface* GetVulkanSurface() const { return m_surface.get(); }
     bool RecreateVulkanSurface();
-
-    std::set<std::string> GetVulkanInstanceExtensionNamesRequired();
-    rad::Ref<vkpp::Instance> CreateVulkanInstance(std::string_view appName, uint32_t appVersion);
+    // @param gpuIndex: index of the GPU to use, -1 for the default GPU (prefer the first discrete one).
     rad::Ref<vkpp::Device> CreateVulkanDevice(int& gpuIndex);
-    rad::Ref<vkpp::Device> CreateVulkanDevice()
-    {
-        int gpuIndex = 0;
-        return CreateVulkanDevice(gpuIndex);
-    }
 
     virtual bool OnEvent(const SDL_Event& event) override;
     virtual void OnResized(int width, int height) override;

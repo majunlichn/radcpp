@@ -26,6 +26,7 @@ public:
     virtual void OnKeyUp(const SDL_KeyboardEvent& keyUp) override;
 
     int32_t m_gpuIndex = -1;
+    std::string m_gpuName;
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;

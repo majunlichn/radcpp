@@ -36,6 +36,37 @@ void VulkanWindow::Destroy()
     Window::Destroy();
 }
 
+std::set<std::string> VulkanWindow::GetVulkanInstanceExtensionsRequired()
+{
+    Uint32 count = 0;
+    const char* const* ppExtensionNames = SDL_Vulkan_GetInstanceExtensions(&count);
+    std::set<std::string> extensionNames;
+    for (Uint32 i = 0; i < count; ++i)
+    {
+        extensionNames.insert(ppExtensionNames[i]);
+    }
+    return extensionNames;
+}
+
+rad::Ref<vkpp::Instance> VulkanWindow::CreateVulkanInstance(
+    std::string_view appName, uint32_t appVersion)
+{
+    rad::Ref<vkpp::Instance> instance = RAD_NEW vkpp::Instance();
+    std::set<std::string> instanceLayers = {};
+    std::set<std::string> instanceExtensions = GetVulkanInstanceExtensionsRequired();
+    if (instance->Init(
+        appName, appVersion,
+        appName, appVersion,
+        instanceLayers, instanceExtensions))
+    {
+        return instance;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 rad::Ref<vkpp::Surface> VulkanWindow::CreateVulkanSurface()
 {
     VkSurfaceKHR surfaceHandle = VK_NULL_HANDLE;
@@ -52,72 +83,46 @@ bool VulkanWindow::RecreateVulkanSurface()
     return (m_surface != nullptr);
 }
 
-std::set<std::string> VulkanWindow::GetVulkanInstanceExtensionNamesRequired()
-{
-    Uint32 count = 0;
-    const char* const* ppExtensionNames = SDL_Vulkan_GetInstanceExtensions(&count);
-    std::set<std::string> extensionNames;
-    for (Uint32 i = 0; i < count; ++i)
-    {
-        extensionNames.insert(ppExtensionNames[i]);
-    }
-    return extensionNames;
-}
-
-rad::Ref<vkpp::Instance> VulkanWindow::CreateVulkanInstance(std::string_view appName, uint32_t appVersion)
-{
-    rad::Ref<vkpp::Instance> instance = RAD_NEW vkpp::Instance();
-    std::set<std::string> instanceLayers = {};
-    std::set<std::string> instanceExtensions = GetVulkanInstanceExtensionNamesRequired();
-    if (instance->Init(
-        appName, appVersion,
-        appName, appVersion,
-        instanceLayers, instanceExtensions))
-    {
-        return instance;
-    }
-    else
-    {
-        return nullptr;
-    }
-}
-
 rad::Ref<vkpp::Device> VulkanWindow::CreateVulkanDevice(int& gpuIndex)
 {
     const auto& physicalDevices = m_instance->m_physicalDevices;
-    int priorityPrev = 0;
-    for (uint32_t i = 0; i < physicalDevices.size(); i++)
+    if (gpuIndex == -1)
     {
-        const auto physicalDeviceProperties = physicalDevices[i].getProperties();
-        assert(physicalDeviceProperties.deviceType <= vk::PhysicalDeviceType::eCpu);
-
-        auto surfaceSupport = physicalDevices[i].getSurfaceSupportKHR(0, m_surface->GetHandle());
-        if (surfaceSupport != vk::True)
+        int priorityPrev = 0;
+        for (uint32_t i = 0; i < physicalDevices.size(); i++)
         {
-            continue;
-        }
+            const vk::PhysicalDeviceProperties deviceProps = physicalDevices[i].getProperties();
+            assert(deviceProps.deviceType <= vk::PhysicalDeviceType::eCpu);
 
-        std::map<vk::PhysicalDeviceType, int> deviceTypePriorities =
-        {
-            { vk::PhysicalDeviceType::eDiscreteGpu,     5 },
-            { vk::PhysicalDeviceType::eIntegratedGpu,   4 },
-            { vk::PhysicalDeviceType::eVirtualGpu,      3 },
-            { vk::PhysicalDeviceType::eCpu,             2 },
-            { vk::PhysicalDeviceType::eOther,           1 },
-        };
+            auto surfaceSupport = physicalDevices[i].getSurfaceSupportKHR(0, m_surface->GetHandle());
+            if (surfaceSupport != vk::True)
+            {
+                continue;
+            }
 
-        int priority = -1;
-        if (deviceTypePriorities.find(physicalDeviceProperties.deviceType) != deviceTypePriorities.end())
-        {
-            priority = deviceTypePriorities[physicalDeviceProperties.deviceType];
-        }
+            std::map<vk::PhysicalDeviceType, int> deviceTypePriorities =
+            {
+                { vk::PhysicalDeviceType::eDiscreteGpu,     5 },
+                { vk::PhysicalDeviceType::eIntegratedGpu,   4 },
+                { vk::PhysicalDeviceType::eVirtualGpu,      3 },
+                { vk::PhysicalDeviceType::eCpu,             2 },
+                { vk::PhysicalDeviceType::eOther,           1 },
+            };
 
-        if (priority > priorityPrev)
-        {
-            gpuIndex = i;
-            priorityPrev = priority;
+            int priority = -1;
+            if (deviceTypePriorities.find(deviceProps.deviceType) != deviceTypePriorities.end())
+            {
+                priority = deviceTypePriorities[deviceProps.deviceType];
+            }
+
+            if (priority > priorityPrev)
+            {
+                gpuIndex = i;
+                priorityPrev = priority;
+            }
         }
     }
+    assert((gpuIndex >= 0) && (gpuIndex < static_cast<int>(physicalDevices.size())));
     vk::raii::PhysicalDevice physicalDevice = physicalDevices[gpuIndex];
     return m_instance->CreateDevice(physicalDevice);
 }
