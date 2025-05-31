@@ -14,6 +14,7 @@
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
+#include <implot/implot.h>
 
 namespace sdf
 {
@@ -46,6 +47,7 @@ public:
     rad::Ref<vkpp::Device> m_device;
     VulkanWindow* m_window = nullptr;
     ImGuiContext* m_gui = nullptr;
+    ImPlotContext* m_plot = nullptr;
 
     rad::Ref<vkpp::Swapchain> m_swapchain;
     vk::PresentModeKHR m_presentMode = vk::PresentModeKHR::eFifo;

@@ -14,6 +14,11 @@ set(IMGUI_SOURCE_FILES
     backends/imgui_impl_sdl3.h
     backends/imgui_impl_sdlrenderer3.cpp
     backends/imgui_impl_sdlrenderer3.h
+    implot/implot_demo.cpp
+    implot/implot_internal.h
+    implot/implot_items.cpp
+    implot/implot.cpp
+    implot/implot.h
 )
 
 if(DEFINED ENV{VULKAN_SDK})

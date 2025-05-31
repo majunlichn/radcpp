@@ -5,6 +5,7 @@
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_sdlrenderer3.h>
+#include <implot/implot.h>
 
 namespace sdf
 {
@@ -26,7 +27,8 @@ private:
     Window* m_window;
     Renderer* m_renderer;
 
-    ImGuiContext* m_context = nullptr;
+    ImGuiContext* m_gui = nullptr;
+    ImPlotContext* m_plot = nullptr;
 
 }; // class GuiContext
 

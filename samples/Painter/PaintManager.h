@@ -16,6 +16,7 @@ public:
     std::shared_ptr<spdlog::logger> m_logger;
 
     bool m_showDemoWindow = false;
+    bool m_showPlotDemoWindow = false;
     bool m_showAboutWindow = false;
 
 }; // class PaintManager

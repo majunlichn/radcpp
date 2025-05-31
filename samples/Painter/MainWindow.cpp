@@ -65,6 +65,11 @@ void MainWindow::OnIdle()
         ImGui::ShowDemoWindow(&m_manager->m_showDemoWindow);
     }
 
+    if (m_manager->m_showPlotDemoWindow)
+    {
+        ImPlot::ShowDemoWindow(&m_manager->m_showPlotDemoWindow);
+    }
+
     if (m_manager->m_showAboutWindow)
     {
         ImGui::ShowAboutWindow(&m_manager->m_showAboutWindow);
@@ -188,9 +193,13 @@ void MainWindow::OnDestroyed()
 void MainWindow::OnKeyDown(const SDL_KeyboardEvent& keyDown)
 {
     m_logger->trace("OnKeyDown: {}", SDL_GetKeyName(keyDown.key));
-    if (keyDown.key == SDLK_TAB)
+    if (keyDown.key == SDLK_F1)
     {
         m_manager->m_showDemoWindow = !m_manager->m_showDemoWindow;
+    }
+    if (keyDown.key == SDLK_F2)
+    {
+        m_manager->m_showPlotDemoWindow = !m_manager->m_showPlotDemoWindow;
     }
 }
 

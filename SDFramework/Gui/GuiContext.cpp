@@ -17,7 +17,8 @@ GuiContext::~GuiContext()
 bool GuiContext::Init()
 {
     IMGUI_CHECKVERSION();
-    m_context = ImGui::CreateContext();
+    m_gui = ImGui::CreateContext();
+    m_plot = ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;   // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;    // Enable Gamepad Controls
@@ -50,9 +51,18 @@ bool GuiContext::Init()
 
 void GuiContext::Destroy()
 {
-    ImGui_ImplSDLRenderer3_Shutdown();
-    ImGui_ImplSDL3_Shutdown();
-    ImGui::DestroyContext();
+    if (m_plot)
+    {
+        ImPlot::DestroyContext(m_plot);
+        m_plot = nullptr;
+    }
+    if (m_gui)
+    {
+        ImGui_ImplSDLRenderer3_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
+        ImGui::DestroyContext();
+        m_gui = nullptr;
+    }
 }
 
 bool GuiContext::ProcessEvent(const SDL_Event& event)
