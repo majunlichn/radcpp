@@ -1,8 +1,10 @@
 ## Custom
 
+imported/*.zip
 imported/SDL/
 imported/SDL_mixer/
 imported/mysql*
+imported/slang/
 build/
 vcpkg_installed/
 compile_commands.json

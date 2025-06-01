@@ -43,7 +43,7 @@ std::string ShaderCompiler::Preprocess(
 
     for (const auto& macro : macros)
     {
-        options.AddMacroDefinition(macro.m_name, macro.m_definition);
+        options.AddMacroDefinition(macro.m_name, macro.m_value);
     }
     if (!rad::StrEqual(entryPoint, "main"))
     {
@@ -70,7 +70,7 @@ std::vector<uint32_t> ShaderCompiler::CompileGLSL(
     shaderc::CompileOptions options;
     for (const ShaderMacro& macro : macros)
     {
-        options.AddMacroDefinition(macro.m_name, macro.m_definition);
+        options.AddMacroDefinition(macro.m_name, macro.m_value);
     }
     if (!rad::StrEqual(entryPoint, "main"))
     {

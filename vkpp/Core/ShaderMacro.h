@@ -16,14 +16,14 @@ struct ShaderMacro
         this->m_name = name;
     }
 
-    ShaderMacro(std::string_view name, std::string_view definition)
+    ShaderMacro(std::string_view name, std::string_view value)
     {
         this->m_name = name;
-        this->m_definition = definition;
+        this->m_value = value;
     }
 
     std::string m_name;
-    std::string m_definition;
+    std::string m_value;
 
 }; // class ShaderMacro
 

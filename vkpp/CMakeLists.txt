@@ -17,6 +17,7 @@ set(VKPP_HEADERS
     Core/ShaderMacro.h
     Core/ShaderIncluder.h
     Core/ShaderCompiler.h
+    Core/SlangSession.h
     Core/Pipeline.h
     Core/Surface.h
     Core/Swapchain.h
@@ -40,6 +41,7 @@ set(VKPP_SOURCE_FILES
     Core/Framebuffer.cpp
     Core/Descriptor.cpp
     Core/ShaderCompiler.cpp
+    Core/SlangSession.cpp
     Core/Pipeline.cpp
     Core/Surface.cpp
     Core/Swapchain.cpp
@@ -65,3 +67,11 @@ if(WIN32)
         PUBLIC "$ENV{VULKAN_SDK}/Lib/SPIRV-Tools-shared.lib"
     )
 endif()
+
+find_package(slang CONFIG REQUIRED PATHS ${RADCPP_ROOT}/imported/slang/cmake)
+target_include_directories(vkpp
+    PUBLIC "${RADCPP_ROOT}/imported/slang/include"
+)
+target_link_libraries(vkpp
+    PUBLIC slang::slang
+)

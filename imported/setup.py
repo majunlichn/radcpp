@@ -60,8 +60,12 @@ def build_SDL_mixer():
 
 def setup_windows(tasks):
     if "mysql" in tasks:
-        download_and_extract_zip("https://dev.mysql.com/get/Downloads/Connector-C++/mysql-connector-c++-9.1.0-winx64.zip",
-                                 "mysql-connector-c++-9.1.0-winx64.zip")
+        download_and_extract_zip(url="https://dev.mysql.com/get/Downloads/Connector-C++/mysql-connector-c++-9.1.0-winx64.zip",
+                                 filename="mysql-connector-c++-9.1.0-winx64.zip")
+    if "slang" in tasks:
+        download_and_extract_zip(url="https://github.com/shader-slang/slang/releases/download/v2025.10/slang-2025.10-windows-x86_64.zip",
+                                 filename="slang.zip",
+                                 extract_path="slang")
 
 def main() -> int:
     tasks = sys.argv[1:]
