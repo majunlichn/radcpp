@@ -5,6 +5,8 @@
 
 #include <rad/IO/Image.h>
 
+#include <vulkan/utility/vk_format_utils.h>
+
 namespace vkpp
 {
 
@@ -157,7 +159,7 @@ rad::Ref<Image> CreateTextureFromFile_R8G8B8A8_SRGB(rad::Ref<Device> device, std
     if (imageData->LoadFromFile(fileName, 4))
     {
         image = device->CreateImage2D_Sampled(
-            vk::Format::eR8G8B8A8Srgb, imageData->m_width, imageData->m_height);
+            vk::Format::eR8G8B8A8Srgb, imageData->m_width, imageData->m_height, 1);
         UploadData(device.get(), image.get(), imageData.get());
     }
     return image;
@@ -170,10 +172,65 @@ rad::Ref<Image> CreateTextureFromMemory_R8G8B8A8_SRGB(rad::Ref<Device> device, c
     if (imageData->LoadFromMemory(buffer, bufferSize, 4))
     {
         image = device->CreateImage2D_Sampled(
-            vk::Format::eR8G8B8A8Srgb, imageData->m_width, imageData->m_height);
+            vk::Format::eR8G8B8A8Srgb, imageData->m_width, imageData->m_height, 1);
         UploadData(device.get(), image.get(), imageData.get());
     }
     return image;
+}
+
+void CopyBufferToImage(Device* device, Buffer* buffer, Image* image, rad::Span<vk::BufferImageCopy> copyInfos)
+{
+    rad::Ref<CommandBuffer> commandBuffer = device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+    commandBuffer->Begin();
+    // VUID-vkCmdCopyBufferToImage-dstImageLayout-01396
+    if (image->GetCurrentLayout() != vk::ImageLayout::eGeneral &&
+        image->GetCurrentLayout() != vk::ImageLayout::eTransferDstOptimal &&
+        image->GetCurrentLayout() != vk::ImageLayout::eSharedPresentKHR)
+    {
+        commandBuffer->TransitLayoutFromCurrent(image,
+            vk::PipelineStageFlagBits2::eCopy,
+            vk::AccessFlagBits2::eTransferWrite,
+            vk::ImageLayout::eTransferDstOptimal);
+    }
+    commandBuffer->CopyBufferToImage(buffer->GetHandle(), image->GetHandle(), image->GetCurrentLayout(), copyInfos);
+    commandBuffer->TransitLayoutFromCurrent(image,
+        vk::PipelineStageFlagBits2::eAllCommands,
+        vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eMemoryRead,
+        vk::ImageLayout::eShaderReadOnlyOptimal);
+    commandBuffer->End();
+    device->GetQueue(QueueFamily::Universal)->ExecuteSync(commandBuffer->GetHandle(), {}, {});
+}
+
+void CopyBufferToImage2D(Device* device, Buffer* buffer, VkDeviceSize bufferOffset,
+    Image* image, uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount)
+{
+    std::vector<vk::BufferImageCopy> copyInfos(levelCount);
+    vk::Extent3D blockExtent = vkuFormatTexelBlockExtent(static_cast<VkFormat>(image->GetFormat()));
+    uint32_t blockSize = vkuFormatElementSize(static_cast<VkFormat>(image->GetFormat()));
+    for (uint32_t i = 0; i < levelCount; i++)
+    {
+        uint32_t mipLevel = baseMipLevel + i;
+        uint32_t mipWidth = std::max<uint32_t>(image->GetWidth() >> mipLevel, 1);
+        uint32_t mipHeight = std::max<uint32_t>(image->GetHeight() >> mipLevel, 1);
+
+        copyInfos[i].bufferOffset = bufferOffset;
+        copyInfos[i].bufferRowLength = rad::RoundUpToMultiple(mipWidth, blockExtent.width);
+        copyInfos[i].bufferImageHeight = rad::RoundUpToMultiple(mipHeight, blockExtent.height);
+        copyInfos[i].imageSubresource.aspectMask = GetImageAspectFromFormat(image->GetFormat());
+        copyInfos[i].imageSubresource.mipLevel = mipLevel;
+        copyInfos[i].imageSubresource.baseArrayLayer = baseArrayLayer;
+        copyInfos[i].imageSubresource.layerCount = layerCount;
+        copyInfos[i].imageOffset.x = 0;
+        copyInfos[i].imageOffset.y = 0;
+        copyInfos[i].imageOffset.z = 0;
+        copyInfos[i].imageExtent.width = mipWidth;
+        copyInfos[i].imageExtent.height = mipHeight;
+        copyInfos[i].imageExtent.depth = 1;
+
+        bufferOffset += (copyInfos[i].bufferRowLength / blockExtent.width) *
+            (copyInfos[i].bufferImageHeight / blockExtent.height) * blockSize * layerCount;
+    }
+    CopyBufferToImage(device, buffer, image, copyInfos);
 }
 
 } // namespace vkpp
