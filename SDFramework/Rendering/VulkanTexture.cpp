@@ -14,13 +14,13 @@ rad::Ref<vkpp::Image> CreateTexture2DFromFile(vkpp::Device* device, std::string_
     CMP_MipSet mipSet = {};
     if (CMP_LoadTexture(fileName.data(), &mipSet) != CMP_OK)
     {
-        VKPP_LOG(err, "CMP_LoadTexture failed: fileName={}", fileName);
+        SDF_LOG(err, "Failed to load texture: {}", fileName);
         return nullptr;
     }
     // For GPU, the texture must have width and height as a multiple of 4.
     if ((mipSet.m_nWidth % 4) > 0 || (mipSet.m_nHeight % 4) > 0)
     {
-        VKPP_LOG(err, "Cannot generate mipmap for image \"{}\": the size {}x{} is not multiple of 4!",
+        SDF_LOG(err, "Cannot generate mipmap for image: {} (the size {}x{} is not multiple of 4)",
             fileName, mipSet.m_nWidth, mipSet.m_nHeight);
         genMipmaps = false;
     }
