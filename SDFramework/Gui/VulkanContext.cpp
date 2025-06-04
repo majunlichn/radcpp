@@ -93,12 +93,12 @@ void VulkanContext::Resize(uint32_t width, uint32_t height)
 
     vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;    // TODO: support HDR?
     m_renderTarget = m_device->CreateImage2D_ColorAttachment(
-        colorFormat, width, height, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment);
+        colorFormat, width, height);
     m_renderTargetView = m_renderTarget->CreateView2D();
 
     vk::Format overlayFormat = vk::Format::eR8G8B8A8Unorm;
     m_overlay = m_device->CreateImage2D_ColorAttachment(
-        overlayFormat, width, height, vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment);
+        overlayFormat, width, height);
     m_overlayView = m_overlay->CreateView2D();
 
     std::string vertSource =
