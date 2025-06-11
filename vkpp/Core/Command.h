@@ -5,14 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-class CommandBuffer;
-class Buffer;
-class BufferView;
-class Image;
-class ImageView;
-class Pipeline;
-
 class CommandPool : public rad::RefCounted<CommandPool>
 {
 public:

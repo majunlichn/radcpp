@@ -6,8 +6,6 @@
 namespace vkpp
 {
 
-class Device;
-
 class Sampler : public rad::RefCounted<Sampler>
 {
 public:

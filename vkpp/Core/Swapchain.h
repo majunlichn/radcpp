@@ -5,13 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-class Fence;
-class Semaphore;
-class Image;
-class ImageView;
-class Surface;
-
 class Swapchain : public rad::RefCounted<Swapchain>
 {
 public:

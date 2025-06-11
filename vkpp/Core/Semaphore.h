@@ -5,8 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-
 class Semaphore : public rad::RefCounted<Semaphore>
 {
 public:

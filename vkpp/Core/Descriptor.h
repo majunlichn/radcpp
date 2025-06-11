@@ -5,12 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-class Buffer;
-class Image;
-
-class DescriptorSet;
-
 class DescriptorPool : public rad::RefCounted<DescriptorPool>
 {
 public:
@@ -42,13 +36,11 @@ public:
 class DescriptorSet : public rad::RefCounted<DescriptorSet>
 {
 public:
-    DescriptorSet(rad::Ref<Device> device, vk::DescriptorPool descPoolHandle, vk::DescriptorSet descSetHandle);
     DescriptorSet(rad::Ref<DescriptorPool> descPool, vk::DescriptorSet descSetHandle);
     ~DescriptorSet() {}
 
     vk::DescriptorSet GetHandle() const { return m_wrapper; }
 
-    rad::Ref<Device> m_device;
     rad::Ref<DescriptorPool> m_descPool;
     vk::raii::DescriptorSet m_wrapper = { nullptr };
 

@@ -5,9 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-class BufferView;
-
 class Buffer : public rad::RefCounted<Buffer>
 {
 public:

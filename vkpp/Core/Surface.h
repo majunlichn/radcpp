@@ -5,8 +5,6 @@
 namespace vkpp
 {
 
-class Instance;
-
 class Surface : public rad::RefCounted<Surface>
 {
 public:

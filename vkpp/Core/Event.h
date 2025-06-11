@@ -5,8 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-
 class Event : public rad::RefCounted<Event>
 {
 public:

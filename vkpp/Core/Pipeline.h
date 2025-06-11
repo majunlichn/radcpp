@@ -7,8 +7,6 @@
 namespace vkpp
 {
 
-class Device;
-
 class ShaderModule : public rad::RefCounted<ShaderModule>
 {
 public:

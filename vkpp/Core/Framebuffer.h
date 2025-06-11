@@ -5,8 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-
 class Framebuffer : public rad::RefCounted<Framebuffer>
 {
 public:

@@ -33,7 +33,7 @@ namespace vkpp
 using InstanceDispatcher = vk::raii::detail::InstanceDispatcher;
 using DeviceDispatcher = vk::raii::detail::DeviceDispatcher;
 
-enum class QueueFamily
+enum class QueueFamily : uint32_t
 {
     Universal,
     Graphics,
@@ -158,5 +158,35 @@ bool IsUnsignedIntegerType(vk::ComponentTypeKHR type);
 bool IsIntegerType(vk::ComponentTypeKHR type);
 
 vk::ImageAspectFlags GetImageAspectFromFormat(vk::Format format);
+
+
+// Forward Declarations
+
+class Instance;
+class Device;
+class Queue;
+class CommandPool;
+class CommandBuffer;
+class Fence;
+class Semaphore;
+class Event;
+class DescriptorPool;
+class DescriptorSetLayout;
+class DescriptorSet;
+class Buffer;
+class BufferView;
+class Image;
+class ImageView;
+class Sampler;
+class RenderPass;
+class Framebuffer;
+class ShaderStageInfo;
+class PipelineLayout;
+class ShaderModule;
+class Pipeline;
+class GraphicsPipeline;
+class ComputePipeline;
+class Surface;
+class Swapchain;
 
 } // namespace vkpp

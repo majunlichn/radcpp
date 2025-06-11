@@ -13,7 +13,7 @@ namespace vkpp
 Instance::Instance()
 {
     VKPP_LOG(trace, __func__);
-    m_context.getDispatcher()->vkEnumerateInstanceVersion(&m_apiVersion);
+    m_apiVersion = m_context.enumerateInstanceVersion();
     VKPP_LOG(info, "Instance Version: {}.{}.{}",
         VK_VERSION_MAJOR(m_apiVersion), VK_VERSION_MINOR(m_apiVersion), VK_VERSION_PATCH(m_apiVersion));
 }
@@ -23,37 +23,18 @@ Instance::~Instance()
     VKPP_LOG(trace, __func__);
 }
 
-std::vector<VkLayerProperties> Instance::EnumerateInstanceLayers()
+std::vector<vk::LayerProperties> Instance::EnumerateInstanceLayers()
 {
-    std::vector<VkLayerProperties> layers;
-    uint32_t count = 0;
-    VK_CHECK(m_context.getDispatcher()->
-        vkEnumerateInstanceLayerProperties(&count, nullptr));
-    if (count > 0)
-    {
-        layers.resize(count);
-        VK_CHECK(m_context.getDispatcher()->
-            vkEnumerateInstanceLayerProperties(&count, layers.data()));
-    }
-    return layers;
+    return m_context.enumerateInstanceLayerProperties();
 }
 
-std::vector<VkExtensionProperties> Instance::EnumerateInstanceExtensions(const char* layerName)
+std::vector<vk::ExtensionProperties> Instance::EnumerateInstanceExtensions(vk::Optional<const std::string> layerName)
 {
-    std::vector<VkExtensionProperties> extensions;
-    uint32_t count = 0;
-    VK_CHECK(m_context.getDispatcher()->
-        vkEnumerateInstanceExtensionProperties(layerName, &count, nullptr));
-    if (count > 0)
-    {
-        extensions.resize(count);
-        VK_CHECK(m_context.getDispatcher()->
-            vkEnumerateInstanceExtensionProperties(layerName, &count, extensions.data()));
-    }
-    return extensions;
+    return m_context.enumerateInstanceExtensionProperties(layerName);
 }
 
-bool Instance::Init(std::string_view appName, uint32_t appVersion,
+bool Instance::Init(
+    std::string_view appName, uint32_t appVersion,
     std::string_view engineName, uint32_t engineVersion,
     const std::set<std::string>& requiredLayers, const std::set<std::string>& requiredExtensions)
 {
@@ -207,26 +188,6 @@ bool Instance::Init(std::string_view appName, uint32_t appVersion,
     }
 
     return !m_physicalDevices.empty();
-}
-
-bool Instance::Init(std::string_view appName, uint32_t appVersion,
-    std::string_view engineName, uint32_t engineVersion)
-{
-    std::set<std::string> instanceLayers;
-#if defined(_DEBUG)
-    instanceLayers.insert("VK_LAYER_KHRONOS_validation");
-#endif
-    std::set<std::string> requiredExtension;
-    requiredExtension.insert(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-    requiredExtension.insert(VK_KHR_SURFACE_EXTENSION_NAME);
-    requiredExtension.insert(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
-#if defined(_WIN32)
-    requiredExtension.insert(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#endif
-#if defined(_DEBUG)
-    requiredExtension.insert(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif
-    return Init(appName, appVersion, engineName, engineVersion, instanceLayers, requiredExtension);
 }
 
 rad::Ref<Device> Instance::CreateDevice()

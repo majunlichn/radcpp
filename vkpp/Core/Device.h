@@ -7,32 +7,6 @@
 namespace vkpp
 {
 
-class Instance;
-class Queue;
-class CommandPool;
-class CommandBuffer;
-class Fence;
-class Semaphore;
-class Event;
-class DescriptorPool;
-class DescriptorSetLayout;
-class DescriptorSet;
-class Buffer;
-class BufferView;
-class Image;
-class ImageView;
-class Sampler;
-class RenderPass;
-class Framebuffer;
-class ShaderStageInfo;
-class PipelineLayout;
-class ShaderModule;
-class Pipeline;
-class GraphicsPipeline;
-class ComputePipeline;
-class Surface;
-class Swapchain;
-
 class Device : public rad::RefCounted<Device>
 {
 public:

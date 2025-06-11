@@ -5,8 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-
 class Instance : public rad::RefCounted<Instance>
 {
 public:
@@ -21,15 +19,18 @@ public:
         return m_wrapper.getProcAddr(name);
     }
 
-    std::vector<VkLayerProperties> EnumerateInstanceLayers();
-    std::vector<VkExtensionProperties> EnumerateInstanceExtensions(const char* layerName);
+    std::vector<vk::LayerProperties> EnumerateInstanceLayers();
+    std::vector<vk::ExtensionProperties> EnumerateInstanceExtensions(vk::Optional<const std::string> layerName = nullptr);
 
     bool Init(std::string_view appName, uint32_t appVersion,
         std::string_view engineName, uint32_t engineVersion,
         const std::set<std::string>& requiredLayers, const std::set<std::string>& requiredExtensions);
     // Init with common instance layers and extensions.
     bool Init(std::string_view appName, uint32_t appVersion,
-        std::string_view engineName, uint32_t engineVersion);
+        std::string_view engineName, uint32_t engineVersion)
+    {
+        return Init(appName, appVersion, engineName, engineVersion, {}, {});
+    }
     bool Init(std::string_view appName, uint32_t appVersion)
     {
         return Init(appName, appVersion, appName, appVersion);

@@ -5,8 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-
 class RenderPass : public rad::RefCounted<RenderPass>
 {
 public:

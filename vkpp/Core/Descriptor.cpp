@@ -48,25 +48,17 @@ DescriptorSetLayout::~DescriptorSetLayout()
 {
 }
 
-
-DescriptorSet::DescriptorSet(rad::Ref<Device> device, vk::DescriptorPool descPoolHandle, vk::DescriptorSet descSetHandle) :
-    m_device(std::move(device))
-{
-    m_wrapper = vk::raii::DescriptorSet(m_device->m_wrapper, descSetHandle, descPoolHandle);
-}
-
 DescriptorSet::DescriptorSet(rad::Ref<DescriptorPool> descPool, vk::DescriptorSet descSetHandle) :
-    m_device(descPool->m_device),
     m_descPool(std::move(descPool))
 {
-    m_wrapper = vk::raii::DescriptorSet(m_device->m_wrapper, descSetHandle, m_descPool->GetHandle());
+    m_wrapper = vk::raii::DescriptorSet(m_descPool->m_device->m_wrapper, descSetHandle, m_descPool->GetHandle());
 }
 
 void DescriptorSet::Update(
     rad::ArrayRef<vk::WriteDescriptorSet> const& writes,
     rad::ArrayRef<vk::CopyDescriptorSet> const& copies)
 {
-    m_device->m_wrapper.updateDescriptorSets(writes, copies);
+    m_descPool->m_device->m_wrapper.updateDescriptorSets(writes, copies);
 }
 
 void DescriptorSet::UpdateBuffers(
@@ -79,7 +71,7 @@ void DescriptorSet::UpdateBuffers(
     write.dstArrayElement = arrayElement;
     write.descriptorType = type;
     write.setBufferInfo(bufferInfos);
-    m_device->m_wrapper.updateDescriptorSets(write, {});
+    m_descPool->m_device->m_wrapper.updateDescriptorSets(write, {});
 }
 
 void DescriptorSet::UpdateBuffers(
@@ -100,7 +92,7 @@ void DescriptorSet::UpdateBuffers(
     write.dstArrayElement = arrayElement;
     write.descriptorType = type;
     write.setBufferInfo(bufferInfos);
-    m_device->m_wrapper.updateDescriptorSets(write, {});
+    m_descPool->m_device->m_wrapper.updateDescriptorSets(write, {});
 }
 
 void DescriptorSet::UpdateCombinedImageSamplers(
@@ -113,7 +105,7 @@ void DescriptorSet::UpdateCombinedImageSamplers(
     write.descriptorCount = imageInfos.size32();
     write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
     write.pImageInfo = imageInfos.data();
-    m_device->m_wrapper.updateDescriptorSets(write, {});
+    m_descPool->m_device->m_wrapper.updateDescriptorSets(write, {});
 }
 
 void DescriptorSet::UpdateCombinedImageSampler(

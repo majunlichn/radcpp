@@ -5,8 +5,6 @@
 namespace vkpp
 {
 
-class Device;
-
 class Fence : public rad::RefCounted<Fence>
 {
 public:
