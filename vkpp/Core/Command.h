@@ -12,16 +12,24 @@ public:
     ~CommandPool();
 
     vk::CommandPool GetHandle() const { return static_cast<vk::CommandPool>(m_wrapper); }
-    const DeviceDispatcher* GetDispatcher() const;
 
-    std::vector<rad::Ref<CommandBuffer>> Allocate(vk::CommandBufferLevel level, uint32_t count);
-    std::vector<rad::Ref<CommandBuffer>> AllocatePrimary(uint32_t count)
+    std::vector<rad::Ref<CommandBuffer>> AllocateCommandBuffers(vk::CommandBufferLevel level, uint32_t count);
+    rad::Ref<CommandBuffer> AllocateCommandBuffer(vk::CommandBufferLevel level);
+    std::vector<rad::Ref<CommandBuffer>> AllocatePrimaries(uint32_t count)
     {
-        return Allocate(vk::CommandBufferLevel::ePrimary, count);
+        return AllocateCommandBuffers(vk::CommandBufferLevel::ePrimary, count);
     }
-    std::vector<rad::Ref<CommandBuffer>> AllocateSecondary(uint32_t count)
+    std::vector<rad::Ref<CommandBuffer>> AllocateSecondaries(uint32_t count)
     {
-        return Allocate(vk::CommandBufferLevel::eSecondary, count);
+        return AllocateCommandBuffers(vk::CommandBufferLevel::eSecondary, count);
+    }
+    rad::Ref<CommandBuffer> AllocatePrimary()
+    {
+        return AllocateCommandBuffer(vk::CommandBufferLevel::ePrimary);
+    }
+    rad::Ref<CommandBuffer> AllocateSecondary()
+    {
+        return AllocateCommandBuffer(vk::CommandBufferLevel::eSecondary);
     }
 
     rad::Ref<Device> m_device;
@@ -33,16 +41,13 @@ public:
 class CommandBuffer : public rad::RefCounted<CommandBuffer>
 {
 public:
-    rad::Ref<Device> m_device;
     rad::Ref<CommandPool> m_cmdPool;
     vk::raii::CommandBuffer m_wrapper = { nullptr };
 
-    CommandBuffer(rad::Ref<Device> device, vk::CommandPool cmdPoolHandle, vk::CommandBuffer cmdBufferHandle);
     CommandBuffer(rad::Ref<CommandPool> cmdPool, vk::CommandBuffer cmdBufferHandle);
     ~CommandBuffer();
 
     vk::CommandBuffer GetHandle() const { return m_wrapper; }
-    const DeviceDispatcher* GetDispatcher() const;
 
     void Begin(
         vk::CommandBufferUsageFlags flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit,
@@ -194,16 +199,7 @@ public:
 
     void UpdateBuffer(
         vk::Buffer dstBuffer, vk::DeviceSize dstOffset,
-        const void* data, vk::DeviceSize size)
-    {
-        assert(dstOffset % 4 == 0);
-        assert(size % 4 == 0);
-        GetDispatcher()->vkCmdUpdateBuffer(
-            static_cast<VkCommandBuffer>(GetHandle()),
-            static_cast<VkBuffer>(dstBuffer),
-            static_cast<VkDeviceSize>(dstOffset),
-            size, data);
-    }
+        const void* data, vk::DeviceSize size);
 
     template <rad::TriviallyCopyable T>
     void UpdateBuffer(
@@ -388,14 +384,7 @@ public:
 
     void SetPushConstants(
         vk::PipelineLayout layout, vk::ShaderStageFlags stageFlags,
-        uint32_t offset, uint32_t size, const void* pValues)
-    {
-        GetDispatcher()->vkCmdPushConstants(
-            static_cast<VkCommandBuffer>(GetHandle()),
-            static_cast<VkPipelineLayout>(layout),
-            static_cast<VkShaderStageFlags>(stageFlags),
-            offset, size, pValues);
-    }
+        uint32_t offset, uint32_t size, const void* pValues);
 
     template <typename T>
     void SetPushConstants(

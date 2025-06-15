@@ -317,7 +317,7 @@ bool CubeDemo::Init(int argc, char* argv[])
     }
 
     m_cmdPool = m_device->CreateCommandPool(vkpp::QueueFamily::Graphics);
-    m_cmdBuffers = m_cmdPool->AllocatePrimary(sdf::MaxFrameLag);
+    m_cmdBuffers = m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
 
     return true;
 }

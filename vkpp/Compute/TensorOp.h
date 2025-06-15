@@ -34,6 +34,7 @@ public:
     void Execute(glm::uvec3 groupCount);
 
     rad::Ref<Device> m_device;
+    rad::Ref<CommandPool> m_cmdPool;
     rad::Ref<Buffer> m_uniformBuffer;
     rad::Ref<DescriptorSetLayout> m_descSetLayout;
     rad::Ref<PipelineLayout> m_pipelineLayout;

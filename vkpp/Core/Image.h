@@ -61,6 +61,8 @@ public:
     vk::AccessFlags2            m_currentAccessFlags = vk::AccessFlagBits2::eNone;
     vk::ImageLayout             m_currentLayout = vk::ImageLayout::eUndefined;
 
+    rad::Ref<CommandPool>       m_cmdPool;
+
 }; // class Image
 
 class ImageView : public rad::RefCounted<ImageView>

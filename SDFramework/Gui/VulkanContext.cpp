@@ -50,8 +50,8 @@ bool VulkanContext::Init()
     m_samplerLinear = m_device->CreateSampler(samplerInfo);
 
     m_cmdPool = m_device->CreateCommandPool(vkpp::QueueFamily::Graphics);
-    m_guiPass.cmdBuffers = m_cmdPool->AllocatePrimary(sdf::MaxFrameLag);
-    m_presentPass.cmdBuffers = m_cmdPool->AllocatePrimary(sdf::MaxFrameLag);
+    m_guiPass.cmdBuffers = m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
+    m_presentPass.cmdBuffers = m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
 
     for (size_t i = 0; i < MaxFrameLag; ++i)
     {

@@ -76,7 +76,11 @@ void TensorOp::SetTensor(uint32_t binding, Tensor* tensor)
 
 void TensorOp::Execute(glm::uvec3 groupCount)
 {
-    rad::Ref<CommandBuffer> cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+    if (!m_cmdPool)
+    {
+        m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
+    }
+    rad::Ref<CommandBuffer> cmdBuffer = m_cmdPool->AllocatePrimary();
 
     cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
     if (m_enable_PreExecute_MemoryBarrierRAW)

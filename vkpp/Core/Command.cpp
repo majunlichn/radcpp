@@ -19,17 +19,12 @@ CommandPool::~CommandPool()
 {
 }
 
-const DeviceDispatcher* CommandPool::GetDispatcher() const
-{
-    return m_device->GetDispatcher();
-}
-
-std::vector<rad::Ref<CommandBuffer>> CommandPool::Allocate(vk::CommandBufferLevel level, uint32_t count)
+std::vector<rad::Ref<CommandBuffer>> CommandPool::AllocateCommandBuffers(vk::CommandBufferLevel level, uint32_t count)
 {
     vk::CommandBufferAllocateInfo allocateInfo(m_wrapper, level, count);
     std::vector<vk::CommandBuffer> cmdBufferHandles(count);
     VK_CHECK(
-        m_device->m_wrapper.getDispatcher()->vkAllocateCommandBuffers(
+        m_device->GetDispatcher()->vkAllocateCommandBuffers(
             m_device->GetHandle(),
             reinterpret_cast<const VkCommandBufferAllocateInfo*>(&allocateInfo),
             reinterpret_cast<VkCommandBuffer*>(cmdBufferHandles.data()))
@@ -42,31 +37,32 @@ std::vector<rad::Ref<CommandBuffer>> CommandPool::Allocate(vk::CommandBufferLeve
     return cmdBuffers;
 }
 
-CommandBuffer::CommandBuffer(
-    rad::Ref<Device> device, vk::CommandPool cmdPoolHandle, vk::CommandBuffer cmdBufferHandle) :
-    m_device(std::move(device))
+rad::Ref<CommandBuffer> CommandPool::AllocateCommandBuffer(vk::CommandBufferLevel level)
 {
-    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, cmdBufferHandle, cmdPoolHandle);
+    vk::CommandBufferAllocateInfo allocateInfo;
+    allocateInfo.commandPool = GetHandle();
+    allocateInfo.level = vk::CommandBufferLevel::ePrimary;
+    allocateInfo.commandBufferCount = 1;
+    vk::CommandPool cmdPoolHandle = GetHandle();
+    vk::CommandBuffer cmdBufferHandle = VK_NULL_HANDLE;
+    VK_CHECK(
+        m_device->GetDispatcher()->vkAllocateCommandBuffers(
+            m_device->GetHandle(),
+            reinterpret_cast<const VkCommandBufferAllocateInfo*>(&allocateInfo),
+            reinterpret_cast<VkCommandBuffer*>(&cmdBufferHandle))
+    );
+    return RAD_NEW CommandBuffer(this, cmdBufferHandle);
 }
 
 CommandBuffer::CommandBuffer(
     rad::Ref<CommandPool> cmdPool, vk::CommandBuffer cmdBufferHandle) :
-    m_device(cmdPool->m_device),
     m_cmdPool(std::move(cmdPool))
 {
-    m_wrapper = vk::raii::CommandBuffer(m_device->m_wrapper, cmdBufferHandle, m_cmdPool->GetHandle());
+    m_wrapper = vk::raii::CommandBuffer(m_cmdPool->m_device->m_wrapper, cmdBufferHandle, m_cmdPool->GetHandle());
 }
 
 CommandBuffer::~CommandBuffer()
 {
-    m_wrapper.clear();
-    m_cmdPool.reset();
-    m_device.reset();
-}
-
-const DeviceDispatcher* CommandBuffer::GetDispatcher() const
-{
-    return m_device->GetDispatcher();
 }
 
 void CommandBuffer::Begin(vk::CommandBufferUsageFlags flags, vk::CommandBufferInheritanceInfo* pInheritanceInfo)
@@ -85,6 +81,19 @@ void CommandBuffer::End()
 void CommandBuffer::BindPipeine(Pipeline* pipeline)
 {
     m_wrapper.bindPipeline(pipeline->GetBindPoint(), pipeline->GetHandle());
+}
+
+void CommandBuffer::UpdateBuffer(
+    vk::Buffer dstBuffer, vk::DeviceSize dstOffset,
+    const void* data, vk::DeviceSize size)
+{
+    assert(dstOffset % 4 == 0);
+    assert(size % 4 == 0);
+    m_cmdPool->m_device->GetDispatcher()->vkCmdUpdateBuffer(
+        static_cast<VkCommandBuffer>(GetHandle()),
+        static_cast<VkBuffer>(dstBuffer),
+        static_cast<VkDeviceSize>(dstOffset),
+        size, data);
 }
 
 void CommandBuffer::SetMemoryBarrier(vk::PipelineStageFlags2KHR srcStageMask, vk::AccessFlags2KHR srcAccessMask, vk::PipelineStageFlags2KHR dstStageMask, vk::AccessFlags2KHR dstAccessMask)
@@ -314,6 +323,17 @@ void CommandBuffer::SetMemoryBarrier_ShaderWriteToHostRead(vk::PipelineStageFlag
     vk::DependencyInfo dependency;
     dependency.setMemoryBarriers(barrier);
     m_wrapper.pipelineBarrier2(dependency);
+}
+
+void CommandBuffer::SetPushConstants(
+    vk::PipelineLayout layout, vk::ShaderStageFlags stageFlags,
+    uint32_t offset, uint32_t size, const void* pValues)
+{
+    m_cmdPool->m_device->GetDispatcher()->vkCmdPushConstants(
+        static_cast<VkCommandBuffer>(GetHandle()),
+        static_cast<VkPipelineLayout>(layout),
+        static_cast<VkShaderStageFlags>(stageFlags),
+        offset, size, pValues);
 }
 
 void CommandBuffer::BeginRendering(const vk::RenderingInfo& renderingInfo)

@@ -37,6 +37,8 @@ Buffer::Buffer(rad::Ref<Device> device,
         vmaGetAllocationMemoryProperties(m_device->m_allocator, m_alloc,
             reinterpret_cast<VkMemoryPropertyFlags*>(&m_memPropFlags));
     }
+
+    m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
 }
 
 Buffer::~Buffer()
@@ -134,7 +136,7 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
     {
         rad::Ref<Buffer> stagingBuffer = CreateStagingReadback(m_device, dataSize);
 
-        rad::Ref<CommandBuffer> cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+        rad::Ref<CommandBuffer> cmdBuffer = m_cmdPool->AllocatePrimary();
         cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
         // Generally considered more efficient to do a global memory barrier than per-resource barriers?
         vk::MemoryBarrier2 deviceRAW;
@@ -175,7 +177,7 @@ void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataS
     {
         rad::Ref<Buffer> stagingBuffer = CreateStagingUpload(m_device, dataSize);
         stagingBuffer->WriteHost(data, 0, dataSize);
-        rad::Ref<CommandBuffer> cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+        rad::Ref<CommandBuffer> cmdBuffer = m_cmdPool->AllocatePrimary();
         cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
         vk::BufferCopy copyRegion = {};
         copyRegion.srcOffset = 0;

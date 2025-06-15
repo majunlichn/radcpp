@@ -197,27 +197,10 @@ Device::Device(
         allocatorCreateInfo.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     }
     VK_CHECK(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator));
-
-    for (int i = 0; i < rad::ToUnderlying(QueueFamily::Count); i++)
-    {
-        QueueFamily queueFamily = static_cast<QueueFamily>(i);
-        vk::CommandPoolCreateInfo commandPoolCreateInfo = {};
-        commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-        commandPoolCreateInfo.queueFamilyIndex = GetQueueFamilyIndex(queueFamily);
-        m_cmdPools[i] = std::make_shared<vk::raii::CommandPool>(m_wrapper, commandPoolCreateInfo);
-    }
 }
 
 Device::~Device()
 {
-    for (int i = 0; i < rad::ToUnderlying(QueueFamily::Count); i++)
-    {
-        if (m_cmdPools[i])
-        {
-            m_cmdPools[i].reset();
-        }
-    }
-
     if (m_allocator)
     {
         vmaDestroyAllocator(m_allocator);
@@ -240,28 +223,10 @@ std::vector<vk::PresentModeKHR> Device::GetPresentModes(vk::SurfaceKHR surface) 
     return m_physicalDevice.getSurfacePresentModesKHR(surface);
 }
 
-rad::Ref<CommandBuffer> Device::AllocateTemporaryCommandBuffer(QueueFamily queueFamily)
-{
-    vk::raii::CommandPool* cmdPool = m_cmdPools[rad::ToUnderlying(queueFamily)].get();
-    vk::CommandBufferAllocateInfo allocateInfo;
-    allocateInfo.commandPool = *cmdPool;
-    allocateInfo.level = vk::CommandBufferLevel::ePrimary;
-    allocateInfo.commandBufferCount = 1;
-    vk::CommandPool cmdPoolHandle = *cmdPool;
-    vk::CommandBuffer cmdBufferHandle = VK_NULL_HANDLE;
-    VK_CHECK(
-        m_wrapper.getDispatcher()->vkAllocateCommandBuffers(
-            this->GetHandle(),
-            reinterpret_cast<const VkCommandBufferAllocateInfo*>(&allocateInfo),
-            reinterpret_cast<VkCommandBuffer*>(&cmdBufferHandle))
-    );
-    return RAD_NEW CommandBuffer(this, cmdPoolHandle, cmdBufferHandle);
-}
-
 rad::Ref<CommandPool> Device::CreateCommandPool(
     QueueFamily queueFamily, vk::CommandPoolCreateFlags flags)
 {
-    return RAD_NEW CommandPool(this, queueFamily, flags);
+    return RAD_NEW CommandPool(this, queueFamily, flags | vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 }
 
 rad::Ref<Fence> Device::CreateFence(vk::FenceCreateFlags flags)

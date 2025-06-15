@@ -72,7 +72,8 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
         m_bufferOffset = 0;
     }
 
-    rad::Ref<CommandBuffer> cmdBuffer = m_device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+    m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
+    rad::Ref<CommandBuffer> cmdBuffer = m_cmdPool->AllocatePrimary();
     cmdBuffer->Begin();
     cmdBuffer->FillBuffer(m_buffer->m_handle, m_bufferOffset, m_buffer->GetSize(), 0);
     cmdBuffer->End();

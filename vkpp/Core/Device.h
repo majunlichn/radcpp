@@ -64,10 +64,8 @@ public:
         return m_enabledExtensions.contains(name);
     }
 
-    rad::Ref<CommandBuffer> AllocateTemporaryCommandBuffer(QueueFamily queueFamily);
-
     rad::Ref<CommandPool> CreateCommandPool(QueueFamily queueFamily,
-        vk::CommandPoolCreateFlags flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
+        vk::CommandPoolCreateFlags flags = {});
 
     rad::Ref<Fence> CreateFence(vk::FenceCreateFlags flags = {});
     rad::Ref<Fence> CreateFenceSignaled();
@@ -133,9 +131,6 @@ public:
     VmaAllocator m_allocator = nullptr;
 
     rad::Ref<Queue> m_queues[rad::ToUnderlying(QueueFamily::Count)];
-
-    // Internal command pools for transient allocation.
-    std::shared_ptr<vk::raii::CommandPool> m_cmdPools[rad::ToUnderlying(QueueFamily::Count)];
 
 }; // class Device
 

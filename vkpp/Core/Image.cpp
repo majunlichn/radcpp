@@ -36,6 +36,8 @@ Image::Image(
         vmaGetAllocationMemoryProperties(m_device->m_allocator, m_alloc,
             reinterpret_cast<VkMemoryPropertyFlags*>(&m_memPropFlags));
     }
+
+    m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
 }
 
 Image::Image(rad::Ref<Device> device, const vk::ImageCreateInfo& imageInfo, vk::Image imageHandle) :
@@ -55,6 +57,8 @@ Image::Image(rad::Ref<Device> device, const vk::ImageCreateInfo& imageInfo, vk::
 
     m_alloc = nullptr;  // not managed
     m_memPropFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+
+    m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
 }
 
 Image::~Image()
@@ -126,7 +130,7 @@ void UploadData(Device* device, Image* image, rad::ImageU8* imageData)
     rad::Ref<Buffer> stagingBuffer = Buffer::CreateStagingUpload(device, imageData->m_sizeInBytes);
     stagingBuffer->WriteHost(imageData->m_data);
 
-    rad::Ref<CommandBuffer> cmdBuffer = device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+    rad::Ref<CommandBuffer> cmdBuffer = image->m_cmdPool->AllocatePrimary();
     cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
     vk::BufferImageCopy copy = {};
     copy.bufferOffset = 0;
@@ -180,7 +184,7 @@ rad::Ref<Image> CreateTextureFromMemory_R8G8B8A8_SRGB(rad::Ref<Device> device, c
 
 void CopyBufferToImage(Device* device, Buffer* buffer, Image* image, rad::Span<vk::BufferImageCopy> copyInfos)
 {
-    rad::Ref<CommandBuffer> commandBuffer = device->AllocateTemporaryCommandBuffer(QueueFamily::Universal);
+    rad::Ref<CommandBuffer> commandBuffer = image->m_cmdPool->AllocatePrimary();
     commandBuffer->Begin();
     // VUID-vkCmdCopyBufferToImage-dstImageLayout-01396
     if (image->GetCurrentLayout() != vk::ImageLayout::eGeneral &&
