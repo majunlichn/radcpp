@@ -97,6 +97,15 @@ bool Instance::Init(
     bool enableValidation = false;
 #endif
 
+    if (const char* envVulkanSDKPath = std::getenv("VULKAN_SDK"))
+    {
+        VKPP_LOG(info, "VulkanSDK Path: {}", envVulkanSDKPath);
+    }
+    else
+    {
+        VKPP_LOG(warn, "VulkanSDK is not available!");
+    }
+
     if (const char* envEnableValidation = std::getenv("VKPP_ENABLE_VALIDATION"))
     {
         VKPP_LOG(info, "VKPP_ENABLE_VALIDATION={}.", envEnableValidation);

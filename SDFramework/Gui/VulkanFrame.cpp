@@ -1,4 +1,4 @@
-#include <SDFramework/Gui/VulkanContext.h>
+#include <SDFramework/Gui/VulkanFrame.h>
 #include <SDFramework/Gui/VulkanWindow.h>
 
 #include <vkpp/Core/Instance.h>
@@ -10,14 +10,13 @@
 namespace sdf
 {
 
-VulkanContext::VulkanContext(rad::Ref<vkpp::Instance> instance, rad::Ref<vkpp::Device> device, VulkanWindow* window) :
-    m_instance(std::move(instance)),
-    m_device(std::move(device)),
-    m_window(window)
+VulkanFrame::VulkanFrame(VulkanWindow* window, rad::Ref<vkpp::Device> device) :
+    m_window(window),
+    m_device(std::move(device))
 {
 }
 
-VulkanContext::~VulkanContext()
+VulkanFrame::~VulkanFrame()
 {
     Destroy();
 }
@@ -30,7 +29,7 @@ static void CheckVulkanResult(VkResult result)
     }
 }
 
-bool VulkanContext::Init()
+bool VulkanFrame::Init()
 {
     m_device->WaitIdle();
 
@@ -68,7 +67,7 @@ bool VulkanContext::Init()
     return true;
 }
 
-void VulkanContext::Destroy()
+void VulkanFrame::Destroy()
 {
     m_device->WaitIdle();
     if (m_plot)
@@ -85,7 +84,7 @@ void VulkanContext::Destroy()
     }
 }
 
-void VulkanContext::Resize(uint32_t width, uint32_t height)
+void VulkanFrame::Resize(uint32_t width, uint32_t height)
 {
     m_swapchain = CreateSwapchain(width, height);
     VKPP_LOG(info, "Swapchain created: {}x{} ({}, {}, {})",
@@ -330,7 +329,7 @@ void main()
 #endif
 }
 
-rad::Ref<vkpp::Swapchain> VulkanContext::CreateSwapchain(uint32_t width, uint32_t height)
+rad::Ref<vkpp::Swapchain> VulkanFrame::CreateSwapchain(uint32_t width, uint32_t height)
 {
     vk::SurfaceKHR surfaceHandle = m_window->GetVulkanSurface()->GetHandle();
     vk::SurfaceCapabilitiesKHR surfaceCaps = m_device->GetCapabilities(surfaceHandle);
@@ -460,12 +459,12 @@ rad::Ref<vkpp::Swapchain> VulkanContext::CreateSwapchain(uint32_t width, uint32_
     return RAD_NEW vkpp::Swapchain(m_device, swapchainInfo);
 }
 
-bool VulkanContext::ProcessEvent(const SDL_Event& event)
+bool VulkanFrame::ProcessEvent(const SDL_Event& event)
 {
     return ImGui_ImplSDL3_ProcessEvent(&event);
 }
 
-void VulkanContext::BeginFrame()
+void VulkanFrame::BeginFrame()
 {
     m_frameThrottles[m_cmdBufferIndex]->Wait();
     vk::Result err = vk::Result::eSuccess;
@@ -479,7 +478,7 @@ void VulkanContext::BeginFrame()
     ImGui::NewFrame();
 }
 
-void VulkanContext::Render()
+void VulkanFrame::Render()
 {
     ImGui::Render();
     ImDrawData* drawData = ImGui::GetDrawData();
@@ -515,7 +514,7 @@ void VulkanContext::Render()
     }
 }
 
-void VulkanContext::EndFrame()
+void VulkanFrame::EndFrame()
 {
     vkpp::CommandBuffer* cmdBuffer = m_presentPass.cmdBuffers[m_cmdBufferIndex].get();
     cmdBuffer->Begin();

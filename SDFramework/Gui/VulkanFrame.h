@@ -21,11 +21,11 @@ namespace sdf
 
 class VulkanWindow;
 
-class VulkanContext : public rad::RefCounted<VulkanContext>
+class VulkanFrame : public rad::RefCounted<VulkanFrame>
 {
 public:
-    VulkanContext(rad::Ref<vkpp::Instance> instance, rad::Ref<vkpp::Device> device, VulkanWindow* window);
-    ~VulkanContext();
+    VulkanFrame(VulkanWindow* window, rad::Ref<vkpp::Device> device);
+    ~VulkanFrame();
 
     bool Init();
     void Destroy();
@@ -43,9 +43,9 @@ public:
     void Render();
     void EndFrame();
 
-    rad::Ref<vkpp::Instance> m_instance;
+    VulkanWindow* m_window;
     rad::Ref<vkpp::Device> m_device;
-    VulkanWindow* m_window = nullptr;
+
     ImGuiContext* m_gui = nullptr;
     ImPlotContext* m_plot = nullptr;
 
@@ -85,6 +85,6 @@ public:
     std::vector<rad::Ref<vkpp::Semaphore>> m_presentReady;
     std::vector<rad::Ref<vkpp::Semaphore>> m_swapchainImageOwnershipSemaphores;
 
-}; // class VulkanContext
+}; // class VulkanFrame
 
 } // namespace sdf

@@ -99,7 +99,16 @@ bool CubeDemo::Init(int argc, char* argv[])
 
     ParseCommandLine(argc, argv);
 
-    m_instance = CreateVulkanInstance(APP_NAME, APP_VERSION);
+    m_instance = RAD_NEW vkpp::Instance();
+    std::set<std::string> instanceLayers = {};
+    std::set<std::string> instanceExtensions = GetVulkanInstanceExtensionsRequired();
+    if (!m_instance->Init(
+        APP_NAME, APP_VERSION,
+        APP_NAME, APP_VERSION,
+        instanceLayers, instanceExtensions))
+    {
+        VKPP_LOG(err, "Failed to init the Vulkan Instance!");
+    }
 
     glm::vec3 eye = { 0.0f, 3.0f, 5.0f };
     glm::vec3 origin = { 0, 0, 0 };
@@ -139,18 +148,57 @@ bool CubeDemo::Init(int argc, char* argv[])
             }
         }
     }
-    m_device = CreateVulkanDevice(m_gpuIndex);
+
+    if (m_gpuIndex == -1)
+    {
+        int priorityPrev = 0;
+        for (uint32_t i = 0; i < physicalDevices.size(); i++)
+        {
+            const vk::PhysicalDeviceProperties deviceProps = physicalDevices[i].getProperties();
+            assert(deviceProps.deviceType <= vk::PhysicalDeviceType::eCpu);
+
+            auto surfaceSupport = physicalDevices[i].getSurfaceSupportKHR(0, m_surface->GetHandle());
+            if (surfaceSupport != vk::True)
+            {
+                continue;
+            }
+
+            std::map<vk::PhysicalDeviceType, int> deviceTypePriorities =
+            {
+                { vk::PhysicalDeviceType::eDiscreteGpu,     5 },
+                { vk::PhysicalDeviceType::eIntegratedGpu,   4 },
+                { vk::PhysicalDeviceType::eVirtualGpu,      3 },
+                { vk::PhysicalDeviceType::eCpu,             2 },
+                { vk::PhysicalDeviceType::eOther,           1 },
+            };
+
+            int priority = -1;
+            if (deviceTypePriorities.find(deviceProps.deviceType) != deviceTypePriorities.end())
+            {
+                priority = deviceTypePriorities[deviceProps.deviceType];
+            }
+
+            if (priority > priorityPrev)
+            {
+                m_gpuIndex = i;
+                priorityPrev = priority;
+            }
+        }
+    }
+    assert((m_gpuIndex >= 0) && (m_gpuIndex < static_cast<int>(physicalDevices.size())));
+    vk::raii::PhysicalDevice physicalDevice = physicalDevices[m_gpuIndex];
+    m_device = m_instance->CreateDevice(physicalDevice);
 
     VKPP_LOG(info, "Logical device created on GPU#{}: {}", m_gpuIndex, m_device->GetName());
 
-    m_vulkan = RAD_NEW sdf::VulkanContext(m_instance, m_device, this);
-    m_vulkan->m_presentMode = m_presentMode;
-    if (!m_vulkan->Init())
+    m_frame = RAD_NEW sdf::VulkanFrame(this, m_device);
+    m_frame->m_presentMode = m_presentMode;
+    if (!m_frame->Init())
     {
         return false;
     }
 
-    vkpp::Image* renderTarget = m_vulkan->GetRenderTarget();
+    vkpp::Image* renderTarget = m_frame->GetRenderTarget();
 
     m_depthImage = m_device->CreateImage2D_DepthStencilAttachment(
         vk::Format::eD32Sfloat, renderTarget->GetWidth(), renderTarget->GetHeight());
@@ -287,7 +335,7 @@ bool CubeDemo::Init(int argc, char* argv[])
 
     vk::PipelineRenderingCreateInfo renderingInfo = {};
     renderingInfo.colorAttachmentCount = 1;
-    vk::Format swapchainImageFormat = m_vulkan->GetRenderTarget()->GetFormat();
+    vk::Format swapchainImageFormat = m_frame->GetRenderTarget()->GetFormat();
     renderingInfo.pColorAttachmentFormats = &swapchainImageFormat;
     renderingInfo.depthAttachmentFormat = m_depthImage->GetFormat();
     VK_STRUCTURE_CHAIN_ADD(pipelineInfo, renderingInfo);
@@ -324,11 +372,11 @@ bool CubeDemo::Init(int argc, char* argv[])
 
 void CubeDemo::OnIdle()
 {
-    if (m_vulkan)
+    if (m_frame)
     {
-        m_vulkan->BeginFrame();
+        m_frame->BeginFrame();
 
-        uint32_t cmdBufferIndex = m_vulkan->m_cmdBufferIndex;
+        uint32_t cmdBufferIndex = m_frame->m_cmdBufferIndex;
         vkpp::CommandBuffer* cmdBuffer = m_cmdBuffers[cmdBufferIndex].get();
 
         // Update ShaderUniformData
@@ -342,8 +390,8 @@ void CubeDemo::OnIdle()
         memcpy(m_uniforms[cmdBufferIndex], (const void*)&modelViewProjection, sizeof(modelViewProjection));
 
         cmdBuffer->Begin();
-        vkpp::Image* renderTarget = m_vulkan->GetRenderTarget();
-        vkpp::ImageView* renderTargetView = m_vulkan->GetRenderTargetView();
+        vkpp::Image* renderTarget = m_frame->GetRenderTarget();
+        vkpp::ImageView* renderTargetView = m_frame->GetRenderTargetView();
         if (renderTarget->GetCurrentLayout() != vk::ImageLayout::eColorAttachmentOptimal)
         {
             cmdBuffer->TransitLayoutFromCurrent(renderTarget,
@@ -414,8 +462,8 @@ void CubeDemo::OnIdle()
         {
             ImGui::ShowDemoWindow(&m_showDemoWindow);
         }
-        m_vulkan->Render();
-        m_vulkan->EndFrame();
+        m_frame->Render();
+        m_frame->EndFrame();
     }
 }
 

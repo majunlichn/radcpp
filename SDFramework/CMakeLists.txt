@@ -31,8 +31,8 @@ if (TARGET vkpp)
     list(APPEND SDF_SOURCE_FILES
         Gui/VulkanWindow.h
         Gui/VulkanWindow.cpp
-        Gui/VulkanContext.h
-        Gui/VulkanContext.cpp
+        Gui/VulkanFrame.h
+        Gui/VulkanFrame.cpp
     )
 endif()
 

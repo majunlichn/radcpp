@@ -2,7 +2,7 @@
 
 #include "Version.h"
 #include <SDFramework/Gui/VulkanWindow.h>
-#include <SDFramework/Gui/VulkanContext.h>
+#include <SDFramework/Gui/VulkanFrame.h>
 #include <vkpp/Core/RenderPass.h>
 #include <vkpp/Core/Framebuffer.h>
 #include <vkpp/Core/ShaderCompiler.h>
