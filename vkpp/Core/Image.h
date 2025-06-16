@@ -88,8 +88,8 @@ public:
 rad::Ref<Image> CreateTextureFromFile_R8G8B8A8_SRGB(rad::Ref<Device> device, std::string_view fileName);
 rad::Ref<Image> CreateTextureFromMemory_R8G8B8A8_SRGB(rad::Ref<Device> device, const void* buffer, size_t bufferSize);
 
-void CopyBufferToImage(Device* device, Buffer* buffer, Image* image, rad::Span<vk::BufferImageCopy> copyInfos);
-void CopyBufferToImage2D(Device* device, Buffer* buffer, VkDeviceSize bufferOffset,
+void CopyBufferToImage(Buffer* buffer, Image* image, rad::Span<vk::BufferImageCopy> copyInfos);
+void CopyBufferToImage2D(Buffer* buffer, VkDeviceSize bufferOffset,
     Image* image, uint32_t baseMipLevel = 0, uint32_t levelCount = 1,
     uint32_t baseArrayLayer = 0, uint32_t layerCount = 1);
 

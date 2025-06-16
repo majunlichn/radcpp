@@ -49,7 +49,7 @@ rad::Ref<vkpp::Image> CreateTexture2DFromFile(vkpp::Device* device, std::string_
             offset += levelData->m_dwLinearSize;
         }
         stagingBuffer->UnmapMemory();
-        CopyBufferToImage2D(device,
+        CopyBufferToImage2D(
             stagingBuffer.get(), 0,
             image.get(), 0, mipSet.m_nMipLevels, 0, 1);
         CMP_FreeMipSet(&mipSet);
