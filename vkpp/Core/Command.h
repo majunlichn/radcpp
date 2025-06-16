@@ -440,4 +440,31 @@ public:
 vk::RenderingAttachmentInfo MakeRenderingAttachmentInfo(
     ImageView* view, vk::AttachmentLoadOp loadOp, vk::AttachmentStoreOp storeOp, const vk::ClearValue& clearValue);
 
+
+class CommandStream : public rad::RefCounted<CommandStream>
+{
+public:
+    CommandStream(rad::Ref<Device> device, QueueFamily queueFamily);
+    ~CommandStream();
+
+    vk::raii::Queue* GetQueue() { return &m_queue; }
+    vk::Queue GetQueueHandle() const { return static_cast<vk::Queue>(m_queue); }
+
+    void Submit(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence);
+    void Submit(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+        rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence);
+    void SubmitAndWaitForCompletion(rad::ArrayRef<vk::SubmitInfo> submitInfos);
+    void SubmitAndWaitForCompletion(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+        rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores);
+
+    vk::Result Present(const vk::PresentInfoKHR& presentInfo);
+
+    rad::Ref<Device> m_device;
+    QueueFamily m_queueFamily;
+    vk::raii::Queue m_queue = { nullptr };
+    rad::Ref<CommandPool> m_cmdPool;
+    rad::Ref<CommandPool> m_cmdPoolTransientAlloc;
+
+}; // class CommandStream
+
 } // namespace vkpp

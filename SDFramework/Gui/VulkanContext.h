@@ -59,7 +59,7 @@ public:
     rad::Ref<vkpp::Sampler> m_samplerNearest;
     rad::Ref<vkpp::Sampler> m_samplerLinear;
 
-    rad::Ref<vkpp::CommandPool> m_cmdPool;
+    rad::Ref<vkpp::CommandStream> m_cmdStream;
     uint32_t m_cmdBufferIndex = 0;
 
     struct GuiPass

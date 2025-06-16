@@ -377,4 +377,65 @@ vk::RenderingAttachmentInfo MakeRenderingAttachmentInfo(
     return attachInfo;
 }
 
+CommandStream::CommandStream(rad::Ref<Device> device, QueueFamily queueFamily) :
+    m_device(std::move(device)),
+    m_queueFamily(queueFamily)
+{
+    m_queue = m_device->GetQueue(queueFamily);
+    m_cmdPool = m_device->CreateCommandPool(queueFamily);
+    m_cmdPoolTransientAlloc = m_device->CreateCommandPool(queueFamily, vk::CommandPoolCreateFlagBits::eTransient);
+}
+
+CommandStream::~CommandStream()
+{
+}
+
+void CommandStream::Submit(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)
+{
+    m_queue.submit(submitInfos, fence);
+}
+
+void CommandStream::Submit(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+    rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence)
+{
+    vk::SubmitInfo submitInfo = {};
+    rad::SmallVector<vk::Semaphore, 8> waitSemaphoreHandles(waits.size());
+    rad::SmallVector<vk::PipelineStageFlags, 8> waitDstStageMasks(waits.size());
+    for (size_t i = 0; i < waits.size(); ++i)
+    {
+        waitSemaphoreHandles[i] = waits[i].semaphore;
+    }
+    for (size_t i = 0; i < waits.size(); ++i)
+    {
+        waitDstStageMasks[i] = waits[i].dstStageMask;
+    }
+    submitInfo.setWaitSemaphores(waitSemaphoreHandles);
+    submitInfo.setWaitDstStageMask(waitDstStageMasks);
+    submitInfo.setCommandBuffers(cmdBuffers);
+    submitInfo.setSignalSemaphores(signalSemaphores);
+    Submit(submitInfo, fence);
+}
+
+void CommandStream::SubmitAndWaitForCompletion(rad::ArrayRef<vk::SubmitInfo> submitInfos)
+{
+    vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
+    vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
+    m_queue.submit(submitInfos, fence);
+    VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
+}
+
+void CommandStream::SubmitAndWaitForCompletion(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+    rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores)
+{
+    vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
+    vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
+    Submit(cmdBuffers, waits, signalSemaphores, fence);
+    VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
+}
+
+vk::Result CommandStream::Present(const vk::PresentInfoKHR& presentInfo)
+{
+    return m_queue.presentKHR(presentInfo);
+}
+
 } // namespace vkpp

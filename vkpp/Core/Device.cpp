@@ -176,11 +176,6 @@ Device::Device(
     createInfo.pEnabledFeatures;
     m_wrapper = m_physicalDevice.createDevice(createInfo);;
 
-    for (int i = 0; i < rad::ToUnderlying(QueueFamily::Count); i++)
-    {
-        m_queues[i] = RAD_NEW Queue(this, m_queueFamilyIndices[i], 0);
-    }
-
     // Vma Initialization
     // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html#quick_start_initialization
     VmaAllocatorCreateInfo allocatorCreateInfo = {};
@@ -227,6 +222,11 @@ rad::Ref<CommandPool> Device::CreateCommandPool(
     QueueFamily queueFamily, vk::CommandPoolCreateFlags flags)
 {
     return RAD_NEW CommandPool(this, queueFamily, flags | vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
+}
+
+rad::Ref<CommandStream> Device::CreateCommandStream(QueueFamily queueFamily)
+{
+    return RAD_NEW CommandStream(this, queueFamily);
 }
 
 rad::Ref<Fence> Device::CreateFence(vk::FenceCreateFlags flags)
@@ -421,71 +421,6 @@ rad::Ref<ComputePipeline> Device::CreateComputePipeline(
 rad::Ref<Swapchain> Device::CreateSwapchain(const vk::SwapchainCreateInfoKHR& createInfo)
 {
     return RAD_NEW Swapchain(this, createInfo);
-}
-
-vk::Result Device::Present(QueueFamily queueFamily, const vk::PresentInfoKHR& presentInfo)
-{
-    vk::Queue queueHandle = GetQueue(queueFamily)->GetHandle();
-    VkResult result = m_wrapper.getDispatcher()->vkQueuePresentKHR(
-        static_cast<VkQueue>(queueHandle),
-        reinterpret_cast<const VkPresentInfoKHR*>(&presentInfo));
-    return static_cast<vk::Result>(result);
-}
-
-Queue::Queue(Device* device, uint32_t queueFamilyIndex, uint32_t queueIndex) :
-    m_device(device),
-    m_queueFamilyIndex(queueFamilyIndex),
-    m_queueIndex(queueIndex)
-{
-    m_wrapper = m_device->m_wrapper.getQueue(queueFamilyIndex, queueIndex);
-}
-
-Queue::~Queue()
-{
-}
-
-void Queue::Submit(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)
-{
-    m_wrapper.submit(submitInfos, fence);
-}
-
-void Queue::Submit(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
-    rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence)
-{
-    vk::SubmitInfo submitInfo = {};
-    rad::SmallVector<vk::Semaphore, 8> waitSemaphoreHandles(waits.size());
-    rad::SmallVector<vk::PipelineStageFlags, 8> waitDstStageMasks(waits.size());
-    for (size_t i = 0; i < waits.size(); ++i)
-    {
-        waitSemaphoreHandles[i] = waits[i].semaphore;
-    }
-    for (size_t i = 0; i < waits.size(); ++i)
-    {
-        waitDstStageMasks[i] = waits[i].dstStageMask;
-    }
-    submitInfo.setWaitSemaphores(waitSemaphoreHandles);
-    submitInfo.setWaitDstStageMask(waitDstStageMasks);
-    submitInfo.setCommandBuffers(cmdBuffers);
-    submitInfo.setSignalSemaphores(signalSemaphores);
-    Submit(submitInfo, fence);
-}
-
-
-void Queue::SubmitAndWaitForCompletion(rad::ArrayRef<vk::SubmitInfo> submitInfos)
-{
-    vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
-    vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
-    m_wrapper.submit(submitInfos, fence);
-    VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
-}
-
-void Queue::SubmitAndWaitForCompletion(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
-    rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores)
-{
-    vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
-    vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
-    Submit(cmdBuffers, waits, signalSemaphores, fence);
-    VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
 }
 
 } // namespace vkpp

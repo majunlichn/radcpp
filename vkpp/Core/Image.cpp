@@ -37,7 +37,7 @@ Image::Image(
             reinterpret_cast<VkMemoryPropertyFlags*>(&m_memPropFlags));
     }
 
-    m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
+    m_cmdStream = m_device->CreateCommandStream(QueueFamily::Universal);
 }
 
 Image::Image(rad::Ref<Device> device, const vk::ImageCreateInfo& imageInfo, vk::Image imageHandle) :
@@ -58,7 +58,7 @@ Image::Image(rad::Ref<Device> device, const vk::ImageCreateInfo& imageInfo, vk::
     m_alloc = nullptr;  // not managed
     m_memPropFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
 
-    m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
+    m_cmdStream = m_device->CreateCommandStream(QueueFamily::Universal);
 }
 
 Image::~Image()
@@ -130,7 +130,7 @@ void UploadData(Device* device, Image* image, rad::ImageU8* imageData)
     rad::Ref<Buffer> stagingBuffer = Buffer::CreateStagingUpload(device, imageData->m_sizeInBytes);
     stagingBuffer->WriteHost(imageData->m_data);
 
-    rad::Ref<CommandBuffer> cmdBuffer = image->m_cmdPool->AllocatePrimary();
+    rad::Ref<CommandBuffer> cmdBuffer = image->m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
     cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
     vk::BufferImageCopy copy = {};
     copy.bufferOffset = 0;
@@ -152,8 +152,7 @@ void UploadData(Device* device, Image* image, rad::ImageU8* imageData)
         vk::AccessFlagBits2::eShaderRead,
         vk::ImageLayout::eShaderReadOnlyOptimal);
     cmdBuffer->End();
-    device->GetQueue(vkpp::QueueFamily::Universal)->
-        SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
+    image->m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
 }
 
 rad::Ref<Image> CreateTextureFromFile_R8G8B8A8_SRGB(rad::Ref<Device> device, std::string_view fileName)
@@ -184,7 +183,7 @@ rad::Ref<Image> CreateTextureFromMemory_R8G8B8A8_SRGB(rad::Ref<Device> device, c
 
 void CopyBufferToImage(Device* device, Buffer* buffer, Image* image, rad::Span<vk::BufferImageCopy> copyInfos)
 {
-    rad::Ref<CommandBuffer> commandBuffer = image->m_cmdPool->AllocatePrimary();
+    rad::Ref<CommandBuffer> commandBuffer = image->m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
     commandBuffer->Begin();
     // VUID-vkCmdCopyBufferToImage-dstImageLayout-01396
     if (image->GetCurrentLayout() != vk::ImageLayout::eGeneral &&
@@ -202,7 +201,7 @@ void CopyBufferToImage(Device* device, Buffer* buffer, Image* image, rad::Span<v
         vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eMemoryRead,
         vk::ImageLayout::eShaderReadOnlyOptimal);
     commandBuffer->End();
-    device->GetQueue(QueueFamily::Universal)->SubmitAndWaitForCompletion(commandBuffer->GetHandle(), {}, {});
+    image->m_cmdStream->SubmitAndWaitForCompletion(commandBuffer->GetHandle(), {}, {});
 }
 
 void CopyBufferToImage2D(Device* device, Buffer* buffer, VkDeviceSize bufferOffset,

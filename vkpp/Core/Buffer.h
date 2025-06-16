@@ -53,7 +53,7 @@ public:
     VmaAllocationInfo m_allocInfo = {};
     vk::MemoryPropertyFlags m_memPropFlags;
 
-    rad::Ref<CommandPool> m_cmdPool;
+    rad::Ref<CommandStream> m_cmdStream;
 
     Buffer(rad::Ref<Device> device,
         const vk::BufferCreateInfo& bufferInfo, const VmaAllocationCreateInfo& allocCreateInfo);

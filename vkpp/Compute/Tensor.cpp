@@ -72,13 +72,12 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
         m_bufferOffset = 0;
     }
 
-    m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
-    rad::Ref<CommandBuffer> cmdBuffer = m_cmdPool->AllocatePrimary();
+    m_cmdStream = m_device->CreateCommandStream(QueueFamily::Universal);
+    rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
     cmdBuffer->Begin();
     cmdBuffer->FillBuffer(m_buffer->m_handle, m_bufferOffset, m_buffer->GetSize(), 0);
     cmdBuffer->End();
-    m_device->GetQueue(vkpp::QueueFamily::Universal)->
-        SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
+    m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
 
     return true;
 }

@@ -61,7 +61,7 @@ public:
     vk::AccessFlags2            m_currentAccessFlags = vk::AccessFlagBits2::eNone;
     vk::ImageLayout             m_currentLayout = vk::ImageLayout::eUndefined;
 
-    rad::Ref<CommandPool>       m_cmdPool;
+    rad::Ref<CommandStream>     m_cmdStream;
 
 }; // class Image
 

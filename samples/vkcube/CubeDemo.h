@@ -72,7 +72,7 @@ public:
     rad::Ref<vkpp::DescriptorPool> m_descPool;
     std::vector<rad::Ref<vkpp::DescriptorSet>> m_descSets;
 
-    rad::Ref<vkpp::CommandPool> m_cmdPool;
+    rad::Ref<vkpp::CommandStream> m_cmdStream;
     std::vector<rad::Ref<vkpp::CommandBuffer>> m_cmdBuffers;
 
 }; // class CubeDemo

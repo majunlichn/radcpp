@@ -167,6 +167,7 @@ class Device;
 class Queue;
 class CommandPool;
 class CommandBuffer;
+class CommandStream;
 class Fence;
 class Semaphore;
 class Event;

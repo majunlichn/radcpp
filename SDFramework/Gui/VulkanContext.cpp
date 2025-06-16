@@ -34,6 +34,8 @@ bool VulkanContext::Init()
 {
     m_device->WaitIdle();
 
+    m_cmdStream = m_device->CreateCommandStream(vkpp::QueueFamily::Graphics);
+
     vk::SamplerCreateInfo samplerInfo = {};
     samplerInfo.magFilter = vk::Filter::eNearest;
     samplerInfo.minFilter = vk::Filter::eNearest;;
@@ -49,9 +51,8 @@ bool VulkanContext::Init()
     samplerInfo.minFilter = vk::Filter::eLinear;
     m_samplerLinear = m_device->CreateSampler(samplerInfo);
 
-    m_cmdPool = m_device->CreateCommandPool(vkpp::QueueFamily::Graphics);
-    m_guiPass.cmdBuffers = m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
-    m_presentPass.cmdBuffers = m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
+    m_guiPass.cmdBuffers = m_cmdStream->m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
+    m_presentPass.cmdBuffers = m_cmdStream->m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
 
     for (size_t i = 0; i < MaxFrameLag; ++i)
     {
@@ -288,7 +289,7 @@ void main()
     initInfo.PhysicalDevice = static_cast<vk::PhysicalDevice>(m_device->m_physicalDevice);
     initInfo.Device = m_device->GetHandle();
     initInfo.QueueFamily = m_device->GetQueueFamilyIndex(vkpp::QueueFamily::Graphics);
-    initInfo.Queue = m_device->GetQueue(vkpp::QueueFamily::Graphics)->GetHandle();
+    initInfo.Queue = m_cmdStream->GetQueueHandle();
     initInfo.DescriptorPool = VK_NULL_HANDLE;
     initInfo.RenderPass = VK_NULL_HANDLE;
     initInfo.MinImageCount = m_swapchain->GetImageCount();
@@ -510,8 +511,7 @@ void VulkanContext::Render()
         ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuffer->GetHandle());
         cmdBuffer->EndRendering();
         cmdBuffer->End();
-        m_device->GetQueue(vkpp::QueueFamily::Graphics)->
-            Submit(cmdBuffer->GetHandle(), {}, {}, nullptr);
+        m_cmdStream->Submit(cmdBuffer->GetHandle(), {}, {}, nullptr);
     }
 }
 
@@ -597,7 +597,7 @@ void VulkanContext::EndFrame()
     // that has nothing submitted to it.
     m_frameThrottles[m_cmdBufferIndex]->Reset();
 
-    m_device->GetQueue(vkpp::QueueFamily::Graphics)->Submit(
+    m_cmdStream->Submit(
         cmdBuffer->GetHandle(),
         {   // waits
             vkpp::SubmitWaitInfo
@@ -621,7 +621,7 @@ void VulkanContext::EndFrame()
     presentInfo.pSwapchains = &swapchainHandle;
     presentInfo.pImageIndices = &swapchainImageIndex;
     presentInfo.pResults = nullptr;
-    m_device->Present(vkpp::QueueFamily::Graphics, presentInfo);
+    m_cmdStream->Present(presentInfo);
 
     m_cmdBufferIndex += 1;
     m_cmdBufferIndex %= MaxFrameLag;

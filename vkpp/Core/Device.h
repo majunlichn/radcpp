@@ -53,9 +53,14 @@ public:
         return m_queueFamilyProperties[GetQueueFamilyIndex(queueFamily)];
     }
 
-    Queue* GetQueue(QueueFamily queueFamily)
+    vk::raii::Queue GetQueue(QueueFamily queueFamily)
     {
-        return m_queues[rad::ToUnderlying(queueFamily)].get();
+        return m_wrapper.getQueue(GetQueueFamilyIndex(queueFamily), 0);
+    }
+
+    vk::raii::Queue GetQueue(const vk::DeviceQueueInfo2& queueInfo)
+    {
+        return m_wrapper.getQueue2(queueInfo);
     }
 
     std::set<std::string, rad::StringLess> m_enabledExtensions;
@@ -66,6 +71,7 @@ public:
 
     rad::Ref<CommandPool> CreateCommandPool(QueueFamily queueFamily,
         vk::CommandPoolCreateFlags flags = {});
+    rad::Ref<CommandStream> CreateCommandStream(QueueFamily queueFamily);
 
     rad::Ref<Fence> CreateFence(vk::FenceCreateFlags flags = {});
     rad::Ref<Fence> CreateFenceSignaled();
@@ -111,7 +117,6 @@ public:
         rad::Ref<ShaderStageInfo> shaderStage, vk::PipelineLayout layout);
 
     rad::Ref<Swapchain> CreateSwapchain(const vk::SwapchainCreateInfoKHR& createInfo);
-    vk::Result Present(QueueFamily queueFamily, const vk::PresentInfoKHR& presentInfo);
 
     vk::PhysicalDeviceProperties m_properties;
     vk::PhysicalDeviceProperties2 m_properties2;
@@ -130,30 +135,6 @@ public:
 
     VmaAllocator m_allocator = nullptr;
 
-    rad::Ref<Queue> m_queues[rad::ToUnderlying(QueueFamily::Count)];
-
 }; // class Device
-
-class Queue : public rad::RefCounted<Queue>
-{
-public:
-    Queue(Device* device, uint32_t queueFamilyIndex, uint32_t queueIndex);
-    ~Queue();
-
-    vk::Queue GetHandle() const { return m_wrapper; }
-
-    void Submit(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence);
-    void Submit(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
-        rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence);
-    void SubmitAndWaitForCompletion(rad::ArrayRef<vk::SubmitInfo> submitInfos);
-    void SubmitAndWaitForCompletion(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
-        rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores);
-
-    Device* m_device;
-    uint32_t m_queueFamilyIndex;
-    uint32_t m_queueIndex;
-    vk::raii::Queue m_wrapper = { nullptr };
-
-}; // class Queue
 
 } // namespace vkpp

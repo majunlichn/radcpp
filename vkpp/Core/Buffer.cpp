@@ -38,7 +38,7 @@ Buffer::Buffer(rad::Ref<Device> device,
             reinterpret_cast<VkMemoryPropertyFlags*>(&m_memPropFlags));
     }
 
-    m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
+    m_cmdStream = m_device->CreateCommandStream(QueueFamily::Universal);
 }
 
 Buffer::~Buffer()
@@ -136,7 +136,7 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
     {
         rad::Ref<Buffer> stagingBuffer = CreateStagingReadback(m_device, dataSize);
 
-        rad::Ref<CommandBuffer> cmdBuffer = m_cmdPool->AllocatePrimary();
+        rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
         cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
         // Generally considered more efficient to do a global memory barrier than per-resource barriers?
         vk::MemoryBarrier2 deviceRAW;
@@ -161,8 +161,7 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
         cmdBuffer->SetPipelineBarrier2(dependency);
         cmdBuffer->End();
 
-        m_device->GetQueue(vkpp::QueueFamily::Universal)->
-            SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
+        m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
         stagingBuffer->ReadHost(data, 0, dataSize);
     }
 }
@@ -177,7 +176,7 @@ void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataS
     {
         rad::Ref<Buffer> stagingBuffer = CreateStagingUpload(m_device, dataSize);
         stagingBuffer->WriteHost(data, 0, dataSize);
-        rad::Ref<CommandBuffer> cmdBuffer = m_cmdPool->AllocatePrimary();
+        rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
         cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
         vk::BufferCopy copyRegion = {};
         copyRegion.srcOffset = 0;
@@ -194,8 +193,7 @@ void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataS
         cmdBuffer->SetPipelineBarrier2(dependency);
         cmdBuffer->End();
 
-        m_device->GetQueue(vkpp::QueueFamily::Universal)->
-            SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
+        m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
     }
 }
 

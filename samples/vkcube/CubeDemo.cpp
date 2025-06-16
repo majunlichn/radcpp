@@ -316,8 +316,8 @@ bool CubeDemo::Init(int argc, char* argv[])
         m_descSets[i]->UpdateCombinedImageSamplers(1, 0, textureInfos);
     }
 
-    m_cmdPool = m_device->CreateCommandPool(vkpp::QueueFamily::Graphics);
-    m_cmdBuffers = m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
+    m_cmdStream = m_device->CreateCommandStream(vkpp::QueueFamily::Graphics);
+    m_cmdBuffers = m_cmdStream->m_cmdPool->AllocatePrimaries(sdf::MaxFrameLag);
 
     return true;
 }
@@ -408,8 +408,7 @@ void CubeDemo::OnIdle()
         cmdBuffer->EndRendering();
         cmdBuffer->End();
 
-        m_device->GetQueue(vkpp::QueueFamily::Graphics)->
-            Submit(m_cmdBuffers[cmdBufferIndex]->GetHandle(), {}, {}, nullptr);
+        m_cmdStream->Submit(m_cmdBuffers[cmdBufferIndex]->GetHandle(), {}, {}, nullptr);
 
         if (m_showDemoWindow)
         {

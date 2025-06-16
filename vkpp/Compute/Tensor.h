@@ -61,7 +61,7 @@ public:
     // The total size in bytes of the buffer range, must be the multiple of 4.
     VkDeviceSize m_sizeInBytes = 0;
 
-    rad::Ref<CommandPool> m_cmdPool;
+    rad::Ref<CommandStream> m_cmdStream;
 
     template <rad::TriviallyCopyable T>
     std::vector<T> GenerateBufferData(std::function<T(std::initializer_list<size_t> coord)> generator) const;

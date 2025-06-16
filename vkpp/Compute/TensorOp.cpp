@@ -7,6 +7,7 @@ namespace vkpp
 TensorOp::TensorOp(rad::Ref<Device> device) :
     m_device(std::move(device))
 {
+    m_cmdStream = m_device->CreateCommandStream(QueueFamily::Universal);
 }
 
 TensorOp::~TensorOp()
@@ -76,11 +77,7 @@ void TensorOp::SetTensor(uint32_t binding, Tensor* tensor)
 
 void TensorOp::Execute(glm::uvec3 groupCount)
 {
-    if (!m_cmdPool)
-    {
-        m_cmdPool = m_device->CreateCommandPool(QueueFamily::Universal, vk::CommandPoolCreateFlagBits::eTransient);
-    }
-    rad::Ref<CommandBuffer> cmdBuffer = m_cmdPool->AllocatePrimary();
+    rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
 
     cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
     if (m_enable_PreExecute_MemoryBarrierRAW)
@@ -94,8 +91,7 @@ void TensorOp::Execute(glm::uvec3 groupCount)
     cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
     cmdBuffer->End();
 
-    m_device->GetQueue(QueueFamily::Universal)->
-        SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
+    m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
 }
 
 TensorOpElementWiseUnary::TensorOpElementWiseUnary(rad::Ref<Device> device) :
