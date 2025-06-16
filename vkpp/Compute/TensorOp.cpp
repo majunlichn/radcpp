@@ -95,7 +95,7 @@ void TensorOp::Execute(glm::uvec3 groupCount)
     cmdBuffer->End();
 
     m_device->GetQueue(QueueFamily::Universal)->
-        ExecuteSync(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
+        SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
 }
 
 TensorOpElementWiseUnary::TensorOpElementWiseUnary(rad::Ref<Device> device) :

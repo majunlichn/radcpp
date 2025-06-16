@@ -162,7 +162,7 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
         cmdBuffer->End();
 
         m_device->GetQueue(vkpp::QueueFamily::Universal)->
-            ExecuteSync(cmdBuffer->GetHandle(), {}, {});
+            SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
         stagingBuffer->ReadHost(data, 0, dataSize);
     }
 }
@@ -195,7 +195,7 @@ void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataS
         cmdBuffer->End();
 
         m_device->GetQueue(vkpp::QueueFamily::Universal)->
-            ExecuteSync(cmdBuffer->GetHandle(), {}, {});
+            SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
     }
 }
 

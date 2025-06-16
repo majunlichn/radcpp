@@ -444,20 +444,12 @@ Queue::~Queue()
 {
 }
 
-void Queue::Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)
+void Queue::Submit(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence)
 {
     m_wrapper.submit(submitInfos, fence);
 }
 
-void Queue::ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos)
-{
-    vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
-    vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
-    m_wrapper.submit(submitInfos, fence);
-    VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
-}
-
-void Queue::Execute(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+void Queue::Submit(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
     rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence)
 {
     vk::SubmitInfo submitInfo = {};
@@ -475,15 +467,24 @@ void Queue::Execute(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
     submitInfo.setWaitDstStageMask(waitDstStageMasks);
     submitInfo.setCommandBuffers(cmdBuffers);
     submitInfo.setSignalSemaphores(signalSemaphores);
-    Execute(submitInfo, fence);
+    Submit(submitInfo, fence);
 }
 
-void Queue::ExecuteSync(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+
+void Queue::SubmitAndWaitForCompletion(rad::ArrayRef<vk::SubmitInfo> submitInfos)
+{
+    vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
+    vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
+    m_wrapper.submit(submitInfos, fence);
+    VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
+}
+
+void Queue::SubmitAndWaitForCompletion(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
     rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores)
 {
     vk::FenceCreateInfo fenceInfo(vk::FenceCreateFlags(0));
     vk::raii::Fence fence = m_device->m_wrapper.createFence(fenceInfo);
-    Execute(cmdBuffers, waits, signalSemaphores, fence);
+    Submit(cmdBuffers, waits, signalSemaphores, fence);
     VK_CHECK(m_device->m_wrapper.waitForFences({ fence }, vk::True, UINT64_MAX));
 }
 

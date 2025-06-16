@@ -153,7 +153,7 @@ void UploadData(Device* device, Image* image, rad::ImageU8* imageData)
         vk::ImageLayout::eShaderReadOnlyOptimal);
     cmdBuffer->End();
     device->GetQueue(vkpp::QueueFamily::Universal)->
-        ExecuteSync(cmdBuffer->GetHandle(), {}, {});
+        SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
 }
 
 rad::Ref<Image> CreateTextureFromFile_R8G8B8A8_SRGB(rad::Ref<Device> device, std::string_view fileName)
@@ -202,7 +202,7 @@ void CopyBufferToImage(Device* device, Buffer* buffer, Image* image, rad::Span<v
         vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eMemoryRead,
         vk::ImageLayout::eShaderReadOnlyOptimal);
     commandBuffer->End();
-    device->GetQueue(QueueFamily::Universal)->ExecuteSync(commandBuffer->GetHandle(), {}, {});
+    device->GetQueue(QueueFamily::Universal)->SubmitAndWaitForCompletion(commandBuffer->GetHandle(), {}, {});
 }
 
 void CopyBufferToImage2D(Device* device, Buffer* buffer, VkDeviceSize bufferOffset,

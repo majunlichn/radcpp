@@ -511,7 +511,7 @@ void VulkanContext::Render()
         cmdBuffer->EndRendering();
         cmdBuffer->End();
         m_device->GetQueue(vkpp::QueueFamily::Graphics)->
-            Execute(cmdBuffer->GetHandle(), {}, {}, nullptr);
+            Submit(cmdBuffer->GetHandle(), {}, {}, nullptr);
     }
 }
 
@@ -597,7 +597,7 @@ void VulkanContext::EndFrame()
     // that has nothing submitted to it.
     m_frameThrottles[m_cmdBufferIndex]->Reset();
 
-    m_device->GetQueue(vkpp::QueueFamily::Graphics)->Execute(
+    m_device->GetQueue(vkpp::QueueFamily::Graphics)->Submit(
         cmdBuffer->GetHandle(),
         {   // waits
             vkpp::SubmitWaitInfo

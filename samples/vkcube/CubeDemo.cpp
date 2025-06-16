@@ -409,7 +409,7 @@ void CubeDemo::OnIdle()
         cmdBuffer->End();
 
         m_device->GetQueue(vkpp::QueueFamily::Graphics)->
-            Execute(m_cmdBuffers[cmdBufferIndex]->GetHandle(), {}, {}, nullptr);
+            Submit(m_cmdBuffers[cmdBufferIndex]->GetHandle(), {}, {}, nullptr);
 
         if (m_showDemoWindow)
         {

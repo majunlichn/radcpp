@@ -78,7 +78,7 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
     cmdBuffer->FillBuffer(m_buffer->m_handle, m_bufferOffset, m_buffer->GetSize(), 0);
     cmdBuffer->End();
     m_device->GetQueue(vkpp::QueueFamily::Universal)->
-        ExecuteSync(cmdBuffer->GetHandle(), {}, {});
+        SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
 
     return true;
 }

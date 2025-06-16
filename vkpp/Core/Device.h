@@ -142,11 +142,11 @@ public:
 
     vk::Queue GetHandle() const { return m_wrapper; }
 
-    void Execute(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence);
-    void ExecuteSync(rad::ArrayRef<vk::SubmitInfo> submitInfos);
-    void Execute(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+    void Submit(rad::ArrayRef<vk::SubmitInfo> submitInfos, vk::Fence fence);
+    void Submit(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
         rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores, vk::Fence fence);
-    void ExecuteSync(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
+    void SubmitAndWaitForCompletion(rad::ArrayRef<vk::SubmitInfo> submitInfos);
+    void SubmitAndWaitForCompletion(rad::ArrayRef<vk::CommandBuffer> cmdBuffers,
         rad::ArrayRef<SubmitWaitInfo> waits, rad::ArrayRef<vk::Semaphore> signalSemaphores);
 
     Device* m_device;
