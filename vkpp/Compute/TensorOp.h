@@ -45,8 +45,8 @@ public:
 
     std::map<uint32_t, Tensor*> m_bindings;
 
-    // Read-After-Write
-    bool m_enable_PreExecute_MemoryBarrierRAW = false;
+    std::vector<vk::MemoryBarrier2> m_memoryBarriers;
+
     std::vector<SubmitWaitInfo> m_executeWaits;
     std::vector<vk::Semaphore> m_executeSignalSemaphores;
 

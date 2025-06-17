@@ -1,16 +1,16 @@
 #ifndef DATA_TYPE_H
 #define DATA_TYPE_H
 
-#define DATA_TYPE_Float16 0
-#define DATA_TYPE_Float32 1
-#define DATA_TYPE_Float64 2
-#define DATA_TYPE_Sint8 3
-#define DATA_TYPE_Sint16 4
-#define DATA_TYPE_Sint32 5
-#define DATA_TYPE_Sint64 6
-#define DATA_TYPE_Uint8 7
-#define DATA_TYPE_Uint16 8
-#define DATA_TYPE_Uint32 9
-#define DATA_TYPE_Uint64 10
+#define DataTypeFloat16 0
+#define DataTypeFloat32 1
+#define DataTypeFloat64 2
+#define DataTypeSint8 3
+#define DataTypeSint16 4
+#define DataTypeSint32 5
+#define DataTypeSint64 6
+#define DataTypeUint8 7
+#define DataTypeUint16 8
+#define DataTypeUint32 9
+#define DataTypeUint64 10
 
 #endif

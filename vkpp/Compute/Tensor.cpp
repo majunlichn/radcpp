@@ -17,58 +17,45 @@ Tensor::~Tensor()
 }
 
 bool Tensor::Init(vk::ComponentTypeKHR dataType,
-    rad::ArrayRef<size_t> sizes, MemoryLayout layout, rad::ArrayRef<size_t> strides,
+    rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides,
     rad::Ref<Buffer> buffer, VkDeviceSize bufferOffset)
 {
-    assert((sizes.size() == 4) || (sizes.size() == 5));
+    assert(sizes.size() > 0);
+    assert(sizes.size() < MaxDimensionCount);
+    assert((sizes.size() == strides.size()) || strides.empty());
 
     m_dataType = dataType;
     m_sizes = sizes;
-    m_layout = layout;
     m_strides = strides;
     if (m_strides.empty())
     {
-        m_strides = GetContiguousStrides(m_sizes, m_layout);
+        m_strides = MakeContiguousStrides(m_sizes);
     }
     assert(m_sizes.size() == m_strides.size());
-#if defined(_DEBUG) // check strides
-    std::vector<size_t> memoryOrder = GetMemoryOrder(layout);
-    assert(m_strides.size() == memoryOrder.size());
-    size_t stride = m_strides[memoryOrder[0]];
-    assert(stride >= 1);
-    for (size_t i = 1; i < memoryOrder.size(); ++i)
-    {
-        assert(stride <= m_strides[memoryOrder[i]]);
-        stride = m_strides[memoryOrder[i]];
-    }
-#endif
 
     size_t elementCount = GetElementCount();
     size_t indexOfLastElement = 0;
     for (size_t i = 0; i < m_sizes.size(); ++i)
     {
-        if (m_sizes[i] > 1)
-        {
-            indexOfLastElement += (m_sizes[i] - 1) * m_strides[i];
-        }
+        indexOfLastElement += (m_sizes[i] - 1) * m_strides[i];
     }
     if (indexOfLastElement + 1 == elementCount)
     {
         m_isContiguous = true;
     }
 
-    m_sizeInBytes = VkDeviceSize(indexOfLastElement + 1) * GetElementSizeInBytes();
-    m_sizeInBytes = rad::Pow2AlignUp(m_sizeInBytes, VkDeviceSize(4));
+    m_bufferSize = VkDeviceSize(indexOfLastElement + 1) * GetElementSizeInBytes();
+    m_bufferSize = rad::Pow2AlignUp(m_bufferSize, VkDeviceSize(4));
 
     if (buffer)
     {
         m_buffer = buffer;
         m_bufferOffset = bufferOffset;
-        assert(m_sizeInBytes < m_buffer->GetSize() - m_bufferOffset);
+        assert(m_bufferSize < m_buffer->GetSize() - m_bufferOffset);
     }
     else
     {
-        m_buffer = Buffer::CreateStorage(m_device, m_sizeInBytes);
+        m_buffer = Buffer::CreateStorage(m_device, m_bufferSize);
         m_bufferOffset = 0;
     }
 
@@ -82,13 +69,17 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
     return true;
 }
 
-std::vector<size_t> GetContiguousStridesByMemoryOrder(
-    rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
+std::vector<size_t> Tensor::MakeContiguousStrides(rad::ArrayRef<size_t> sizes)
 {
-    if (sizes.empty())
-    {
-        return {};
-    }
+    std::vector<size_t> strides(sizes.size(), 0);
+    strides.back() = 1;
+    std::partial_sum(
+        sizes.rbegin(), sizes.rend() - 1, strides.rbegin() + 1, std::multiplies<std::size_t>());
+    return strides;
+}
+
+std::vector<size_t> MakeContiguousStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
+{
     std::vector<size_t> strides(sizes.size());
     size_t stride = 1;
     for (size_t i = 0; i < sizes.size(); ++i)
@@ -99,63 +90,36 @@ std::vector<size_t> GetContiguousStridesByMemoryOrder(
     return strides;
 }
 
-std::vector<size_t> Tensor::GetContiguousStrides(
-    rad::ArrayRef<size_t> sizes, MemoryLayout layout)
+std::vector<size_t> Tensor::PadSizes(rad::ArrayRef<size_t> sizes)
 {
-    assert(layout != MemoryLayout::Undefined);
-    if (sizes.empty())
+    std::vector<size_t> sizePadded(MaxDimensionCount, 1);
+    for (size_t i = 0; i < sizes.size(); ++i)
     {
-        return {};
+        sizePadded[i + sizes.size()] = sizes[i];
     }
-    std::vector<size_t> strides;
-    if (sizes.size() == 4)
-    {
-        assert((layout == MemoryLayout::NCHW) || (layout == MemoryLayout::NHWC));
-        if (layout == MemoryLayout::NCHW)
-        {
-            return GetContiguousStridesByMemoryOrder(sizes, { 3, 2, 1, 0 });
-        }
-        else if (layout == MemoryLayout::NHWC)
-        {
-            return GetContiguousStridesByMemoryOrder(sizes, { 1, 3, 2, 0 });
-        }
-    }
-    else if (sizes.size() == 5)
-    {
-        assert((layout == MemoryLayout::NCDHW) || (layout == MemoryLayout::NDHWC));
-        if (layout == MemoryLayout::NCDHW)
-        {
-            return GetContiguousStridesByMemoryOrder(sizes, { 4, 3, 2, 1, 0 });
-        }
-        else if (layout == MemoryLayout::NDHWC)
-        {
-            return GetContiguousStridesByMemoryOrder(sizes, { 1, 4, 3, 2, 0 });
-        }
-    }
-    return {};
+    return sizePadded;
 }
 
-std::vector<size_t> Tensor::GetMemoryOrder(MemoryLayout layout)
+std::vector<size_t> Tensor::PadStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)
 {
-    assert(layout != MemoryLayout::Undefined);
-    std::vector<size_t> memoryOrder;
-    if (layout == MemoryLayout::NCHW)
+    size_t maxStride = *std::max_element(strides.begin(), strides.end());
+    std::vector<size_t> stridePadded(MaxDimensionCount, maxStride);
+    for (size_t i = 0; i < sizes.size(); ++i)
     {
-        memoryOrder = { 3, 2, 1, 0 };
+        stridePadded[i + sizes.size()] = strides[i];
     }
-    else if (layout == MemoryLayout::NHWC)
+    return stridePadded;
+}
+
+VkDeviceSize Tensor::GetBufferSizeInBytes(vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)
+{
+    size_t indexOfLastElement = 0;
+    for (size_t i = 0; i < sizes.size(); ++i)
     {
-        memoryOrder = { 1, 3, 2, 0 };
+        indexOfLastElement += (sizes[i] - 1) * strides[i];
     }
-    else if (layout == MemoryLayout::NCDHW)
-    {
-        memoryOrder = { 4, 3, 2, 1, 0 };
-    }
-    else if (layout == MemoryLayout::NDHWC)
-    {
-        memoryOrder = { 1, 4, 3, 2, 0 };
-    }
-    return memoryOrder;
+    VkDeviceSize bufferSize = VkDeviceSize(indexOfLastElement + 1) * GetComponentSizeInBytes(dataType);
+    return rad::Pow2AlignUp<VkDeviceSize>(bufferSize, VkDeviceSize(4));
 }
 
 size_t Tensor::GetElementCount() const
@@ -168,9 +132,58 @@ size_t Tensor::GetElementCount() const
     return count;
 }
 
-size_t Tensor::GetBufferElementCount() const
+bool Tensor::IsNCHW() const
 {
-    return static_cast<size_t>(m_sizeInBytes / GetElementSizeInBytes());
+    if ((m_sizes.size() == 4) &&
+        (m_strides[0] > m_strides[1]) &&
+        (m_strides[1] > m_strides[2]) &&
+        (m_strides[2] > m_strides[3]) &&
+        (m_strides[3] == 1))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool Tensor::IsNHWC() const
+{
+    if ((m_sizes.size() == 4) &&
+        (m_strides[0] > m_strides[2]) &&
+        (m_strides[2] > m_strides[3]) &&
+        (m_strides[3] > m_strides[1]) &&
+        (m_strides[1] == 1))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool Tensor::IsNCDHW() const
+{
+    if ((m_sizes.size() == 5) &&
+        (m_strides[0] > m_strides[1]) &&
+        (m_strides[1] > m_strides[2]) &&
+        (m_strides[2] > m_strides[3]) &&
+        (m_strides[3] > m_strides[4]) &&
+        (m_strides[4] == 1))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool Tensor::IsNDHWC() const
+{
+    if ((m_sizes.size() == 5) &&
+        (m_strides[0] > m_strides[2]) &&
+        (m_strides[2] > m_strides[3]) &&
+        (m_strides[3] > m_strides[4]) &&
+        (m_strides[4] > m_strides[1]) &&
+        (m_strides[1] == 1))
+    {
+        return true;
+    }
+    return false;
 }
 
 void Tensor::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
@@ -192,40 +205,40 @@ void Tensor::FillRandom(float minValue, float maxValue)
     std::uniform_real_distribution<float> dist(minValue, maxValue);
     if (m_dataType == vk::ComponentTypeKHR::eFloat16)
     {
-        std::vector<uint16_t> bufferData = GenerateBufferData<uint16_t>(
+        std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
             [&](std::initializer_list<size_t> coord)
             { return rad::fp16_ieee_from_fp32_value(dist(eng)); }
         );
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloat32)
     {
-        std::vector<float> bufferData = GenerateBufferData<float>(
+        std::vector<float> bufferData = GenerateData<float>(
             [&](std::initializer_list<size_t> coord) { return dist(eng); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloat64)
     {
         std::uniform_real_distribution<double> dist64(minValue, maxValue);
-        std::vector<double> bufferData = GenerateBufferData<double>(
+        std::vector<double> bufferData = GenerateData<double>(
             [&](std::initializer_list<size_t> coord) { return dist64(eng); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
     {
-        std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
+        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
             [&](std::initializer_list<size_t> coord)
             { return rad::fp8e4m3fn_from_fp32_value(dist(eng)); }
         );
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
     {
-        std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
+        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
             [&](std::initializer_list<size_t> coord)
             { return rad::fp8e5m2_from_fp32_value(dist(eng)); }
         );
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
 }
 
@@ -238,59 +251,59 @@ void Tensor::FillRandom(int minValue, int maxValue)
     std::uniform_int_distribution<int> dist(minValue, maxValue);
     if (m_dataType == vk::ComponentTypeKHR::eSint8)
     {
-        std::vector<int8_t> bufferData = GenerateBufferData<int8_t>(
+        std::vector<int8_t> bufferData = GenerateData<int8_t>(
             [&](std::initializer_list<size_t> coord) { return int8_t(dist(eng)); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint16)
     {
-        std::vector<int16_t> bufferData = GenerateBufferData<int16_t>(
+        std::vector<int16_t> bufferData = GenerateData<int16_t>(
             [&](std::initializer_list<size_t> coord) { return int16_t(dist(eng)); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint32)
     {
-        std::vector<int32_t> bufferData = GenerateBufferData<int32_t>(
+        std::vector<int32_t> bufferData = GenerateData<int32_t>(
             [&](std::initializer_list<size_t> coord) { return int32_t(dist(eng)); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint64)
     {
-        std::vector<int64_t> bufferData = GenerateBufferData<int64_t>(
+        std::vector<int64_t> bufferData = GenerateData<int64_t>(
             [&](std::initializer_list<size_t> coord) { return int64_t(dist(eng)); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint8)
     {
         assert(minValue >= 0);
         assert(maxValue > 0);
-        std::vector<uint8_t> bufferData = GenerateBufferData<uint8_t>(
+        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
             [&](std::initializer_list<size_t> coord) { return uint8_t(dist(eng)); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint16)
     {
         assert(minValue >= 0);
         assert(maxValue > 0);
-        std::vector<uint16_t> bufferData = GenerateBufferData<uint16_t>(
+        std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
             [&](std::initializer_list<size_t> coord) { return uint16_t(dist(eng)); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint32)
     {
         assert(minValue >= 0);
         assert(maxValue > 0);
-        std::vector<uint32_t> bufferData = GenerateBufferData<uint32_t>(
+        std::vector<uint32_t> bufferData = GenerateData<uint32_t>(
             [&](std::initializer_list<size_t> coord) { return uint32_t(dist(eng)); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint64)
     {
         assert(minValue >= 0);
         assert(maxValue > 0);
-        std::vector<uint64_t> bufferData = GenerateBufferData<uint64_t>(
+        std::vector<uint64_t> bufferData = GenerateData<uint64_t>(
             [&](std::initializer_list<size_t> coord) { return uint64_t(dist(eng)); });
-        m_buffer->Write(bufferData.data(), m_bufferOffset, m_sizeInBytes);
+        Write(bufferData.data());
     }
 }
 

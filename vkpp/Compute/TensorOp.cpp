@@ -70,7 +70,7 @@ void TensorOp::SetTensor(uint32_t binding, Tensor* tensor)
     vk::DescriptorBufferInfo bufferInfo = {};
     bufferInfo.buffer = tensor->m_buffer->GetHandle();
     bufferInfo.offset = tensor->m_bufferOffset;
-    bufferInfo.range = tensor->m_sizeInBytes;
+    bufferInfo.range = tensor->m_bufferSize;
     m_descSet->UpdateBuffers(binding, 0, vk::DescriptorType::eStorageBuffer, bufferInfo);
     m_bindings[binding] = tensor;
 }
@@ -80,9 +80,12 @@ void TensorOp::Execute(glm::uvec3 groupCount)
     rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
 
     cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-    if (m_enable_PreExecute_MemoryBarrierRAW)
+
+    if (m_memoryBarriers.size() > 0)
     {
-        cmdBuffer->SetMemoryBarrier_ComputeToComputeRAW();
+        vk::DependencyInfoKHR dependency;
+        dependency.setMemoryBarriers(m_memoryBarriers);
+        cmdBuffer->SetPipelineBarrier2(dependency);
     }
 
     cmdBuffer->BindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline->m_wrapper);
@@ -137,21 +140,25 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
 
 void TensorOpElementWiseUnary::UpdateUniforms()
 {
-    if (m_desc.sizes.size() == 4)
-    {
-        m_uniforms.sizes[0] = static_cast<uint32_t>(m_desc.sizes[0]);
-        m_uniforms.sizes[1] = static_cast<uint32_t>(m_desc.sizes[1]);
-        m_uniforms.sizes[2] = static_cast<uint32_t>(m_desc.sizes[2]);
-        m_uniforms.sizes[3] = static_cast<uint32_t>(m_desc.sizes[3]);
-        m_uniforms.inputStrides[0] = static_cast<uint32_t>(m_desc.inputStrides[0]);
-        m_uniforms.inputStrides[1] = static_cast<uint32_t>(m_desc.inputStrides[1]);
-        m_uniforms.inputStrides[2] = static_cast<uint32_t>(m_desc.inputStrides[2]);
-        m_uniforms.inputStrides[3] = static_cast<uint32_t>(m_desc.inputStrides[3]);
-        m_uniforms.outputStrides[0] = static_cast<uint32_t>(m_desc.outputStrides[0]);
-        m_uniforms.outputStrides[1] = static_cast<uint32_t>(m_desc.outputStrides[1]);
-        m_uniforms.outputStrides[2] = static_cast<uint32_t>(m_desc.outputStrides[2]);
-        m_uniforms.outputStrides[3] = static_cast<uint32_t>(m_desc.outputStrides[3]);
-    }
+    std::vector<size_t> sizesPadded = Tensor::PadSizes(m_desc.sizes);
+    std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.inputStrides);
+    std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.outputStrides);
+    static_assert(Tensor::MaxDimensionCount > 4);
+    assert(sizesPadded.size() == Tensor::MaxDimensionCount);
+    assert(inputStridesPadded.size() == Tensor::MaxDimensionCount);
+    assert(outputStridesPadded.size() == Tensor::MaxDimensionCount);
+    m_uniforms.sizes[0] = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 4]);
+    m_uniforms.sizes[1] = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 3]);
+    m_uniforms.sizes[2] = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 2]);
+    m_uniforms.sizes[3] = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 1]);
+    m_uniforms.inputStrides[0] = static_cast<uint32_t>(inputStridesPadded[Tensor::MaxDimensionCount - 4]);
+    m_uniforms.inputStrides[1] = static_cast<uint32_t>(inputStridesPadded[Tensor::MaxDimensionCount - 3]);
+    m_uniforms.inputStrides[2] = static_cast<uint32_t>(inputStridesPadded[Tensor::MaxDimensionCount - 2]);
+    m_uniforms.inputStrides[3] = static_cast<uint32_t>(inputStridesPadded[Tensor::MaxDimensionCount - 1]);
+    m_uniforms.outputStrides[0] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 4]);
+    m_uniforms.outputStrides[1] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 3]);
+    m_uniforms.outputStrides[2] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 2]);
+    m_uniforms.outputStrides[3] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 1]);
     SetUniforms(m_uniforms);
 }
 

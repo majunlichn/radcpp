@@ -16,12 +16,12 @@ extern rad::Ref<vkpp::Device> g_device;
 TEST(Tensor, ElementWise)
 {
     rad::Ref<vkpp::Tensor> tensor = RAD_NEW vkpp::Tensor(g_device);
-    tensor->Init(vk::ComponentTypeKHR::eFloat16, { 1, 2, 512, 512 }, vkpp::Tensor::MemoryLayout::NCHW);
+    tensor->Init(vk::ComponentTypeKHR::eFloat16, { 10, 4, 512, 512 });
 
     std::random_device rd;
     std::default_random_engine eng(rd());
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-    std::vector<uint16_t> initData = tensor->GenerateBufferData<uint16_t>(
+    std::vector<uint16_t> initData = tensor->GenerateData<uint16_t>(
         [&](std::initializer_list<size_t> coord) { return rad::fp16_ieee_from_fp32_value(dist(eng)); });
     tensor->Write(initData.data());
 
@@ -37,13 +37,13 @@ TEST(Tensor, ElementWise)
     op->SetTensor(2, tensor.get());
 
     glm::uvec3 groupCount = {};
-    groupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(tensor->m_sizes[3]), 16u);    // W
-    groupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(tensor->m_sizes[2]), 16u);    // H
-    groupCount.z = static_cast<uint32_t>(tensor->m_sizes[1]);   // C
+    groupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(tensor->m_sizes[3]), 16u);   // W
+    groupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(tensor->m_sizes[2]), 16u);   // H
+    groupCount.z = static_cast<uint32_t>(tensor->m_sizes[0]);   // N
     op->Execute(groupCount);
 
     // Check the results:
-    std::vector<uint16_t> results(tensor->GetBufferElementCount());
+    std::vector<uint16_t> results(tensor->GetBufferSizeInElements());
     tensor->Read(results.data());
     for (size_t i = 0; i < results.size(); ++i)
     {
