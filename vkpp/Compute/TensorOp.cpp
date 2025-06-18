@@ -75,28 +75,6 @@ void TensorOp::SetTensor(uint32_t binding, Tensor* tensor)
     m_bindings[binding] = tensor;
 }
 
-void TensorOp::Execute(glm::uvec3 groupCount)
-{
-    rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
-
-    cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-
-    if (m_memoryBarriers.size() > 0)
-    {
-        vk::DependencyInfoKHR dependency;
-        dependency.setMemoryBarriers(m_memoryBarriers);
-        cmdBuffer->SetPipelineBarrier2(dependency);
-    }
-
-    cmdBuffer->BindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline->m_wrapper);
-    cmdBuffer->BindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout->GetHandle(), 0,
-        { m_descSet->GetHandle() }, {});
-    cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
-    cmdBuffer->End();
-
-    m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
-}
-
 TensorOpElementWiseUnary::TensorOpElementWiseUnary(rad::Ref<Device> device) :
     TensorOp(std::move(device))
 {
@@ -116,7 +94,7 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
     {
         sourceRoot = env;
     }
-    std::string sourceName = sourceRoot + "/TensorOp/ElementWiseUnary4D.comp";
+    std::string sourceName = sourceRoot + "/TensorOp/ElementWiseUnary.comp";
     std::string source = rad::File::ReadAll(sourceName);
     std::vector<ShaderMacro> macros =
     {
@@ -129,7 +107,11 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
         source, "main", macros
     );
 
-    CreatePipelineLayouts(2);
+    vk::PushConstantRange pushConstantRange = {};
+    pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eCompute;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(PushConstants);
+    CreatePipelineLayouts(2, pushConstantRange);
     m_pipeline = m_device->CreateComputePipeline(shaderStage, m_pipelineLayout->GetHandle());
     m_pipeline->m_layout = m_pipelineLayout;
 
@@ -143,7 +125,7 @@ void TensorOpElementWiseUnary::UpdateUniforms()
     std::vector<size_t> sizesPadded = Tensor::PadSizes(m_desc.sizes);
     std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.inputStrides);
     std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.outputStrides);
-    static_assert(Tensor::MaxDimensionCount > 4);
+    static_assert(Tensor::MaxDimensionCount >= 4);
     assert(sizesPadded.size() == Tensor::MaxDimensionCount);
     assert(inputStridesPadded.size() == Tensor::MaxDimensionCount);
     assert(outputStridesPadded.size() == Tensor::MaxDimensionCount);
@@ -160,6 +142,61 @@ void TensorOpElementWiseUnary::UpdateUniforms()
     m_uniforms.outputStrides[2] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 2]);
     m_uniforms.outputStrides[3] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 1]);
     SetUniforms(m_uniforms);
+}
+
+void TensorOpElementWiseUnary::Execute()
+{
+    std::vector<size_t> sizePadded = Tensor::PadSizes(m_desc.sizes);
+    std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.inputStrides);
+    std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.outputStrides);
+
+    glm::uvec3 groupCount = {};
+    groupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(sizePadded[Tensor::MaxDimensionCount - 1]), 16u);    // W
+    groupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(sizePadded[Tensor::MaxDimensionCount - 2]), 16u);    // H
+    groupCount.z = static_cast<uint32_t>(sizePadded[Tensor::MaxDimensionCount - 4]);    // N
+
+    rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
+
+    cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+    if (m_memoryBarriers.size() > 0)
+    {
+        vk::DependencyInfoKHR dependency;
+        dependency.setMemoryBarriers(m_memoryBarriers);
+        cmdBuffer->SetPipelineBarrier2(dependency);
+    }
+
+    cmdBuffer->BindPipeline(vk::PipelineBindPoint::eCompute, m_pipeline->m_wrapper);
+    cmdBuffer->BindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout->GetHandle(), 0,
+        { m_descSet->GetHandle() }, {});
+
+    static_assert(Tensor::MaxDimensionCount == 8);
+    for (size_t c0 = 0; c0 < sizePadded[0]; ++c0)
+    {
+        for (size_t c1 = 0; c1 < sizePadded[1]; ++c1)
+        {
+            for (size_t c2 = 0; c2 < sizePadded[2]; ++c2)
+            {
+                for (size_t c3 = 0; c3 < sizePadded[3]; ++c3)
+                {
+                    size_t inputIndexOffset =
+                        c0 * inputStridesPadded[0] + c1 * inputStridesPadded[1] + c2 * inputStridesPadded[2] + c3 * inputStridesPadded[3];
+                    size_t outputIndexOffset =
+                        c0 * outputStridesPadded[0] + c1 * outputStridesPadded[1] + c2 * outputStridesPadded[2] + c3 * outputStridesPadded[3];
+                    PushConstants pushConstants = {};
+                    pushConstants.inputIndexOffset = inputIndexOffset;
+                    pushConstants.outputIndexOffset = outputIndexOffset;
+                    cmdBuffer->SetPushConstants<PushConstants>(
+                        m_pipelineLayout->GetHandle(), vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
+                    cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
+                }
+            }
+        }
+    }
+
+    cmdBuffer->End();
+
+    m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
 }
 
 } // namespace vkpp

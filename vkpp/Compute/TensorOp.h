@@ -30,8 +30,7 @@ public:
     }
 
     void SetTensor(uint32_t binding, Tensor* tensors);
-
-    void Execute(glm::uvec3 groupCount);
+    virtual void Execute() = 0;
 
     rad::Ref<Device> m_device;
     rad::Ref<CommandStream> m_cmdStream;
@@ -69,6 +68,12 @@ public:
     TensorOpElementWiseUnary(rad::Ref<Device> device);
     ~TensorOpElementWiseUnary();
 
+    struct PushConstants
+    {
+        uint32_t inputIndexOffset;
+        uint32_t outputIndexOffset;
+    };
+
     struct Uniforms
     {
         glm::uvec4 sizes;
@@ -79,6 +84,8 @@ public:
     virtual bool Init(const TensorOpElementWiseUnaryDesc& desc);
 
     void UpdateUniforms();
+
+    virtual void Execute() override;
 
     TensorOpElementWiseUnaryDesc m_desc = {};
     Uniforms m_uniforms = {};

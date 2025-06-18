@@ -24,8 +24,8 @@ public:
     bool IsInteger() const { return IsIntegerType(m_dataType); }
 
     static constexpr size_t MaxDimensionCount = 8;
-    static std::vector<size_t> MakeContiguousStrides(rad::ArrayRef<size_t> sizes);
-    static std::vector<size_t> MakeContiguousStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder);
+    static std::vector<size_t> MakeStrides(rad::ArrayRef<size_t> sizes);
+    static std::vector<size_t> MakeStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder);
     // Pad sizes to MaxDimensionCount.
     static std::vector<size_t> PadSizes(rad::ArrayRef<size_t> sizes);
     // Pad strides to MaxDimensionCount.
@@ -33,6 +33,17 @@ public:
 
     static VkDeviceSize GetBufferSizeInBytes(
         vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides = {});
+
+    // Sizes padded to MaxDimensionCount.
+    std::vector<size_t> GetPaddedSizes(rad::ArrayRef<size_t> sizes)
+    {
+        return PadSizes(sizes);
+    }
+    // Strides padded to MaxDimensionCount.
+    std::vector<size_t> GetPaddedStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)
+    {
+        return PadStrides(sizes, strides);
+    }
 
     size_t GetDimensionCount() const { return m_sizes.size(); }
     size_t GetElementCount() const;

@@ -386,14 +386,14 @@ public:
         vk::PipelineLayout layout, vk::ShaderStageFlags stageFlags,
         uint32_t offset, uint32_t size, const void* pValues);
 
-    template <typename T>
+    template <rad::TriviallyCopyable T>
     void SetPushConstants(
         vk::PipelineLayout layout, vk::ShaderStageFlags stageFlags,
         uint32_t offset, rad::ArrayRef<T> values)
     {
         assert(offset % 4 == 0);
         assert((sizeof(T) * values.size()) % 4 == 0);
-        m_wrapper.pushConstants(layout, stageFlags, offset, values);
+        m_wrapper.pushConstants<T>(layout, stageFlags, offset, values);
     }
 
     void BeginRenderPass(

@@ -5,6 +5,12 @@
 
 #include "DataType.h"
 
+layout(push_constant, std430) uniform PushConstants
+{
+    uint g_inputIndexOffset;
+    uint g_outputIndexOffset;
+};
+
 layout(set = 0, binding = 0) uniform Uniforms
 {
     uvec4 g_sizes;
@@ -32,9 +38,9 @@ void main()
     }
     for (uint c = 0; c < SizeC; ++c)
     {
-        uint inputIndex = n * g_inputStrides[0] + c * g_inputStrides[1] +
+        uint inputIndex = g_inputIndexOffset + n * g_inputStrides[0] + c * g_inputStrides[1] +
                             h * g_inputStrides[2] + w * g_inputStrides[3];
-        uint outputIndex = n * g_outputStrides[0] + c * g_outputStrides[1] +
+        uint outputIndex = g_outputIndexOffset + n * g_outputStrides[0] + c * g_outputStrides[1] +
                             h * g_outputStrides[2] + w * g_outputStrides[3];
         DATA_TYPE x = g_inputTensor[inputIndex];
         g_outputTensor[outputIndex] = OP_NAME(x);

@@ -21,7 +21,7 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
     rad::Ref<Buffer> buffer, VkDeviceSize bufferOffset)
 {
     assert(sizes.size() > 0);
-    assert(sizes.size() < MaxDimensionCount);
+    assert(sizes.size() <= MaxDimensionCount);
     assert((sizes.size() == strides.size()) || strides.empty());
 
     m_dataType = dataType;
@@ -29,7 +29,7 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
     m_strides = strides;
     if (m_strides.empty())
     {
-        m_strides = MakeContiguousStrides(m_sizes);
+        m_strides = MakeStrides(m_sizes);
     }
     assert(m_sizes.size() == m_strides.size());
 
@@ -69,7 +69,7 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
     return true;
 }
 
-std::vector<size_t> Tensor::MakeContiguousStrides(rad::ArrayRef<size_t> sizes)
+std::vector<size_t> Tensor::MakeStrides(rad::ArrayRef<size_t> sizes)
 {
     std::vector<size_t> strides(sizes.size(), 0);
     strides.back() = 1;
@@ -78,7 +78,7 @@ std::vector<size_t> Tensor::MakeContiguousStrides(rad::ArrayRef<size_t> sizes)
     return strides;
 }
 
-std::vector<size_t> MakeContiguousStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
+std::vector<size_t> MakeStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
 {
     std::vector<size_t> strides(sizes.size());
     size_t stride = 1;
@@ -95,7 +95,7 @@ std::vector<size_t> Tensor::PadSizes(rad::ArrayRef<size_t> sizes)
     std::vector<size_t> sizePadded(MaxDimensionCount, 1);
     for (size_t i = 0; i < sizes.size(); ++i)
     {
-        sizePadded[i + sizes.size()] = sizes[i];
+        sizePadded[i + MaxDimensionCount - sizes.size()] = sizes[i];
     }
     return sizePadded;
 }
@@ -106,7 +106,7 @@ std::vector<size_t> Tensor::PadStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRe
     std::vector<size_t> stridePadded(MaxDimensionCount, maxStride);
     for (size_t i = 0; i < sizes.size(); ++i)
     {
-        stridePadded[i + sizes.size()] = strides[i];
+        stridePadded[i + MaxDimensionCount - sizes.size()] = strides[i];
     }
     return stridePadded;
 }
