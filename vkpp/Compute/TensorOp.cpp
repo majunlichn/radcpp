@@ -123,8 +123,8 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
 void TensorOpElementWiseUnary::UpdateUniforms()
 {
     std::vector<size_t> sizesPadded = Tensor::PadSizes(m_desc.sizes);
-    std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.inputStrides);
-    std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.outputStrides);
+    std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.inputStrides);
+    std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.outputStrides);
     static_assert(Tensor::MaxDimensionCount >= 4);
     assert(sizesPadded.size() == Tensor::MaxDimensionCount);
     assert(inputStridesPadded.size() == Tensor::MaxDimensionCount);
@@ -146,14 +146,14 @@ void TensorOpElementWiseUnary::UpdateUniforms()
 
 void TensorOpElementWiseUnary::Execute()
 {
-    std::vector<size_t> sizePadded = Tensor::PadSizes(m_desc.sizes);
-    std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.inputStrides);
-    std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.sizes, m_desc.outputStrides);
+    std::vector<size_t> sizesPadded = Tensor::PadSizes(m_desc.sizes);
+    std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.inputStrides);
+    std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.outputStrides);
 
     glm::uvec3 groupCount = {};
-    groupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(sizePadded[Tensor::MaxDimensionCount - 1]), 16u);    // W
-    groupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(sizePadded[Tensor::MaxDimensionCount - 2]), 16u);    // H
-    groupCount.z = static_cast<uint32_t>(sizePadded[Tensor::MaxDimensionCount - 4]);    // N
+    groupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 1]), 16u);   // W
+    groupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 2]), 16u);   // H
+    groupCount.z = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 4]);
 
     rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
 
@@ -171,13 +171,13 @@ void TensorOpElementWiseUnary::Execute()
         { m_descSet->GetHandle() }, {});
 
     static_assert(Tensor::MaxDimensionCount == 8);
-    for (size_t c0 = 0; c0 < sizePadded[0]; ++c0)
+    for (size_t c0 = 0; c0 < sizesPadded[0]; ++c0)
     {
-        for (size_t c1 = 0; c1 < sizePadded[1]; ++c1)
+        for (size_t c1 = 0; c1 < sizesPadded[1]; ++c1)
         {
-            for (size_t c2 = 0; c2 < sizePadded[2]; ++c2)
+            for (size_t c2 = 0; c2 < sizesPadded[2]; ++c2)
             {
-                for (size_t c3 = 0; c3 < sizePadded[3]; ++c3)
+                for (size_t c3 = 0; c3 < sizesPadded[3]; ++c3)
                 {
                     size_t inputIndexOffset =
                         c0 * inputStridesPadded[0] + c1 * inputStridesPadded[1] + c2 * inputStridesPadded[2] + c3 * inputStridesPadded[3];

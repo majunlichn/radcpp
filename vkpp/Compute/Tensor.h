@@ -3,6 +3,8 @@
 #include <vkpp/Core/Device.h>
 #include <vkpp/Core/Buffer.h>
 #include <functional>
+#include <numeric>
+#include <random>
 
 namespace vkpp
 {
@@ -29,20 +31,21 @@ public:
     // Pad sizes to MaxDimensionCount.
     static std::vector<size_t> PadSizes(rad::ArrayRef<size_t> sizes);
     // Pad strides to MaxDimensionCount.
-    static std::vector<size_t> PadStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides);
+    static std::vector<size_t> PadStrides(rad::ArrayRef<size_t> strides);
 
     static VkDeviceSize GetBufferSizeInBytes(
         vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides = {});
 
     // Sizes padded to MaxDimensionCount.
-    std::vector<size_t> GetPaddedSizes(rad::ArrayRef<size_t> sizes)
+    std::vector<size_t> GetSizesPadded() const
     {
-        return PadSizes(sizes);
+        return PadSizes(m_sizes);
     }
+
     // Strides padded to MaxDimensionCount.
-    std::vector<size_t> GetPaddedStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)
+    std::vector<size_t> GetStridesPadded() const
     {
-        return PadStrides(sizes, strides);
+        return PadStrides(m_strides);
     }
 
     size_t GetDimensionCount() const { return m_sizes.size(); }
@@ -88,8 +91,14 @@ public:
     template <rad::TriviallyCopyable T>
     void FillConstant(const T& value);
 
-    void FillRandom(float minValue, float maxValue);
-    void FillRandom(int minValue, int maxValue);
+    template<typename Distribution>
+    void FillRandomFloat(Distribution& dist);
+    template<typename Distribution>
+    void FillRandomInteger(Distribution& dist);
+
+    void FillUniformDistribution(float minValue, float maxValue);
+    void FillUniformDistribution(int minValue, int maxValue);
+    void FillNormalDistribution(float mean = 0.0f, float stddev = 1.0f);
 
 }; // class Tensor
 
@@ -98,32 +107,32 @@ inline std::vector<T> Tensor::GenerateData(std::function<T(std::initializer_list
 {
     assert(sizeof(T) == GetElementSizeInBytes());
     std::vector<T> buffer(GetBufferSizeInElements(), T(0));
-    std::vector<size_t> sizePadded = PadSizes(m_sizes);
-    std::vector<size_t> stridePadded = PadStrides(m_sizes, m_strides);
+    std::vector<size_t> sizesPadded = GetSizesPadded();
+    std::vector<size_t> stridesPadded = GetStridesPadded();
 
     static_assert(MaxDimensionCount == 8);
-    assert(sizePadded.size() == MaxDimensionCount);
-    assert(stridePadded.size() == MaxDimensionCount);
+    assert(sizesPadded.size() == MaxDimensionCount);
+    assert(stridesPadded.size() == MaxDimensionCount);
 
-    for (size_t c0 = 0; c0 < sizePadded[0]; ++c0)
+    for (size_t c0 = 0; c0 < sizesPadded[0]; ++c0)
     {
-        for (size_t c1 = 0; c1 < sizePadded[1]; ++c1)
+        for (size_t c1 = 0; c1 < sizesPadded[1]; ++c1)
         {
-            for (size_t c2 = 0; c2 < sizePadded[2]; ++c2)
+            for (size_t c2 = 0; c2 < sizesPadded[2]; ++c2)
             {
-                for (size_t c3 = 0; c3 < sizePadded[3]; ++c3)
+                for (size_t c3 = 0; c3 < sizesPadded[3]; ++c3)
                 {
-                    for (size_t c4 = 0; c4 < sizePadded[4]; ++c4)
+                    for (size_t c4 = 0; c4 < sizesPadded[4]; ++c4)
                     {
-                        for (size_t c5 = 0; c5 < sizePadded[5]; ++c5)
+                        for (size_t c5 = 0; c5 < sizesPadded[5]; ++c5)
                         {
-                            for (size_t c6 = 0; c6 < sizePadded[6]; ++c6)
+                            for (size_t c6 = 0; c6 < sizesPadded[6]; ++c6)
                             {
-                                for (size_t c7 = 0; c7 < sizePadded[7]; ++c7)
+                                for (size_t c7 = 0; c7 < sizesPadded[7]; ++c7)
                                 {
                                     size_t index =
-                                        c0 * stridePadded[0] + c1 * stridePadded[1] + c2 * stridePadded[2] + c3 * stridePadded[3] +
-                                        c4 * stridePadded[4] + c5 * stridePadded[5] + c6 * stridePadded[6] + c7 * stridePadded[7];
+                                        c0 * stridesPadded[0] + c1 * stridesPadded[1] + c2 * stridesPadded[2] + c3 * stridesPadded[3] +
+                                        c4 * stridesPadded[4] + c5 * stridesPadded[5] + c6 * stridesPadded[6] + c7 * stridesPadded[7];
                                     buffer[index] = generator({ c0, c1, c2, c3, c4, c5, c6, c7 });
                                 }
                             }
@@ -140,9 +149,121 @@ template<rad::TriviallyCopyable T>
 inline void Tensor::FillConstant(const T& value)
 {
     assert(sizeof(T) == GetElementSizeInBytes());
-    std::vector<T> bufferData = GenerateData<T>(
-        [&](std::initializer_list<size_t> coord) { return value; });
-    Write(bufferData.data());
+    if (IsContiguous())
+    {
+        std::vector<T> bufferData(GetBufferSizeInElements(), value);
+        Write(bufferData.data());
+    }
+    else
+    {
+        std::vector<T> bufferData = GenerateData<T>(
+            [&](std::initializer_list<size_t> coord) { return value; });
+        Write(bufferData.data());
+    }
+}
+
+template<typename Distribution>
+inline void Tensor::FillRandomFloat(Distribution& dist)
+{
+    assert(IsFloatingPointType(m_dataType));
+
+    std::random_device randomDevice;
+    std::default_random_engine gen(randomDevice());
+
+    if (m_dataType == vk::ComponentTypeKHR::eFloat16)
+    {
+        std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
+            [&](std::initializer_list<size_t> coord)
+            { return rad::fp16_ieee_from_fp32_value(dist(gen)); }
+        );
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eFloat32)
+    {
+        std::vector<float> bufferData = GenerateData<float>(
+            [&](std::initializer_list<size_t> coord) { return dist(gen); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eFloat64)
+    {
+        std::vector<double> bufferData = GenerateData<double>(
+            [&](std::initializer_list<size_t> coord) { return dist(gen); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
+    {
+        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
+            [&](std::initializer_list<size_t> coord)
+            { return rad::fp8e4m3fn_from_fp32_value(dist(gen)); }
+        );
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
+    {
+        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
+            [&](std::initializer_list<size_t> coord)
+            { return rad::fp8e5m2_from_fp32_value(dist(gen)); }
+        );
+        Write(bufferData.data());
+    }
+}
+
+template<typename Distribution>
+inline void Tensor::FillRandomInteger(Distribution& dist)
+{
+    assert(IsIntegerType(m_dataType));
+
+    std::random_device randomDevice;
+    std::default_random_engine gen(randomDevice());
+
+    if (m_dataType == vk::ComponentTypeKHR::eSint8)
+    {
+        std::vector<int8_t> bufferData = GenerateData<int8_t>(
+            [&](std::initializer_list<size_t> coord) { return int8_t(dist(gen)); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eSint16)
+    {
+        std::vector<int16_t> bufferData = GenerateData<int16_t>(
+            [&](std::initializer_list<size_t> coord) { return int16_t(dist(gen)); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eSint32)
+    {
+        std::vector<int32_t> bufferData = GenerateData<int32_t>(
+            [&](std::initializer_list<size_t> coord) { return int32_t(dist(gen)); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eSint64)
+    {
+        std::vector<int64_t> bufferData = GenerateData<int64_t>(
+            [&](std::initializer_list<size_t> coord) { return int64_t(dist(gen)); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eUint8)
+    {
+        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
+            [&](std::initializer_list<size_t> coord) { return uint8_t(dist(gen)); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eUint16)
+    {
+        std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
+            [&](std::initializer_list<size_t> coord) { return uint16_t(dist(gen)); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eUint32)
+    {
+        std::vector<uint32_t> bufferData = GenerateData<uint32_t>(
+            [&](std::initializer_list<size_t> coord) { return uint32_t(dist(gen)); });
+        Write(bufferData.data());
+    }
+    else if (m_dataType == vk::ComponentTypeKHR::eUint64)
+    {
+        std::vector<uint64_t> bufferData = GenerateData<uint64_t>(
+            [&](std::initializer_list<size_t> coord) { return uint64_t(dist(gen)); });
+        Write(bufferData.data());
+    }
 }
 
 } // namespace vkpp

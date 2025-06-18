@@ -1,8 +1,5 @@
 #include <vkpp/Compute/Tensor.h>
 #include <vkpp/Core/Command.h>
-#include <rad/Core/Float.h>
-#include <numeric>
-#include <random>
 
 namespace vkpp
 {
@@ -92,23 +89,23 @@ std::vector<size_t> MakeStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::A
 
 std::vector<size_t> Tensor::PadSizes(rad::ArrayRef<size_t> sizes)
 {
-    std::vector<size_t> sizePadded(MaxDimensionCount, 1);
+    std::vector<size_t> sizesPadded(MaxDimensionCount, 1);
     for (size_t i = 0; i < sizes.size(); ++i)
     {
-        sizePadded[i + MaxDimensionCount - sizes.size()] = sizes[i];
+        sizesPadded[i + MaxDimensionCount - sizes.size()] = sizes[i];
     }
-    return sizePadded;
+    return sizesPadded;
 }
 
-std::vector<size_t> Tensor::PadStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)
+std::vector<size_t> Tensor::PadStrides(rad::ArrayRef<size_t> strides)
 {
     size_t maxStride = *std::max_element(strides.begin(), strides.end());
-    std::vector<size_t> stridePadded(MaxDimensionCount, maxStride);
-    for (size_t i = 0; i < sizes.size(); ++i)
+    std::vector<size_t> stridesPadded(MaxDimensionCount, maxStride);
+    for (size_t i = 0; i < strides.size(); ++i)
     {
-        stridePadded[i + MaxDimensionCount - sizes.size()] = strides[i];
+        stridesPadded[i + MaxDimensionCount - strides.size()] = strides[i];
     }
-    return stridePadded;
+    return stridesPadded;
 }
 
 VkDeviceSize Tensor::GetBufferSizeInBytes(vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)
@@ -196,115 +193,29 @@ void Tensor::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataS
     m_buffer->Write(data, m_bufferOffset + offset, dataSize);
 }
 
-void Tensor::FillRandom(float minValue, float maxValue)
+void Tensor::FillUniformDistribution(float minValue, float maxValue)
 {
     assert(IsFloatingPointType(m_dataType));
     assert(minValue < maxValue);
-    std::random_device rd;
-    std::default_random_engine eng(rd());
     std::uniform_real_distribution<float> dist(minValue, maxValue);
-    if (m_dataType == vk::ComponentTypeKHR::eFloat16)
-    {
-        std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
-            [&](std::initializer_list<size_t> coord)
-            { return rad::fp16_ieee_from_fp32_value(dist(eng)); }
-        );
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eFloat32)
-    {
-        std::vector<float> bufferData = GenerateData<float>(
-            [&](std::initializer_list<size_t> coord) { return dist(eng); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eFloat64)
-    {
-        std::uniform_real_distribution<double> dist64(minValue, maxValue);
-        std::vector<double> bufferData = GenerateData<double>(
-            [&](std::initializer_list<size_t> coord) { return dist64(eng); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
-    {
-        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](std::initializer_list<size_t> coord)
-            { return rad::fp8e4m3fn_from_fp32_value(dist(eng)); }
-        );
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
-    {
-        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](std::initializer_list<size_t> coord)
-            { return rad::fp8e5m2_from_fp32_value(dist(eng)); }
-        );
-        Write(bufferData.data());
-    }
+    FillRandomFloat(dist);
 }
 
-void Tensor::FillRandom(int minValue, int maxValue)
+void Tensor::FillUniformDistribution(int minValue, int maxValue)
 {
-    assert(IsIntegerType(m_dataType));
+    assert(IsSignedIntegerType(m_dataType) ||
+        (IsUnsignedIntegerType(m_dataType) && (minValue >= 0)));
     assert(minValue < maxValue);
-    std::random_device rd;
-    std::default_random_engine eng(rd());
     std::uniform_int_distribution<int> dist(minValue, maxValue);
-    if (m_dataType == vk::ComponentTypeKHR::eSint8)
-    {
-        std::vector<int8_t> bufferData = GenerateData<int8_t>(
-            [&](std::initializer_list<size_t> coord) { return int8_t(dist(eng)); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eSint16)
-    {
-        std::vector<int16_t> bufferData = GenerateData<int16_t>(
-            [&](std::initializer_list<size_t> coord) { return int16_t(dist(eng)); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eSint32)
-    {
-        std::vector<int32_t> bufferData = GenerateData<int32_t>(
-            [&](std::initializer_list<size_t> coord) { return int32_t(dist(eng)); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eSint64)
-    {
-        std::vector<int64_t> bufferData = GenerateData<int64_t>(
-            [&](std::initializer_list<size_t> coord) { return int64_t(dist(eng)); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eUint8)
-    {
-        assert(minValue >= 0);
-        assert(maxValue > 0);
-        std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](std::initializer_list<size_t> coord) { return uint8_t(dist(eng)); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eUint16)
-    {
-        assert(minValue >= 0);
-        assert(maxValue > 0);
-        std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
-            [&](std::initializer_list<size_t> coord) { return uint16_t(dist(eng)); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eUint32)
-    {
-        assert(minValue >= 0);
-        assert(maxValue > 0);
-        std::vector<uint32_t> bufferData = GenerateData<uint32_t>(
-            [&](std::initializer_list<size_t> coord) { return uint32_t(dist(eng)); });
-        Write(bufferData.data());
-    }
-    else if (m_dataType == vk::ComponentTypeKHR::eUint64)
-    {
-        assert(minValue >= 0);
-        assert(maxValue > 0);
-        std::vector<uint64_t> bufferData = GenerateData<uint64_t>(
-            [&](std::initializer_list<size_t> coord) { return uint64_t(dist(eng)); });
-        Write(bufferData.data());
-    }
+    FillRandomInteger(dist);
+}
+
+void Tensor::FillNormalDistribution(float mean, float stddev)
+{
+    assert(IsFloatingPointType(m_dataType));
+    assert(stddev > 0.0f);
+    std::normal_distribution<float> dist(mean, stddev);
+    FillRandomFloat(dist);
 }
 
 } // namespace vkpp

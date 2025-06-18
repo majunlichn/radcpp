@@ -8,6 +8,7 @@
 #include <rad/Core/Platform.h>
 
 #include <rad/Core/Integer.h>
+#include <rad/Core/Float.h>
 #include <rad/Core/Memory.h>
 #include <rad/Core/RefCounted.h>
 #include <rad/Core/String.h>
