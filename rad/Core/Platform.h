@@ -98,6 +98,7 @@
 #endif
 
 #if (defined(_WIN64) || defined(_WIN32))
+#include <SDKDDKVer.h>
 #define RAD_OS_WINDOWS
 #endif
 
