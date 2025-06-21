@@ -18,7 +18,6 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
     rad::Ref<Buffer> buffer, VkDeviceSize bufferOffset)
 {
     assert(sizes.size() > 0);
-    assert(sizes.size() <= MaxDimensionCount);
     assert((sizes.size() == strides.size()) || strides.empty());
 
     m_dataType = dataType;
@@ -87,25 +86,39 @@ std::vector<size_t> MakeStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::A
     return strides;
 }
 
-std::vector<size_t> Tensor::PadSizes(rad::ArrayRef<size_t> sizes)
+std::vector<size_t> Tensor::ExpandSizeDimensions(rad::ArrayRef<size_t> sizes, size_t dimCount)
 {
-    std::vector<size_t> sizesPadded(MaxDimensionCount, 1);
-    for (size_t i = 0; i < sizes.size(); ++i)
+    if (dimCount > sizes.size())
     {
-        sizesPadded[i + MaxDimensionCount - sizes.size()] = sizes[i];
+        std::vector<size_t> sizesExpanded(dimCount, 1);
+        for (size_t i = 0; i < sizes.size(); ++i)
+        {
+            sizesExpanded[i + dimCount - sizes.size()] = sizes[i];
+        }
+        return sizesExpanded;
     }
-    return sizesPadded;
+    else
+    {
+        return sizes;
+    }
 }
 
-std::vector<size_t> Tensor::PadStrides(rad::ArrayRef<size_t> strides)
+std::vector<size_t> Tensor::ExpandStrideDimensions(rad::ArrayRef<size_t> strides, size_t dimCount)
 {
-    size_t maxStride = *std::max_element(strides.begin(), strides.end());
-    std::vector<size_t> stridesPadded(MaxDimensionCount, maxStride);
-    for (size_t i = 0; i < strides.size(); ++i)
+    if (dimCount > strides.size())
     {
-        stridesPadded[i + MaxDimensionCount - strides.size()] = strides[i];
+        size_t maxStride = *std::max_element(strides.begin(), strides.end());
+        std::vector<size_t> stridesExpanded(dimCount, maxStride);
+        for (size_t i = 0; i < strides.size(); ++i)
+        {
+            stridesExpanded[i + dimCount - strides.size()] = strides[i];
+        }
+        return stridesExpanded;
     }
-    return stridesPadded;
+    else
+    {
+        return strides;
+    }
 }
 
 VkDeviceSize Tensor::GetBufferSizeInBytes(vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)

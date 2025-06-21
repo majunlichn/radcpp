@@ -25,28 +25,15 @@ public:
     bool IsUnsignedInteger() const { return IsUnsignedIntegerType(m_dataType); }
     bool IsInteger() const { return IsIntegerType(m_dataType); }
 
-    static constexpr size_t MaxDimensionCount = 8;
     static std::vector<size_t> MakeStrides(rad::ArrayRef<size_t> sizes);
     static std::vector<size_t> MakeStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder);
-    // Pad sizes to MaxDimensionCount.
-    static std::vector<size_t> PadSizes(rad::ArrayRef<size_t> sizes);
-    // Pad strides to MaxDimensionCount.
-    static std::vector<size_t> PadStrides(rad::ArrayRef<size_t> strides);
+    // Expand sizes to higher dimensions (same element count).
+    static std::vector<size_t> ExpandSizeDimensions(rad::ArrayRef<size_t> sizes, size_t dimCount);
+    // Expand strides to higher dimensions (same memory layout).
+    static std::vector<size_t> ExpandStrideDimensions(rad::ArrayRef<size_t> strides, size_t dimCount);
 
     static VkDeviceSize GetBufferSizeInBytes(
         vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides = {});
-
-    // Sizes padded to MaxDimensionCount.
-    std::vector<size_t> GetSizesPadded() const
-    {
-        return PadSizes(m_sizes);
-    }
-
-    // Strides padded to MaxDimensionCount.
-    std::vector<size_t> GetStridesPadded() const
-    {
-        return PadStrides(m_strides);
-    }
 
     size_t GetDimensionCount() const { return m_sizes.size(); }
     size_t GetElementCount() const;
@@ -86,7 +73,10 @@ public:
     void Write(const void* data) { Write(data, 0, m_bufferSize); }
 
     template <rad::TriviallyCopyable T>
-    std::vector<T> GenerateData(std::function<T(std::initializer_list<size_t> coord)> generator) const;
+    std::vector<T> GenerateData(const std::function<T(rad::ArrayRef<size_t> coord)>& generator) const;
+    template <rad::TriviallyCopyable T>
+    void GenerateDataByDimensions(std::vector<T>& bufferData, const std::function<T(rad::ArrayRef<size_t> coord)>& generator,
+        size_t dimIndex, std::vector<size_t> coord) const;
 
     template <rad::TriviallyCopyable T>
     void FillConstant(const T& value);
@@ -103,46 +93,39 @@ public:
 }; // class Tensor
 
 template<rad::TriviallyCopyable T>
-inline std::vector<T> Tensor::GenerateData(std::function<T(std::initializer_list<size_t> coord)> generator) const
+inline std::vector<T> Tensor::GenerateData(const std::function<T(rad::ArrayRef<size_t> coord)>& generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
-    std::vector<T> buffer(GetBufferSizeInElements(), T(0));
-    std::vector<size_t> sizesPadded = GetSizesPadded();
-    std::vector<size_t> stridesPadded = GetStridesPadded();
+    std::vector<T> bufferData(GetBufferSizeInElements(), T(0));
+    std::vector<size_t> coord(m_sizes.size(), 0);
+    GenerateDataByDimensions(bufferData, generator, 0, coord);
+    return bufferData;
+}
 
-    static_assert(MaxDimensionCount == 8);
-    assert(sizesPadded.size() == MaxDimensionCount);
-    assert(stridesPadded.size() == MaxDimensionCount);
-
-    for (size_t c0 = 0; c0 < sizesPadded[0]; ++c0)
+template<rad::TriviallyCopyable T>
+inline void Tensor::GenerateDataByDimensions(std::vector<T>& bufferData,
+    const std::function<T(rad::ArrayRef<size_t> coord)>& generator,
+    size_t dimIndex, std::vector<size_t> coord) const
+{
+    if (dimIndex == m_sizes.size() - 1)
     {
-        for (size_t c1 = 0; c1 < sizesPadded[1]; ++c1)
+        // Iterate the last dimension:
+        for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
         {
-            for (size_t c2 = 0; c2 < sizesPadded[2]; ++c2)
-            {
-                for (size_t c3 = 0; c3 < sizesPadded[3]; ++c3)
-                {
-                    for (size_t c4 = 0; c4 < sizesPadded[4]; ++c4)
-                    {
-                        for (size_t c5 = 0; c5 < sizesPadded[5]; ++c5)
-                        {
-                            for (size_t c6 = 0; c6 < sizesPadded[6]; ++c6)
-                            {
-                                for (size_t c7 = 0; c7 < sizesPadded[7]; ++c7)
-                                {
-                                    size_t index =
-                                        c0 * stridesPadded[0] + c1 * stridesPadded[1] + c2 * stridesPadded[2] + c3 * stridesPadded[3] +
-                                        c4 * stridesPadded[4] + c5 * stridesPadded[5] + c6 * stridesPadded[6] + c7 * stridesPadded[7];
-                                    buffer[index] = generator({ c0, c1, c2, c3, c4, c5, c6, c7 });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            coord[dimIndex] = i;
+            size_t index = std::inner_product(coord.begin(), coord.end(), m_strides.begin(), size_t(0));
+            bufferData[index] = generator(coord);
         }
     }
-    return buffer;
+    else
+    {
+        // Iterate recursively:
+        for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
+        {
+            coord[dimIndex] = i;
+            GenerateDataByDimensions(bufferData, generator, dimIndex + 1, coord);
+        }
+    }
 }
 
 template<rad::TriviallyCopyable T>
@@ -157,7 +140,7 @@ inline void Tensor::FillConstant(const T& value)
     else
     {
         std::vector<T> bufferData = GenerateData<T>(
-            [&](std::initializer_list<size_t> coord) { return value; });
+            [&](rad::ArrayRef<size_t> coord) { return value; });
         Write(bufferData.data());
     }
 }
@@ -173,7 +156,7 @@ inline void Tensor::FillRandomFloat(Distribution& dist)
     if (m_dataType == vk::ComponentTypeKHR::eFloat16)
     {
         std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
-            [&](std::initializer_list<size_t> coord)
+            [&](rad::ArrayRef<size_t> coord)
             { return rad::fp16_ieee_from_fp32_value(dist(gen)); }
         );
         Write(bufferData.data());
@@ -181,19 +164,19 @@ inline void Tensor::FillRandomFloat(Distribution& dist)
     else if (m_dataType == vk::ComponentTypeKHR::eFloat32)
     {
         std::vector<float> bufferData = GenerateData<float>(
-            [&](std::initializer_list<size_t> coord) { return dist(gen); });
+            [&](rad::ArrayRef<size_t> coord) { return dist(gen); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloat64)
     {
         std::vector<double> bufferData = GenerateData<double>(
-            [&](std::initializer_list<size_t> coord) { return dist(gen); });
+            [&](rad::ArrayRef<size_t> coord) { return dist(gen); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
     {
         std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](std::initializer_list<size_t> coord)
+            [&](rad::ArrayRef<size_t> coord)
             { return rad::fp8e4m3fn_from_fp32_value(dist(gen)); }
         );
         Write(bufferData.data());
@@ -201,7 +184,7 @@ inline void Tensor::FillRandomFloat(Distribution& dist)
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
     {
         std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](std::initializer_list<size_t> coord)
+            [&](rad::ArrayRef<size_t> coord)
             { return rad::fp8e5m2_from_fp32_value(dist(gen)); }
         );
         Write(bufferData.data());
@@ -219,49 +202,50 @@ inline void Tensor::FillRandomInteger(Distribution& dist)
     if (m_dataType == vk::ComponentTypeKHR::eSint8)
     {
         std::vector<int8_t> bufferData = GenerateData<int8_t>(
-            [&](std::initializer_list<size_t> coord) { return int8_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> coord) { return int8_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint16)
     {
         std::vector<int16_t> bufferData = GenerateData<int16_t>(
-            [&](std::initializer_list<size_t> coord) { return int16_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> coord) { return int16_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint32)
     {
         std::vector<int32_t> bufferData = GenerateData<int32_t>(
-            [&](std::initializer_list<size_t> coord) { return int32_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> coord) { return int32_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint64)
     {
         std::vector<int64_t> bufferData = GenerateData<int64_t>(
-            [&](std::initializer_list<size_t> coord) { return int64_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> coord) { return int64_t(dist(gen)); });
         Write(bufferData.data());
     }
+
     else if (m_dataType == vk::ComponentTypeKHR::eUint8)
     {
         std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](std::initializer_list<size_t> coord) { return uint8_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> coord) { return uint8_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint16)
     {
         std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
-            [&](std::initializer_list<size_t> coord) { return uint16_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> coord) { return uint16_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint32)
     {
         std::vector<uint32_t> bufferData = GenerateData<uint32_t>(
-            [&](std::initializer_list<size_t> coord) { return uint32_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> coord) { return uint32_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint64)
     {
         std::vector<uint64_t> bufferData = GenerateData<uint64_t>(
-            [&](std::initializer_list<size_t> coord) { return uint64_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> coord) { return uint64_t(dist(gen)); });
         Write(bufferData.data());
     }
 }

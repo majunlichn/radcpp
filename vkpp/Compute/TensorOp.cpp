@@ -88,6 +88,14 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
 {
     m_desc = desc;
 
+    m_dispatchSizes = Tensor::ExpandSizeDimensions(m_desc.sizes, MaxDimensionCountPerDispatch);
+    m_dispatchInputStrides = Tensor::ExpandStrideDimensions(m_desc.inputStrides, MaxDimensionCountPerDispatch);
+    m_dispatchOutputStrides = Tensor::ExpandStrideDimensions(m_desc.outputStrides, MaxDimensionCountPerDispatch);
+
+    assert(m_dispatchSizes.size() >= MaxDimensionCountPerDispatch);
+    assert(m_dispatchSizes.size() == m_dispatchInputStrides.size());
+    assert(m_dispatchInputStrides.size() == m_dispatchOutputStrides.size());
+
     std::string sourceRoot;
     const char* env = std::getenv("VKPP_SHADERS_ROOT");
     if (env && rad::Exists(rad::MakeFilePath(env)))
@@ -96,6 +104,7 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
     }
     std::string sourceName = sourceRoot + "/TensorOp/ElementWiseUnary.comp";
     std::string source = rad::File::ReadAll(sourceName);
+
     std::vector<ShaderMacro> macros =
     {
         ShaderMacro{ "DATA_TYPE_ID", std::to_string(rad::ToUnderlying(m_desc.dataType)) },
@@ -122,38 +131,48 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
 
 void TensorOpElementWiseUnary::UpdateUniforms()
 {
-    std::vector<size_t> sizesPadded = Tensor::PadSizes(m_desc.sizes);
-    std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.inputStrides);
-    std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.outputStrides);
-    static_assert(Tensor::MaxDimensionCount >= 4);
-    assert(sizesPadded.size() == Tensor::MaxDimensionCount);
-    assert(inputStridesPadded.size() == Tensor::MaxDimensionCount);
-    assert(outputStridesPadded.size() == Tensor::MaxDimensionCount);
-    m_uniforms.sizes[0] = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 4]);
-    m_uniforms.sizes[1] = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 3]);
-    m_uniforms.sizes[2] = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 2]);
-    m_uniforms.sizes[3] = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 1]);
-    m_uniforms.inputStrides[0] = static_cast<uint32_t>(inputStridesPadded[Tensor::MaxDimensionCount - 4]);
-    m_uniforms.inputStrides[1] = static_cast<uint32_t>(inputStridesPadded[Tensor::MaxDimensionCount - 3]);
-    m_uniforms.inputStrides[2] = static_cast<uint32_t>(inputStridesPadded[Tensor::MaxDimensionCount - 2]);
-    m_uniforms.inputStrides[3] = static_cast<uint32_t>(inputStridesPadded[Tensor::MaxDimensionCount - 1]);
-    m_uniforms.outputStrides[0] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 4]);
-    m_uniforms.outputStrides[1] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 3]);
-    m_uniforms.outputStrides[2] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 2]);
-    m_uniforms.outputStrides[3] = static_cast<uint32_t>(outputStridesPadded[Tensor::MaxDimensionCount - 1]);
+    size_t dimCount = m_dispatchSizes.size();
+    assert(dimCount >= 4);
+    m_uniforms.sizes[0] = static_cast<uint32_t>(m_dispatchSizes[dimCount - 4]);
+    m_uniforms.sizes[1] = static_cast<uint32_t>(m_dispatchSizes[dimCount - 3]);
+    m_uniforms.sizes[2] = static_cast<uint32_t>(m_dispatchSizes[dimCount - 2]);
+    m_uniforms.sizes[3] = static_cast<uint32_t>(m_dispatchSizes[dimCount - 1]);
+    m_uniforms.inputStrides[0] = static_cast<uint32_t>(m_dispatchInputStrides[dimCount - 4]);
+    m_uniforms.inputStrides[1] = static_cast<uint32_t>(m_dispatchInputStrides[dimCount - 3]);
+    m_uniforms.inputStrides[2] = static_cast<uint32_t>(m_dispatchInputStrides[dimCount - 2]);
+    m_uniforms.inputStrides[3] = static_cast<uint32_t>(m_dispatchInputStrides[dimCount - 1]);
+    m_uniforms.outputStrides[0] = static_cast<uint32_t>(m_dispatchOutputStrides[dimCount - 4]);
+    m_uniforms.outputStrides[1] = static_cast<uint32_t>(m_dispatchOutputStrides[dimCount - 3]);
+    m_uniforms.outputStrides[2] = static_cast<uint32_t>(m_dispatchOutputStrides[dimCount - 2]);
+    m_uniforms.outputStrides[3] = static_cast<uint32_t>(m_dispatchOutputStrides[dimCount - 1]);
     SetUniforms(m_uniforms);
+}
+
+void TensorOpElementWiseUnary::SetTensor(uint32_t binding, Tensor* tensor)
+{
+    TensorOp::SetTensor(binding, tensor);
+    assert((binding == 1) || (binding == 2));
+    if (binding == 1)
+    {
+        assert(tensor->m_sizes == m_desc.sizes);
+        assert(tensor->m_strides == m_desc.inputStrides);
+    }
+    else if (binding == 2)
+    {
+        assert(tensor->m_sizes == m_desc.sizes);
+        assert(tensor->m_strides == m_desc.outputStrides);
+    }
 }
 
 void TensorOpElementWiseUnary::Execute()
 {
-    std::vector<size_t> sizesPadded = Tensor::PadSizes(m_desc.sizes);
-    std::vector<size_t> inputStridesPadded = Tensor::PadStrides(m_desc.inputStrides);
-    std::vector<size_t> outputStridesPadded = Tensor::PadStrides(m_desc.outputStrides);
+    size_t dimCount = m_dispatchSizes.size();
+    assert(dimCount >= 4);
 
     glm::uvec3 groupCount = {};
-    groupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 1]), 16u);   // W
-    groupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 2]), 16u);   // H
-    groupCount.z = static_cast<uint32_t>(sizesPadded[Tensor::MaxDimensionCount - 4]);
+    groupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(m_dispatchSizes[dimCount - 1]), 16u);  // W
+    groupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(m_dispatchSizes[dimCount - 2]), 16u);  // H
+    groupCount.z = static_cast<uint32_t>(m_dispatchSizes[dimCount - 4]);
 
     rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
 
@@ -170,33 +189,36 @@ void TensorOpElementWiseUnary::Execute()
     cmdBuffer->BindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout->GetHandle(), 0,
         { m_descSet->GetHandle() }, {});
 
-    static_assert(Tensor::MaxDimensionCount == 8);
-    for (size_t c0 = 0; c0 < sizesPadded[0]; ++c0)
-    {
-        for (size_t c1 = 0; c1 < sizesPadded[1]; ++c1)
-        {
-            for (size_t c2 = 0; c2 < sizesPadded[2]; ++c2)
-            {
-                for (size_t c3 = 0; c3 < sizesPadded[3]; ++c3)
-                {
-                    size_t inputIndexOffset =
-                        c0 * inputStridesPadded[0] + c1 * inputStridesPadded[1] + c2 * inputStridesPadded[2] + c3 * inputStridesPadded[3];
-                    size_t outputIndexOffset =
-                        c0 * outputStridesPadded[0] + c1 * outputStridesPadded[1] + c2 * outputStridesPadded[2] + c3 * outputStridesPadded[3];
-                    PushConstants pushConstants = {};
-                    pushConstants.inputIndexOffset = inputIndexOffset;
-                    pushConstants.outputIndexOffset = outputIndexOffset;
-                    cmdBuffer->SetPushConstants<PushConstants>(
-                        m_pipelineLayout->GetHandle(), vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
-                    cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
-                }
-            }
-        }
-    }
+    std::vector<size_t> offset(m_dispatchSizes.size(), 0);
+    ExecuteByDimensions(cmdBuffer.get(), groupCount, 0, offset);
 
     cmdBuffer->End();
 
     m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
+}
+
+void TensorOpElementWiseUnary::ExecuteByDimensions(CommandBuffer* cmdBuffer, const glm::uvec3& groupCount,
+    size_t dimIndex, std::vector<size_t> offset)
+{
+    if (dimIndex == m_dispatchSizes.size() - MaxDimensionCountPerDispatch)
+    {
+        PushConstants pushConstants = {};
+        pushConstants.inputIndexOffset =
+            std::inner_product(offset.begin(), offset.end(), m_dispatchInputStrides.begin(), size_t(0));
+        pushConstants.outputIndexOffset =
+            std::inner_product(offset.begin(), offset.end(), m_dispatchOutputStrides.begin(), size_t(0));
+        cmdBuffer->SetPushConstants<PushConstants>(
+            m_pipelineLayout->GetHandle(), vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
+        cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
+    }
+    else
+    {
+        for (size_t i = 0; i < m_dispatchSizes[dimIndex]; ++i)
+        {
+            offset[dimIndex] = i;
+            ExecuteByDimensions(cmdBuffer, groupCount, dimIndex + 1, offset);
+        }
+    }
 }
 
 } // namespace vkpp

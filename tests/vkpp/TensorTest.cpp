@@ -15,17 +15,57 @@ extern rad::Ref<vkpp::Device> g_device;
 
 std::string ToString(rad::ArrayRef<size_t> dims)
 {
-    std::string result = "(";
+    std::string str = "(";
     for (size_t i = 0; i < dims.size(); ++i)
     {
-        result += std::to_string(dims[i]);
+        str += std::to_string(dims[i]);
         if (i < dims.size() - 1)
         {
-            result += ", ";
+            str += ", ";
         }
     }
-    result += ")";
-    return result;
+    str += ")";
+    return str;
+}
+
+bool VerifyByDimensions(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
+    const std::function<bool(rad::ArrayRef<size_t> coord)>& verify,
+    size_t dimIndex, std::vector<size_t> coord)
+{
+    if (dimIndex == sizes.size() - 1)
+    {
+        // Iterate the last dimension:
+        for (size_t i = 0; i < sizes[dimIndex]; ++i)
+        {
+            coord[dimIndex] = i;
+            size_t index = std::inner_product(coord.begin(), coord.end(), strides.begin(), size_t(0));
+            if (!verify(coord))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    else
+    {
+        // Iterate recursively:
+        for (size_t i = 0; i < sizes[dimIndex]; ++i)
+        {
+            coord[dimIndex] = i;
+            if (!VerifyByDimensions(sizes, strides, verify, dimIndex + 1, coord))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+bool Verify(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
+    const std::function<bool(rad::ArrayRef<size_t> coord)>& verify)
+{
+    std::vector<size_t> coord(sizes.size(), 0);
+    return VerifyByDimensions(sizes, strides, verify, size_t(0), coord);
 }
 
 void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides = {})
@@ -37,7 +77,7 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     std::default_random_engine gen;
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
     std::vector<uint16_t> inputData = tensor->GenerateData<uint16_t>(
-        [&](std::initializer_list<size_t> coord) { return rad::fp16_ieee_from_fp32_value(dist(gen)); });
+        [&](rad::ArrayRef<size_t> coord) { return rad::fp16_ieee_from_fp32_value(dist(gen)); });
     tensor->Write(inputData.data());
 
     rad::Ref<vkpp::TensorOpElementWiseUnary> opSqrt = RAD_NEW vkpp::TensorOpElementWiseUnary(g_device);
@@ -57,25 +97,26 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     std::vector<uint16_t> results(tensor->GetBufferSizeInElements());
     tensor->Read(results.data());
     float maxDiff = 0.0f;
-    for (size_t i = 0; i < results.size(); ++i)
-    {
-        float result = rad::fp16_ieee_to_fp32_value(results[i]);
-        float resultRef = std::sqrt(rad::fp16_ieee_to_fp32_value(inputData[i]));
+    float tolerance = 0.0005f;
+    Verify(tensor->m_sizes, tensor->m_strides, [&](rad::ArrayRef<size_t> coord) {
+        size_t index = std::inner_product(coord.begin(), coord.end(), tensor->m_strides.begin(), size_t(0));
+        float result = rad::fp16_ieee_to_fp32_value(results[index]);
+        float resultRef = std::sqrt(rad::fp16_ieee_to_fp32_value(inputData[index]));
         float diff = std::abs(result - resultRef);
         if (diff > maxDiff)
         {
             maxDiff = diff;
         }
-        EXPECT_TRUE(diff < 0.0005f);
-        if (diff >= 0.0005f)
+        EXPECT_TRUE(diff < tolerance);
+        if (diff >= tolerance)
         {
-            size_t padDimensionCount = vkpp::Tensor::MaxDimensionCount - tensor->GetDimensionCount();
-            VKPP_LOG(err, "Verification failed at buffer#{}: Result={}; Ref={}; Diff={:.6f};",
-                i, result, resultRef, std::abs(result - resultRef));
-            break;
+            VKPP_LOG(err, "Verification failed at coord {}: Result={}; Ref={}; Diff={:.6f};",
+                ToString(coord), result, resultRef, std::abs(result - resultRef));
+            return false;
         }
-    }
-    if (maxDiff < 0.0005f)
+        return true;
+        });
+    if (maxDiff < tolerance)
     {
         VKPP_LOG(info, "Verification passed with MaxDiff={:.6f}", maxDiff);
     }
@@ -85,5 +126,5 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
 
 TEST(Tensor, ElementWise)
 {
-    TestElementWiseSqrt({ 2, 2, 10, 4, 120, 120 }, vkpp::Tensor::MakeStrides({ 2, 2, 10, 4, 128, 128 }));
+    TestElementWiseSqrt({ 2, 4, 256, 256 });
 }
