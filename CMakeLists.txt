@@ -65,6 +65,9 @@ endif()
 message(STATUS "CMake Install Prefix: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "============================================================")
 
+set(STDEXEC_BUILD_TESTS OFF)
+set(STDEXEC_BUILD_EXAMPLES OFF)
+add_subdirectory(imported/stdexec)
 add_subdirectory(rad)
 
 if(BUILD_VKPP)

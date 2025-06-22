@@ -24,6 +24,7 @@ list(APPEND RAD_HEADERS
     Core/RefCounted.h
     Core/String.h
     Core/TypeTraits.h
+    Core/ThreadPool.h
     IO/File.h
     IO/Image.h
     IO/Json.h
@@ -47,6 +48,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     Core/Random.cpp
     Core/String.cpp
     Core/pystring.cpp
+    Core/ThreadPool.cpp
     IO/File.cpp
     IO/Image.cpp
     IO/Json.cpp
@@ -78,6 +80,7 @@ find_package(CpuFeatures CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+
 target_link_libraries(rad
     PUBLIC Backward::Backward
     PUBLIC Boost::json
@@ -89,6 +92,7 @@ target_link_libraries(rad
     PUBLIC glm::glm
     PUBLIC spdlog::spdlog
     PUBLIC Threads::Threads
+    PUBLIC STDEXEC::stdexec
 )
 
 target_compile_features(rad PUBLIC cxx_std_20)
