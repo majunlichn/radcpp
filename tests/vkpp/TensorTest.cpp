@@ -28,9 +28,9 @@ std::string ToString(rad::ArrayRef<size_t> dims)
     return str;
 }
 
-bool VerifyByDimensions(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
-    const std::function<bool(rad::ArrayRef<size_t> coord)>& verify,
-    size_t dimIndex, std::vector<size_t> coord)
+bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
+    const std::function<bool(rad::ArrayRef<size_t> coord)> verify,
+    size_t dimIndex, std::vector<size_t>& coord)
 {
     if (dimIndex == sizes.size() - 1)
     {
@@ -52,7 +52,7 @@ bool VerifyByDimensions(const std::vector<size_t> sizes, const std::vector<size_
         for (size_t i = 0; i < sizes[dimIndex]; ++i)
         {
             coord[dimIndex] = i;
-            if (!VerifyByDimensions(sizes, strides, verify, dimIndex + 1, coord))
+            if (!VerifyByDimension(sizes, strides, verify, dimIndex + 1, coord))
             {
                 return false;
             }
@@ -65,7 +65,7 @@ bool Verify(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
     const std::function<bool(rad::ArrayRef<size_t> coord)>& verify)
 {
     std::vector<size_t> coord(sizes.size(), 0);
-    return VerifyByDimensions(sizes, strides, verify, size_t(0), coord);
+    return VerifyByDimension(sizes, strides, verify, size_t(0), coord);
 }
 
 void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides = {})

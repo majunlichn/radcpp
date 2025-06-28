@@ -55,12 +55,7 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
         m_bufferOffset = 0;
     }
 
-    m_cmdStream = m_device->CreateCommandStream(QueueFamily::Universal);
-    rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
-    cmdBuffer->Begin();
-    cmdBuffer->FillBuffer(m_buffer->m_handle, m_bufferOffset, m_buffer->GetSize(), 0);
-    cmdBuffer->End();
-    m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
+    FillZeros();
 
     return true;
 }
@@ -204,6 +199,22 @@ void Tensor::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
 void Tensor::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
 {
     m_buffer->Write(data, m_bufferOffset + offset, dataSize);
+}
+
+void Tensor::FillZeros()
+{
+    m_cmdStream = m_device->CreateCommandStream(QueueFamily::Universal);
+    rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
+    cmdBuffer->Begin();
+    cmdBuffer->FillBuffer(m_buffer->m_handle, m_bufferOffset, m_buffer->GetSize(), 0);
+    cmdBuffer->SetMemoryBarrier(
+        vk::PipelineStageFlagBits2::eTransfer,
+        vk::AccessFlagBits2::eTransferWrite,
+        vk::PipelineStageFlagBits2::eAllCommands,
+        vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eMemoryRead
+    );
+    cmdBuffer->End();
+    m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), {}, {});
 }
 
 void Tensor::FillUniformDistribution(float minValue, float maxValue)

@@ -190,23 +190,23 @@ void TensorOpElementWiseUnary::Execute()
         { m_descSet->GetHandle() }, {});
 
     std::vector<size_t> offset(m_dispatchSizes.size(), 0);
-    ExecuteByDimensions(cmdBuffer.get(), groupCount, 0, offset);
+    ExecuteByDimension(cmdBuffer.get(), groupCount, 0, offset);
 
     cmdBuffer->End();
 
     m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
 }
 
-void TensorOpElementWiseUnary::ExecuteByDimensions(CommandBuffer* cmdBuffer, const glm::uvec3& groupCount,
-    size_t dimIndex, std::vector<size_t> offset)
+void TensorOpElementWiseUnary::ExecuteByDimension(CommandBuffer* cmdBuffer, const glm::uvec3& groupCount,
+    size_t dimIndex, std::vector<size_t>& offsets)
 {
     if (dimIndex == m_dispatchSizes.size() - MaxDimensionCountPerDispatch)
     {
         PushConstants pushConstants = {};
         pushConstants.inputIndexOffset =
-            std::inner_product(offset.begin(), offset.end(), m_dispatchInputStrides.begin(), size_t(0));
+            std::inner_product(offsets.begin(), offsets.end(), m_dispatchInputStrides.begin(), size_t(0));
         pushConstants.outputIndexOffset =
-            std::inner_product(offset.begin(), offset.end(), m_dispatchOutputStrides.begin(), size_t(0));
+            std::inner_product(offsets.begin(), offsets.end(), m_dispatchOutputStrides.begin(), size_t(0));
         cmdBuffer->SetPushConstants<PushConstants>(
             m_pipelineLayout->GetHandle(), vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
         cmdBuffer->Dispatch(groupCount.x, groupCount.y, groupCount.z);
@@ -215,8 +215,8 @@ void TensorOpElementWiseUnary::ExecuteByDimensions(CommandBuffer* cmdBuffer, con
     {
         for (size_t i = 0; i < m_dispatchSizes[dimIndex]; ++i)
         {
-            offset[dimIndex] = i;
-            ExecuteByDimensions(cmdBuffer, groupCount, dimIndex + 1, offset);
+            offsets[dimIndex] = i;
+            ExecuteByDimension(cmdBuffer, groupCount, dimIndex + 1, offsets);
         }
     }
 }
