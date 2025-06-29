@@ -7,3 +7,6 @@
 [submodule "imported/stdexec"]
 	path = imported/stdexec
 	url = https://github.com/NVIDIA/stdexec.git
+[submodule "imported/taskflow"]
+	path = imported/taskflow
+	url = https://github.com/taskflow/taskflow.git
