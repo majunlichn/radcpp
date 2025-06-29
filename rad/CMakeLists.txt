@@ -70,6 +70,10 @@ target_sources(rad PUBLIC
     FILE_SET HEADERS FILES ${RADCPP_HEADERS}
 )
 
+target_include_directories(rad
+    PUBLIC ${RADCPP_ROOT}/imported/taskflow
+)
+
 find_package(Backward CONFIG REQUIRED)
 find_package(boost_json REQUIRED CONFIG)
 find_package(boost_locale REQUIRED CONFIG)

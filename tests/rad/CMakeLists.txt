@@ -8,6 +8,7 @@ list(APPEND rad_tests_SOURCES
     IntegerTest.cpp
     MemoryTest.cpp
     StackTraceTest.cpp
+    TaskflowTest.cpp
     ExecutionTest.cpp
     main.cpp
 )
