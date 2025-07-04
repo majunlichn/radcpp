@@ -49,4 +49,6 @@ extern const RiscvInfo g_RiscvInfo;
 extern const LoongArchInfo g_LoongArchInfo;
 #endif
 
+int GetNumberOfPhysicalCores();
+
 } // namespace rad

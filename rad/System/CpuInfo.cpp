@@ -1,5 +1,7 @@
 #include <rad/System/CpuInfo.h>
 
+#include <hwloc.h>
+
 namespace rad
 {
 
@@ -23,5 +25,19 @@ const RiscvInfo g_RiscvInfo = GetRiscvInfo();
 #elif defined(CPU_FEATURES_ARCH_LOONGARCH)
 const LoongArchInfo g_LoongArchInfo = GetLoongArchInfo();
 #endif
+
+int GetNumberOfPhysicalCores()
+{
+    hwloc_topology_t topology = nullptr;
+    int nbcores = 0;
+
+    hwloc_topology_init(&topology);
+    hwloc_topology_load(topology);
+
+    nbcores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
+    hwloc_topology_destroy(topology);
+
+    return nbcores;
+}
 
 } // namespace rad

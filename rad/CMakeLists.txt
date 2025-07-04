@@ -109,6 +109,9 @@ if (WIN32)
     target_compile_options(rad
         PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
     )
+    target_link_libraries(rad
+        PUBLIC ${RADCPP_ROOT}/vcpkg_installed/x64-windows/lib/hwloc.lib
+    )
 endif()
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rad/Config.h DESTINATION include/rad)

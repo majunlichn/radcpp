@@ -64,6 +64,7 @@ bool Application::Init(int argc, char** argv)
     RAD_LOG(info, "CPU: {} ({})",
         rad::StrTrim(rad::g_X86Info.brand_string),
         rad::g_X86Info.vendor);
+    RAD_LOG(info, "Number of Physical Cores: {}", rad::GetNumberOfPhysicalCores());
 #endif
 
     return true;

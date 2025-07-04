@@ -7,8 +7,9 @@
     "boost-nowide",
     "boost-process",
     "cpu-features",
+    "glm",
     "gtest",
     "spdlog",
-    "glm"
+    "hwloc"
   ]
 }
