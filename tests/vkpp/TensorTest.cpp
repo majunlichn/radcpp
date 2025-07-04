@@ -30,7 +30,7 @@ std::string ToString(rad::ArrayRef<size_t> dims)
 
 bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
     const std::function<bool(rad::ArrayRef<size_t> coord)> verify,
-    size_t dimIndex, std::vector<size_t>& coord)
+    size_t dimIndex, std::vector<size_t>& coord, size_t parallelism)
 {
     if (dimIndex == sizes.size() - 1)
     {
@@ -48,24 +48,54 @@ bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t
     }
     else
     {
-        // Iterate recursively:
-        for (size_t i = 0; i < sizes[dimIndex]; ++i)
+        const size_t minParallelism = std::min<size_t>(2, std::thread::hardware_concurrency() / 2);
+        if (parallelism >= minParallelism)
         {
-            coord[dimIndex] = i;
-            if (!VerifyByDimension(sizes, strides, verify, dimIndex + 1, coord))
+            tf::Executor executor;
+            std::atomic<bool> success(true);
+            // Iterate recursively:
+            for (size_t i = 0; i < sizes[dimIndex]; ++i)
             {
-                return false;
+                if (success)
+                {
+                    executor.silent_async([&, coord, i]() mutable {
+                        coord[dimIndex] = i;
+                        if (!VerifyByDimension(sizes, strides, verify, dimIndex + 1, coord, 0))
+                        {
+                            success = false;
+                        }
+                        });
+                }
+            }
+            executor.wait_for_all();
+            return success;
+        }
+        else
+        {
+            // Iterate recursively:
+            for (size_t i = 0; i < sizes[dimIndex]; ++i)
+            {
+                coord[dimIndex] = i;
+                if (!VerifyByDimension(sizes, strides, verify, dimIndex + 1, coord, parallelism * sizes[dimIndex + 1]))
+                {
+                    return false;
+                }
             }
         }
         return true;
     }
 }
 
-bool Verify(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
+bool Verify(const std::vector<size_t>& sizes, const std::vector<size_t>& strides,
     const std::function<bool(rad::ArrayRef<size_t> coord)>& verify)
 {
     std::vector<size_t> coord(sizes.size(), 0);
-    return VerifyByDimension(sizes, strides, verify, size_t(0), coord);
+    rad::Stopwatch stopwatch;
+    stopwatch.Start();
+    bool result = VerifyByDimension(sizes, strides, verify, size_t(0), coord, sizes[0]);
+    stopwatch.Stop();
+    VKPP_LOG(info, "Verification completed in {:.3f} ms", stopwatch.GetElapsedMilliseconds());
+    return result;
 }
 
 void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides = {})
