@@ -110,7 +110,7 @@ if (WIN32)
         PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
     )
     target_link_libraries(rad
-        PUBLIC ${RADCPP_ROOT}/vcpkg_installed/x64-windows/lib/hwloc.lib
+        PUBLIC ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/hwloc.lib
     )
 endif()
 
