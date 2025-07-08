@@ -84,6 +84,7 @@ find_package(CpuFeatures CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(libdeflate CONFIG REQUIRED)
 
 target_link_libraries(rad
     PUBLIC Backward::Backward
@@ -97,6 +98,7 @@ target_link_libraries(rad
     PUBLIC spdlog::spdlog
     PUBLIC Threads::Threads
     PUBLIC STDEXEC::stdexec
+    PUBLIC $<IF:$<TARGET_EXISTS:libdeflate::libdeflate_shared>,libdeflate::libdeflate_shared,libdeflate::libdeflate_static>
 )
 
 target_compile_features(rad PUBLIC cxx_std_20)

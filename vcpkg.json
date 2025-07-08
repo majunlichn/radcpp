@@ -9,7 +9,16 @@
     "cpu-features",
     "glm",
     "gtest",
+    "hwloc",
     "spdlog",
-    "hwloc"
+    {
+      "name": "libdeflate",
+      "features": [
+        "compression",
+        "decompression",
+        "gzip",
+        "zlib"
+      ]
+    }
   ]
 }
