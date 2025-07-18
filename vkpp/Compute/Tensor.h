@@ -78,7 +78,7 @@ public:
     template <rad::TriviallyCopyable T>
     std::vector<T> GenerateData(const std::function<T(rad::ArrayRef<size_t> coord)>& generator) const;
     template <rad::TriviallyCopyable T>
-    void GenerateDataByDimension(std::vector<T>& bufferData, const std::function<T(rad::ArrayRef<size_t> coord)>& generator,
+    void GenerateDataDimByDim(std::vector<T>& bufferData, const std::function<T(rad::ArrayRef<size_t> coord)>& generator,
         size_t dimIndex, std::vector<size_t>& coord) const;
 
     void FillZeros();
@@ -103,12 +103,12 @@ inline std::vector<T> Tensor::GenerateData(const std::function<T(rad::ArrayRef<s
     assert(sizeof(T) == GetElementSizeInBytes());
     std::vector<T> bufferData(GetBufferSizeInElements(), T(0));
     std::vector<size_t> coord(m_sizes.size(), 0);
-    GenerateDataByDimension(bufferData, generator, 0, coord);
+    GenerateDataDimByDim(bufferData, generator, 0, coord);
     return bufferData;
 }
 
 template<rad::TriviallyCopyable T>
-inline void Tensor::GenerateDataByDimension(std::vector<T>& bufferData,
+inline void Tensor::GenerateDataDimByDim(std::vector<T>& bufferData,
     const std::function<T(rad::ArrayRef<size_t> coord)>& generator,
     size_t dimIndex, std::vector<size_t>& coord) const
 {
@@ -128,7 +128,7 @@ inline void Tensor::GenerateDataByDimension(std::vector<T>& bufferData,
         for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
         {
             coord[dimIndex] = i;
-            GenerateDataByDimension(bufferData, generator, dimIndex + 1, coord);
+            GenerateDataDimByDim(bufferData, generator, dimIndex + 1, coord);
         }
     }
 }

@@ -189,15 +189,15 @@ void TensorOpElementWiseUnary::Execute()
     cmdBuffer->BindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout->GetHandle(), 0,
         { m_descSet->GetHandle() }, {});
 
-    std::vector<size_t> offset(m_dispatchSizes.size(), 0);
-    ExecuteByDimension(cmdBuffer.get(), groupCount, 0, offset);
+    std::vector<size_t> offsets(m_dispatchSizes.size(), 0);
+    ExecuteDimByDim(cmdBuffer.get(), groupCount, 0, offsets);
 
     cmdBuffer->End();
 
     m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
 }
 
-void TensorOpElementWiseUnary::ExecuteByDimension(CommandBuffer* cmdBuffer, const glm::uvec3& groupCount,
+void TensorOpElementWiseUnary::ExecuteDimByDim(CommandBuffer* cmdBuffer, const glm::uvec3& groupCount,
     size_t dimIndex, std::vector<size_t>& offsets)
 {
     if (dimIndex == m_dispatchSizes.size() - MaxDimensionCountPerDispatch)
@@ -216,7 +216,7 @@ void TensorOpElementWiseUnary::ExecuteByDimension(CommandBuffer* cmdBuffer, cons
         for (size_t i = 0; i < m_dispatchSizes[dimIndex]; ++i)
         {
             offsets[dimIndex] = i;
-            ExecuteByDimension(cmdBuffer, groupCount, dimIndex + 1, offsets);
+            ExecuteDimByDim(cmdBuffer, groupCount, dimIndex + 1, offsets);
         }
     }
 }

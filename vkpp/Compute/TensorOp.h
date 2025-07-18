@@ -93,7 +93,7 @@ public:
 
     virtual void Execute() override;
     // Support unlimited dimensions.
-    virtual void ExecuteByDimension(CommandBuffer* cmdBuffer, const glm::uvec3& groupCount,
+    virtual void ExecuteDimByDim(CommandBuffer* cmdBuffer, const glm::uvec3& groupCount,
         size_t dimIndex, std::vector<size_t>& offsets);
 
     TensorOpElementWiseUnaryDesc m_desc = {};

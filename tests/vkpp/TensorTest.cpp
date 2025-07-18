@@ -15,7 +15,7 @@ extern rad::Ref<vkpp::Device> g_device;
 
 std::string ToString(rad::ArrayRef<size_t> dims)
 {
-    std::string str = "(";
+    std::string str = "[";
     for (size_t i = 0; i < dims.size(); ++i)
     {
         str += std::to_string(dims[i]);
@@ -24,7 +24,7 @@ std::string ToString(rad::ArrayRef<size_t> dims)
             str += ", ";
         }
     }
-    str += ")";
+    str += "]";
     return str;
 }
 
@@ -81,8 +81,8 @@ bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t
                     return false;
                 }
             }
+            return true;
         }
-        return true;
     }
 }
 
