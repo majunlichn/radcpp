@@ -101,8 +101,11 @@ public:
         Hex,
     };
 
-    void DumpText(std::string_view fileName, TextFormat format = TextFormat::Dec);
-    void DumpText(std::vector<uint8_t>& data, std::string& text, TextFormat format, size_t dimIndex, std::vector<size_t>& coord);
+    std::string DumpText(TextFormat format = TextFormat::Dec);
+    void DumpTextDimByDim(std::string& text, std::vector<uint8_t>& data, TextFormat format,
+        size_t dimIndex, std::vector<size_t>& coord);
+
+    bool DumpTextToFile(std::string_view fileName, TextFormat format = TextFormat::Dec);
 
 }; // class Tensor
 

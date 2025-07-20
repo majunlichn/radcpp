@@ -243,22 +243,32 @@ void Tensor::FillNormalDistribution(float mean, float stddev)
     FillRandomFloat(dist);
 }
 
-void Tensor::DumpText(std::string_view fileName, TextFormat format)
+std::string Tensor::DumpText(TextFormat format)
+{
+    std::vector<uint8_t> bufferData(GetBufferSizeInBytes());
+    Read(bufferData.data());
+    std::string text;
+    text.reserve(4 * 1024 * 1024); // Reserve 4MB for dump.
+    std::vector<size_t> coord(m_sizes.size(), 0);
+    text += std::format("# Sizes = {}\n", rad::ToString(m_sizes));
+    text += std::format("# Strides = {}\n", rad::ToString(m_strides));
+    DumpTextDimByDim(text, bufferData, format, 0, coord);
+    return text;
+}
+
+bool Tensor::DumpTextToFile(std::string_view fileName, TextFormat format)
 {
     rad::File file;
     if (file.Open(fileName, "w"))
     {
-        std::vector<uint8_t> bufferData(GetBufferSizeInBytes());
-        Read(bufferData.data());
-        std::string text;
-        text.reserve(4 * 1024 * 1024); // reserve 4MB for formatted text.
-        std::vector<size_t> coord(m_sizes.size(), 0);
-        text += std::format("# Sizes = {}\n", rad::ToString(m_sizes));
-        text += std::format("# Strides = {}\n", rad::ToString(m_strides));
-        DumpText(bufferData, text, format, 0, coord);
-        file.Write(text.data(), text.size());
-        file.Close();
+        std::string text = DumpText(format);
+        if (text.size() > 0)
+        {
+            file.Write(text.data(), text.size());
+            return true;
+        }
     }
+    return false;
 }
 
 static std::string DumpElementDec(vk::ComponentTypeKHR dataType, const void* data)
@@ -369,7 +379,9 @@ static std::string DumpElementHex(vk::ComponentTypeKHR dataType, const void* dat
     }
 }
 
-void Tensor::DumpText(std::vector<uint8_t>& bufferData, std::string& text, TextFormat format, size_t dimIndex, std::vector<size_t>& coord)
+void Tensor::DumpTextDimByDim(
+    std::string& text, std::vector<uint8_t>& bufferData, TextFormat format,
+    size_t dimIndex, std::vector<size_t>& coord)
 {
     if (dimIndex == m_sizes.size() - 1)
     {
@@ -404,7 +416,7 @@ void Tensor::DumpText(std::vector<uint8_t>& bufferData, std::string& text, TextF
         for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
         {
             coord[dimIndex] = i;
-            DumpText(bufferData, text, format, dimIndex + 1, coord);
+            DumpTextDimByDim(text, bufferData,  format, dimIndex + 1, coord);
         }
     }
 }
