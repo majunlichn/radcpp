@@ -96,7 +96,7 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
     assert(m_dispatchSizes.size() == m_dispatchInputStrides.size());
     assert(m_dispatchInputStrides.size() == m_dispatchOutputStrides.size());
 
-    std::string sourceRoot;
+    std::string sourceRoot = "./Shaders/";
     const char* env = std::getenv("VKPP_SHADERS_ROOT");
     if (env && rad::Exists(rad::MakeFilePath(env)))
     {

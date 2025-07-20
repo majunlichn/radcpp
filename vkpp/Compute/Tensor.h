@@ -95,6 +95,15 @@ public:
     void FillUniformDistribution(int minValue, int maxValue);
     void FillNormalDistribution(float mean = 0.0f, float stddev = 1.0f);
 
+    enum class TextFormat
+    {
+        Dec,
+        Hex,
+    };
+
+    void DumpText(std::string_view fileName, TextFormat format = TextFormat::Dec);
+    void DumpText(std::vector<uint8_t>& data, std::string& text, TextFormat format, size_t dimIndex, std::vector<size_t>& coord);
+
 }; // class Tensor
 
 template<rad::TriviallyCopyable T>

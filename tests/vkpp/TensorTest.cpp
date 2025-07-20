@@ -13,21 +13,6 @@
 
 extern rad::Ref<vkpp::Device> g_device;
 
-std::string ToString(rad::ArrayRef<size_t> dims)
-{
-    std::string str = "[";
-    for (size_t i = 0; i < dims.size(); ++i)
-    {
-        str += std::to_string(dims[i]);
-        if (i < dims.size() - 1)
-        {
-            str += ", ";
-        }
-    }
-    str += "]";
-    return str;
-}
-
 bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
     const std::function<bool(rad::ArrayRef<size_t> coord)> verify,
     size_t dimIndex, std::vector<size_t>& coord, size_t parallelism)
@@ -100,7 +85,7 @@ bool Verify(const std::vector<size_t>& sizes, const std::vector<size_t>& strides
 
 void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides = {})
 {
-    VKPP_LOG(info, "ElementWiseSqrt: sizes={}; strides={};", ToString(sizes), ToString(strides));
+    VKPP_LOG(info, "ElementWiseSqrt: sizes={}; strides={};", rad::ToString(sizes), rad::ToString(strides));
     rad::Ref<vkpp::Tensor> tensor = RAD_NEW vkpp::Tensor(g_device);
     tensor->Init(vk::ComponentTypeKHR::eFloat16, sizes, strides);
 
@@ -111,7 +96,7 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     tensor->Write(inputData.data());
 
     rad::Ref<vkpp::TensorOpElementWiseUnary> opSqrt = RAD_NEW vkpp::TensorOpElementWiseUnary(g_device);
-    vkpp::TensorOpElementWiseUnaryDesc opDesc;
+    vkpp::TensorOpElementWiseUnaryDesc opDesc = {};
     opDesc.opName = "sqrt";
     opDesc.dataType = vk::ComponentTypeKHR::eFloat16;
     opDesc.sizes = tensor->m_sizes;
@@ -141,7 +126,8 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
         if (diff >= tolerance)
         {
             VKPP_LOG(err, "Verification failed at coord {}: Result={}; Ref={}; Diff={:.6f};",
-                ToString(coord), result, resultRef, std::abs(result - resultRef));
+                rad::ToString(coord),
+                result, resultRef, std::abs(result - resultRef));
             return false;
         }
         return true;
@@ -156,5 +142,5 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
 
 TEST(Tensor, ElementWise)
 {
-    TestElementWiseSqrt({ 2, 4, 256, 256 });
+    TestElementWiseSqrt({ 2, 4, 30, 30 }, vkpp::Tensor::MakeStrides({2, 4, 32, 32}));
 }

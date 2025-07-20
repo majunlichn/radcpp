@@ -19,6 +19,7 @@ target_link_libraries(vkpp_tests
 
 add_custom_command(TARGET vkpp_tests POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:vkpp_tests> $<TARGET_FILE_DIR:vkpp_tests>
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${RADCPP_ROOT}/vkpp/Shaders ${CMAKE_CURRENT_BINARY_DIR}/Shaders
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/hello-world.slang ${CMAKE_CURRENT_BINARY_DIR}/hello-world.slang
     COMMAND_EXPAND_LISTS
 )
