@@ -1,9 +1,11 @@
 #include "CubeDemo.h"
 #include <glm/ext.hpp>
 
-#include "MeshData.h"
+#include "CubeMesh.inc"
 #include "lunarg.ppm.h"
 
+#define APP_NAME "vkcube"
+#define APP_VERSION VK_MAKE_VERSION(0, 0, 0)
 
 CubeDemo::CubeDemo()
 {
@@ -248,8 +250,8 @@ bool CubeDemo::Init(int argc, char* argv[])
     samplerInfo.unnormalizedCoordinates = vk::False;
     m_samplers[0] = m_device->CreateSampler(samplerInfo);
 
-    std::string vertShaderName = "cube.vert";
-    std::string fragShaderName = "cube.frag";
+    std::string vertShaderName = "Cube/cube.vert";
+    std::string fragShaderName = "Cube/cube.frag";
     m_cubeVert = vkpp::ShaderStageInfo::CreateFromGLSL(m_device, vk::ShaderStageFlagBits::eVertex,
         vertShaderName, rad::File::ReadAll(vertShaderName));
     m_cubeFrag = vkpp::ShaderStageInfo::CreateFromGLSL(m_device, vk::ShaderStageFlagBits::eFragment,

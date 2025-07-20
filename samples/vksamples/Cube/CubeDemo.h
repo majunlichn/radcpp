@@ -1,21 +1,14 @@
 #pragma once
 
-#include "Version.h"
-#include <SDFramework/Gui/VulkanWindow.h>
-#include <SDFramework/Gui/VulkanFrame.h>
-#include <vkpp/Core/RenderPass.h>
-#include <vkpp/Core/Framebuffer.h>
-#include <vkpp/Core/ShaderCompiler.h>
+#include "Common/Sample.h"
 
-#include <glm/glm.hpp>
-
-class CubeDemo : public sdf::VulkanWindow
+class CubeDemo : public Sample
 {
 public:
     CubeDemo();
     ~CubeDemo();
 
-    bool Init(int argc, char* argv[]);
+    virtual bool Init(int argc, char* argv[]) override;
     void ParseCommandLine(int argc, char* argv[]);
 
     virtual void OnIdle() override;
