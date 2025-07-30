@@ -249,10 +249,10 @@ std::string Tensor::DumpText(TextFormat format)
     Read(bufferData.data());
     std::string text;
     text.reserve(4 * 1024 * 1024); // Reserve 4MB for dump.
-    std::vector<size_t> coord(m_sizes.size(), 0);
+    std::vector<size_t> indices(m_sizes.size(), 0);
     text += std::format("# Sizes = {}\n", rad::ToString(m_sizes));
     text += std::format("# Strides = {}\n", rad::ToString(m_strides));
-    DumpTextDimByDim(text, bufferData, format, 0, coord);
+    DumpTextDimByDim(text, bufferData, format, indices, 0);
     return text;
 }
 
@@ -381,15 +381,15 @@ static std::string DumpElementHex(vk::ComponentTypeKHR dataType, const void* dat
 
 void Tensor::DumpTextDimByDim(
     std::string& text, std::vector<uint8_t>& bufferData, TextFormat format,
-    size_t dimIndex, std::vector<size_t>& coord)
+    std::vector<size_t>& indices, size_t dimIndex)
 {
     if (dimIndex == m_sizes.size() - 1)
     {
         // Iterate the last dimension:
         for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
         {
-            coord[dimIndex] = i;
-            size_t index = std::inner_product(coord.begin(), coord.end(), m_strides.begin(), size_t(0));
+            indices[dimIndex] = i;
+            size_t index = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
             if (format == TextFormat::Dec)
             {
                 text += DumpElementDec(m_dataType, &bufferData[index * GetElementSizeInBytes()]) + ", ";
@@ -408,15 +408,15 @@ void Tensor::DumpTextDimByDim(
         {
             for (size_t i = dimIndex; i < m_sizes.size(); ++i)
             {
-                coord[i] = 0;
+                indices[i] = 0;
             }
-            text += std::format("# Offset = {}\n", rad::ToString(coord));
+            text += std::format("# Indices = {}\n", rad::ToString(indices));
         }
         // Iterate recursively:
         for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
         {
-            coord[dimIndex] = i;
-            DumpTextDimByDim(text, bufferData,  format, dimIndex + 1, coord);
+            indices[dimIndex] = i;
+            DumpTextDimByDim(text, bufferData,  format, indices, dimIndex + 1);
         }
     }
 }

@@ -89,17 +89,17 @@ public:
     virtual void SetTensor(uint32_t binding, Tensor* tensor) override;
 
     // Each dispatch can process at most 4 dimensions.
-    static const size_t MaxDimensionCountPerDispatch = 4;
+    static const size_t DimCountPerDispatch = 4;
 
     virtual void Execute() override;
     // Support unlimited dimensions.
-    virtual void ExecuteDimByDim(CommandBuffer* cmdBuffer, const glm::uvec3& groupCount,
-        size_t dimIndex, std::vector<size_t>& offsets);
+    virtual void ExecuteDimByDim(CommandBuffer* cmdBuffer, std::vector<size_t>& offsets, size_t dimIndex);
 
     TensorOpElementWiseUnaryDesc m_desc = {};
     std::vector<size_t> m_dispatchSizes;
     std::vector<size_t> m_dispatchInputStrides;
     std::vector<size_t> m_dispatchOutputStrides;
+    glm::uvec3 m_threadGroupCount;
     Uniforms m_uniforms = {};
 
 }; // class TensorOpElementWise

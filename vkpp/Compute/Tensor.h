@@ -76,10 +76,11 @@ public:
     void Write(const void* data) { Write(data, 0, m_bufferSize); }
 
     template <rad::TriviallyCopyable T>
-    std::vector<T> GenerateData(const std::function<T(rad::ArrayRef<size_t> coord)>& generator) const;
+    std::vector<T> GenerateData(const std::function<T(rad::ArrayRef<size_t> indices)>& generator) const;
     template <rad::TriviallyCopyable T>
-    void GenerateDataDimByDim(std::vector<T>& bufferData, const std::function<T(rad::ArrayRef<size_t> coord)>& generator,
-        size_t dimIndex, std::vector<size_t>& coord) const;
+    void GenerateDataDimByDim(std::vector<T>& bufferData,
+        const std::function<T(rad::ArrayRef<size_t> indices)>& generator,
+        std::vector<size_t>& indices, size_t dimIndex) const;
 
     void FillZeros();
 
@@ -103,35 +104,35 @@ public:
 
     std::string DumpText(TextFormat format = TextFormat::Dec);
     void DumpTextDimByDim(std::string& text, std::vector<uint8_t>& data, TextFormat format,
-        size_t dimIndex, std::vector<size_t>& coord);
+        std::vector<size_t>& indices, size_t dimIndex);
 
     bool DumpTextToFile(std::string_view fileName, TextFormat format = TextFormat::Dec);
 
 }; // class Tensor
 
 template<rad::TriviallyCopyable T>
-inline std::vector<T> Tensor::GenerateData(const std::function<T(rad::ArrayRef<size_t> coord)>& generator) const
+inline std::vector<T> Tensor::GenerateData(const std::function<T(rad::ArrayRef<size_t> indices)>& generator) const
 {
     assert(sizeof(T) == GetElementSizeInBytes());
     std::vector<T> bufferData(GetBufferSizeInElements(), T(0));
-    std::vector<size_t> coord(m_sizes.size(), 0);
-    GenerateDataDimByDim(bufferData, generator, 0, coord);
+    std::vector<size_t> indices(m_sizes.size(), 0);
+    GenerateDataDimByDim(bufferData, generator, indices, 0);
     return bufferData;
 }
 
 template<rad::TriviallyCopyable T>
 inline void Tensor::GenerateDataDimByDim(std::vector<T>& bufferData,
-    const std::function<T(rad::ArrayRef<size_t> coord)>& generator,
-    size_t dimIndex, std::vector<size_t>& coord) const
+    const std::function<T(rad::ArrayRef<size_t> indices)>& generator,
+    std::vector<size_t>& indices, size_t dimIndex) const
 {
     if (dimIndex == m_sizes.size() - 1)
     {
         // Iterate the last dimension:
         for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
         {
-            coord[dimIndex] = i;
-            size_t index = std::inner_product(coord.begin(), coord.end(), m_strides.begin(), size_t(0));
-            bufferData[index] = generator(coord);
+            indices[dimIndex] = i;
+            size_t bufferIndex = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
+            bufferData[bufferIndex] = generator(indices);
         }
     }
     else
@@ -139,8 +140,8 @@ inline void Tensor::GenerateDataDimByDim(std::vector<T>& bufferData,
         // Iterate recursively:
         for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
         {
-            coord[dimIndex] = i;
-            GenerateDataDimByDim(bufferData, generator, dimIndex + 1, coord);
+            indices[dimIndex] = i;
+            GenerateDataDimByDim(bufferData, generator, indices, dimIndex + 1);
         }
     }
 }
@@ -157,7 +158,7 @@ inline void Tensor::FillConstant(const T& value)
     else
     {
         std::vector<T> bufferData = GenerateData<T>(
-            [&](rad::ArrayRef<size_t> coord) { return value; });
+            [&](rad::ArrayRef<size_t> indices) { return value; });
         Write(bufferData.data());
     }
 }
@@ -173,7 +174,7 @@ inline void Tensor::FillRandomFloat(Distribution& dist)
     if (m_dataType == vk::ComponentTypeKHR::eFloat16)
     {
         std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
-            [&](rad::ArrayRef<size_t> coord)
+            [&](rad::ArrayRef<size_t> indices)
             { return rad::fp16_ieee_from_fp32_value(dist(gen)); }
         );
         Write(bufferData.data());
@@ -181,19 +182,19 @@ inline void Tensor::FillRandomFloat(Distribution& dist)
     else if (m_dataType == vk::ComponentTypeKHR::eFloat32)
     {
         std::vector<float> bufferData = GenerateData<float>(
-            [&](rad::ArrayRef<size_t> coord) { return dist(gen); });
+            [&](rad::ArrayRef<size_t> indices) { return dist(gen); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloat64)
     {
         std::vector<double> bufferData = GenerateData<double>(
-            [&](rad::ArrayRef<size_t> coord) { return dist(gen); });
+            [&](rad::ArrayRef<size_t> indices) { return dist(gen); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
     {
         std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](rad::ArrayRef<size_t> coord)
+            [&](rad::ArrayRef<size_t> indices)
             { return rad::fp8e4m3fn_from_fp32_value(dist(gen)); }
         );
         Write(bufferData.data());
@@ -201,7 +202,7 @@ inline void Tensor::FillRandomFloat(Distribution& dist)
     else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
     {
         std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](rad::ArrayRef<size_t> coord)
+            [&](rad::ArrayRef<size_t> indices)
             { return rad::fp8e5m2_from_fp32_value(dist(gen)); }
         );
         Write(bufferData.data());
@@ -219,50 +220,50 @@ inline void Tensor::FillRandomInteger(Distribution& dist)
     if (m_dataType == vk::ComponentTypeKHR::eSint8)
     {
         std::vector<int8_t> bufferData = GenerateData<int8_t>(
-            [&](rad::ArrayRef<size_t> coord) { return int8_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> indices) { return int8_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint16)
     {
         std::vector<int16_t> bufferData = GenerateData<int16_t>(
-            [&](rad::ArrayRef<size_t> coord) { return int16_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> indices) { return int16_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint32)
     {
         std::vector<int32_t> bufferData = GenerateData<int32_t>(
-            [&](rad::ArrayRef<size_t> coord) { return int32_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> indices) { return int32_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eSint64)
     {
         std::vector<int64_t> bufferData = GenerateData<int64_t>(
-            [&](rad::ArrayRef<size_t> coord) { return int64_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> indices) { return int64_t(dist(gen)); });
         Write(bufferData.data());
     }
 
     else if (m_dataType == vk::ComponentTypeKHR::eUint8)
     {
         std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
-            [&](rad::ArrayRef<size_t> coord) { return uint8_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> indices) { return uint8_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint16)
     {
         std::vector<uint16_t> bufferData = GenerateData<uint16_t>(
-            [&](rad::ArrayRef<size_t> coord) { return uint16_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> indices) { return uint16_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint32)
     {
         std::vector<uint32_t> bufferData = GenerateData<uint32_t>(
-            [&](rad::ArrayRef<size_t> coord) { return uint32_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> indices) { return uint32_t(dist(gen)); });
         Write(bufferData.data());
     }
     else if (m_dataType == vk::ComponentTypeKHR::eUint64)
     {
         std::vector<uint64_t> bufferData = GenerateData<uint64_t>(
-            [&](rad::ArrayRef<size_t> coord) { return uint64_t(dist(gen)); });
+            [&](rad::ArrayRef<size_t> indices) { return uint64_t(dist(gen)); });
         Write(bufferData.data());
     }
 }

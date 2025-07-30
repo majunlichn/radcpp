@@ -13,18 +13,18 @@
 
 extern rad::Ref<vkpp::Device> g_device;
 
-bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
-    const std::function<bool(rad::ArrayRef<size_t> coord)> verify,
-    size_t dimIndex, std::vector<size_t>& coord, size_t parallelism)
+bool VerifyDimByDim(const std::vector<size_t> sizes, const std::vector<size_t>& strides,
+    const std::function<bool(rad::ArrayRef<size_t> indices)> verify,
+    std::vector<size_t>& indices, size_t dimIndex, size_t parallelism)
 {
     if (dimIndex == sizes.size() - 1)
     {
         // Iterate the last dimension:
         for (size_t i = 0; i < sizes[dimIndex]; ++i)
         {
-            coord[dimIndex] = i;
-            size_t index = std::inner_product(coord.begin(), coord.end(), strides.begin(), size_t(0));
-            if (!verify(coord))
+            indices[dimIndex] = i;
+            size_t index = std::inner_product(indices.begin(), indices.end(), strides.begin(), size_t(0));
+            if (!verify(indices))
             {
                 return false;
             }
@@ -41,16 +41,13 @@ bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t
             // Iterate recursively:
             for (size_t i = 0; i < sizes[dimIndex]; ++i)
             {
-                if (success)
-                {
-                    executor.silent_async([&, coord, i]() mutable {
-                        coord[dimIndex] = i;
-                        if (!VerifyByDimension(sizes, strides, verify, dimIndex + 1, coord, 0))
-                        {
-                            success = false;
-                        }
-                        });
-                }
+                executor.silent_async([&, indices, i]() mutable {
+                    indices[dimIndex] = i;
+                    if (!VerifyDimByDim(sizes, strides, verify, indices, dimIndex + 1, 0))
+                    {
+                        success = false;
+                    }
+                    });
             }
             executor.wait_for_all();
             return success;
@@ -60,8 +57,8 @@ bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t
             // Iterate recursively:
             for (size_t i = 0; i < sizes[dimIndex]; ++i)
             {
-                coord[dimIndex] = i;
-                if (!VerifyByDimension(sizes, strides, verify, dimIndex + 1, coord, parallelism * sizes[dimIndex + 1]))
+                indices[dimIndex] = i;
+                if (!VerifyDimByDim(sizes, strides, verify, indices, dimIndex + 1, parallelism * sizes[dimIndex + 1]))
                 {
                     return false;
                 }
@@ -72,12 +69,12 @@ bool VerifyByDimension(const std::vector<size_t> sizes, const std::vector<size_t
 }
 
 bool Verify(const std::vector<size_t>& sizes, const std::vector<size_t>& strides,
-    const std::function<bool(rad::ArrayRef<size_t> coord)>& verify)
+    const std::function<bool(rad::ArrayRef<size_t> indices)>& verify)
 {
-    std::vector<size_t> coord(sizes.size(), 0);
+    std::vector<size_t> indices(sizes.size(), 0);
     rad::Stopwatch stopwatch;
     stopwatch.Start();
-    bool result = VerifyByDimension(sizes, strides, verify, size_t(0), coord, sizes[0]);
+    bool result = VerifyDimByDim(sizes, strides, verify, indices, size_t(0), sizes[0]);
     stopwatch.Stop();
     VKPP_LOG(info, "Verification completed in {:.3f} ms", stopwatch.GetElapsedMilliseconds());
     return result;
@@ -92,7 +89,7 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     std::default_random_engine gen;
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
     std::vector<uint16_t> inputData = tensor->GenerateData<uint16_t>(
-        [&](rad::ArrayRef<size_t> coord) { return rad::fp16_ieee_from_fp32_value(dist(gen)); });
+        [&](rad::ArrayRef<size_t> indices) { return rad::fp16_ieee_from_fp32_value(dist(gen)); });
     tensor->Write(inputData.data());
 
     rad::Ref<vkpp::TensorOpElementWiseUnary> opSqrt = RAD_NEW vkpp::TensorOpElementWiseUnary(g_device);
@@ -113,8 +110,8 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     tensor->Read(results.data());
     float maxDiff = 0.0f;
     float tolerance = 0.0005f;
-    Verify(tensor->m_sizes, tensor->m_strides, [&](rad::ArrayRef<size_t> coord) {
-        size_t index = std::inner_product(coord.begin(), coord.end(), tensor->m_strides.begin(), size_t(0));
+    Verify(tensor->m_sizes, tensor->m_strides, [&](rad::ArrayRef<size_t> indices) {
+        size_t index = std::inner_product(indices.begin(), indices.end(), tensor->m_strides.begin(), size_t(0));
         float result = rad::fp16_ieee_to_fp32_value(results[index]);
         float resultRef = std::sqrt(rad::fp16_ieee_to_fp32_value(inputData[index]));
         float diff = std::abs(result - resultRef);
@@ -125,9 +122,6 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
         EXPECT_TRUE(diff < tolerance);
         if (diff >= tolerance)
         {
-            VKPP_LOG(err, "Verification failed at coord {}: Result={}; Ref={}; Diff={:.6f};",
-                rad::ToString(coord),
-                result, resultRef, std::abs(result - resultRef));
             return false;
         }
         return true;
@@ -142,5 +136,10 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
 
 TEST(Tensor, ElementWise)
 {
-    TestElementWiseSqrt({ 2, 4, 30, 30 }, vkpp::Tensor::MakeStrides({2, 4, 32, 32}));
+    rad::Ref<vkpp::Tensor> tensor = RAD_NEW vkpp::Tensor(g_device);
+    tensor->Init(vk::ComponentTypeKHR::eFloat16, { 1, 4, 30, 30 }, vkpp::Tensor::MakeStrides({ 1, 4, 32, 32 }));
+    tensor->FillNormalDistribution();
+    tensor->m_sizes = { 1, 3, 32, 32 };
+    tensor->DumpTextToFile("TensorPadded.txt");
+    TestElementWiseSqrt({ 2, 4, 512, 512 });
 }
