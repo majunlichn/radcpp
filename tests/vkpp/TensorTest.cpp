@@ -142,4 +142,9 @@ TEST(Tensor, ElementWise)
     tensor->m_sizes = { 1, 3, 32, 32 };
     tensor->DumpTextToFile("TensorPadded.txt");
     TestElementWiseSqrt({ 2, 4, 512, 512 });
+
+    vkpp::TensorIterator iter({ 2, 4, 8, 8 });
+    iter.ForEach([](rad::ArrayRef<size_t> indices) {
+        VKPP_LOG(info, "Indices: {}", rad::ToString(indices));
+        });
 }

@@ -110,6 +110,53 @@ public:
 
 }; // class Tensor
 
+class TensorIterator
+{
+public:
+    std::vector<size_t> m_sizes;
+
+    TensorIterator(rad::ArrayRef<size_t> sizes) :
+        m_sizes(sizes)
+    {
+    }
+
+    ~TensorIterator() = default;
+
+    void ForEach(const std::function<void(rad::ArrayRef<size_t> indices)>& operation)
+    {
+        size_t dimCount = m_sizes.size();
+        std::vector<size_t> indices(m_sizes.size(), 0);
+        while (true)
+        {
+            // Iterate the last dimension:
+            for (size_t i = 0; i < m_sizes[dimCount - 1]; ++i)
+            {
+                indices[dimCount - 1] = i;
+                operation(indices);
+            }
+            bool carryFlag = false;
+            for (int dimIndex = int(dimCount - 2); dimIndex >= 0; --dimIndex)
+            {
+                if (indices[dimIndex] < m_sizes[dimIndex] - 1)
+                {
+                    ++indices[dimIndex];
+                    carryFlag = true;
+                    break;
+                }
+                else
+                {
+                    indices[dimIndex] = 0;
+                }
+            }
+            if (!carryFlag)
+            {
+                break;
+            }
+        }
+    }
+
+}; // class TensorIterator
+
 template<rad::TriviallyCopyable T>
 inline std::vector<T> Tensor::GenerateData(const std::function<T(rad::ArrayRef<size_t> indices)>& generator) const
 {
