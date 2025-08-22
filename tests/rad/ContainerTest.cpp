@@ -1,5 +1,6 @@
 #include <rad/Container/SmallVector.h>
 #include <rad/Container/Span.h>
+#include <rad/Core/Algorithm.h>
 
 #include <gtest/gtest.h>
 
@@ -44,8 +45,17 @@ void TestSpan()
     EXPECT_TRUE(ref.equals(ref1));
 }
 
+void TestSlicing()
+{
+    std::vector<int> vec = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    auto vec1 = rad::Slice(vec, -8, 6);
+    rad::Span<int> vecRef = { vec.begin() + 2, vec.begin() + 6 };
+    EXPECT_TRUE(std::ranges::equal(vec1, vecRef));
+}
+
 TEST(Core, Container)
 {
     TestSmallVector();
     TestSpan();
+    TestSlicing();
 }
