@@ -175,4 +175,112 @@ vk::ImageAspectFlags GetImageAspectFromFormat(vk::Format format)
     }
 }
 
+std::string FormatValueFixedWidthDec(vk::ComponentTypeKHR dataType, const void* data)
+{
+    if (dataType == vk::ComponentTypeKHR::eFloat16)
+    {
+        uint16_t value = *reinterpret_cast<const uint16_t*>(data);
+        return std::format("{:11.4f}", rad::fp16_ieee_to_fp32_value(value));
+    }
+    else if (dataType == vk::ComponentTypeKHR::eFloat32)
+    {
+        float value = *reinterpret_cast<const float*>(data);
+        if (value < 1000000)
+        {
+            return std::format("{:14.6f}", value);
+        }
+        else
+        {
+            return std::format("{:14.6e}", value);
+        }
+    }
+    else if (dataType == vk::ComponentTypeKHR::eFloat64)
+    {
+        double value = *reinterpret_cast<const double*>(data);
+        if (value < 1000000)
+        {
+            return std::format("{:14.6f}", value);
+        }
+        else
+        {
+            return std::format("{:14.6e}", value);
+        }
+    }
+    else if (dataType == vk::ComponentTypeKHR::eSint8)
+    {
+        int8_t value = *reinterpret_cast<const int8_t*>(data);
+        return std::format("{:4d}", value);
+    }
+    else if (dataType == vk::ComponentTypeKHR::eSint16)
+    {
+        int16_t value = *reinterpret_cast<const int16_t*>(data);
+        return std::format("{:6d}", value);
+    }
+    else if (dataType == vk::ComponentTypeKHR::eSint32)
+    {
+        int32_t value = *reinterpret_cast<const int32_t*>(data);
+        return std::format("{:11d}", value);
+    }
+    else if (dataType == vk::ComponentTypeKHR::eSint64)
+    {
+        int64_t value = *reinterpret_cast<const int64_t*>(data);
+        return std::format("{:20d}", value);
+    }
+    else if (dataType == vk::ComponentTypeKHR::eUint8)
+    {
+        uint8_t value = *reinterpret_cast<const uint8_t*>(data);
+        return std::format("{:4d}", value);
+    }
+    else if (dataType == vk::ComponentTypeKHR::eUint16)
+    {
+        uint16_t value = *reinterpret_cast<const uint16_t*>(data);
+        return std::format("{:5d}", value);
+    }
+    else if (dataType == vk::ComponentTypeKHR::eUint32)
+    {
+        uint32_t value = *reinterpret_cast<const uint32_t*>(data);
+        return std::format("{:10d}", value);
+    }
+    else if (dataType == vk::ComponentTypeKHR::eUint64)
+    {
+        uint64_t value = *reinterpret_cast<const uint64_t*>(data);
+        return std::format("{:20d}", value);
+    }
+    else
+    {
+        RAD_UNREACHABLE();
+        return {};
+    }
+}
+
+std::string FormatValueFixedWidthHex(vk::ComponentTypeKHR dataType, const void* data)
+{
+    size_t elementSize = GetComponentSizeInBytes(dataType);
+    if (elementSize == 1)
+    {
+        uint8_t value = *reinterpret_cast<const uint8_t*>(data);
+        return std::format("0x{:02X}", value);
+    }
+    else if (elementSize == 2)
+    {
+        uint16_t value = *reinterpret_cast<const uint16_t*>(data);
+        return std::format("0x{:04X}", value);
+    }
+    else if (elementSize == 4)
+    {
+        uint32_t value = *reinterpret_cast<const uint32_t*>(data);
+        return std::format("0x{:08X}", value);
+    }
+    else if (elementSize == 8)
+    {
+        uint64_t value = *reinterpret_cast<const uint64_t*>(data);
+        return std::format("0x{:016X}", value);
+    }
+    else
+    {
+        RAD_UNREACHABLE();
+        return {};
+    }
+}
+
 } // namespace vkpp

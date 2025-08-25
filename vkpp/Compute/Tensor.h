@@ -77,10 +77,6 @@ public:
 
     template <rad::TriviallyCopyable T>
     std::vector<T> GenerateData(const std::function<T(rad::ArrayRef<size_t> indices)>& generator) const;
-    template <rad::TriviallyCopyable T>
-    void GenerateDataDimByDim(std::vector<T>& bufferData,
-        const std::function<T(rad::ArrayRef<size_t> indices)>& generator,
-        std::vector<size_t>& indices, size_t dimIndex) const;
 
     void FillZeros();
 
@@ -103,9 +99,6 @@ public:
     };
 
     std::string DumpText(TextFormat format = TextFormat::Dec);
-    void DumpTextDimByDim(std::string& text, std::vector<uint8_t>& data, TextFormat format,
-        std::vector<size_t>& indices, size_t dimIndex);
-
     bool DumpTextToFile(std::string_view fileName, TextFormat format = TextFormat::Dec);
 
 }; // class Tensor
@@ -114,43 +107,102 @@ class TensorIterator
 {
 public:
     std::vector<size_t> m_sizes;
+    std::vector<size_t> m_indices;
 
     TensorIterator(rad::ArrayRef<size_t> sizes) :
         m_sizes(sizes)
     {
+        Reset();
     }
 
     ~TensorIterator() = default;
 
-    void ForEach(const std::function<void(rad::ArrayRef<size_t> indices)>& operation)
+    void Reset()
+    {
+        m_indices.clear();
+        m_indices.resize(m_sizes.size(), 0);
+    }
+
+    void ResetND(ptrdiff_t n)
     {
         size_t dimCount = m_sizes.size();
-        std::vector<size_t> indices(m_sizes.size(), 0);
-        while (true)
+        assert(dimCount >= n);
+        for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - n); dimIndex < ptrdiff_t(dimCount); ++dimIndex)
+        {
+            m_indices[dimIndex] = 0;
+        }
+    }
+
+    void Reset1D() { ResetND(1); }
+    void Reset2D() { ResetND(2); }
+    void Reset3D() { ResetND(3); }
+    void Reset4D() { ResetND(4); }
+
+    bool NextND(ptrdiff_t n)
+    {
+        size_t dimCount = m_sizes.size();
+        assert(dimCount >= n + 1);
+        for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - n - 1); dimIndex >= 0; --dimIndex)
+        {
+            if (m_indices[dimIndex] < m_sizes[dimIndex] - 1)
+            {
+                ++m_indices[dimIndex];
+                return true;
+            }
+            else
+            {
+                m_indices[dimIndex] = 0;
+            }
+        }
+        return false;
+    }
+
+    bool Next1D() { return NextND(1); }
+    bool Next2D() { return NextND(2); }
+    bool Next3D() { return NextND(3); }
+    bool Next4D() { return NextND(4); }
+
+    using ElementWiseOp = std::function<void(rad::ArrayRef<size_t> indices)>;
+
+    void ForEach(const ElementWiseOp& op)
+    {
+        Reset();
+        do
         {
             // Iterate the last dimension:
+            size_t dimCount = m_sizes.size();
             for (size_t i = 0; i < m_sizes[dimCount - 1]; ++i)
             {
-                indices[dimCount - 1] = i;
-                operation(indices);
+                m_indices[dimCount - 1] = i;
+                op(m_indices);
             }
-            bool carryFlag = false;
-            for (int dimIndex = int(dimCount - 2); dimIndex >= 0; --dimIndex)
+        } while (Next1D());
+    }
+
+    void ForEachRecursive(const ElementWiseOp& op)
+    {
+        Reset();
+        ForEachRecursive(op, 0);
+    }
+
+    void ForEachRecursive(const ElementWiseOp& op, size_t dimIndex)
+    {
+        if (dimIndex == m_sizes.size() - 1)
+        {
+            // Iterate the last dimension:
+            for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
             {
-                if (indices[dimIndex] < m_sizes[dimIndex] - 1)
-                {
-                    ++indices[dimIndex];
-                    carryFlag = true;
-                    break;
-                }
-                else
-                {
-                    indices[dimIndex] = 0;
-                }
+                m_indices[dimIndex] = i;
+                op(m_indices);
             }
-            if (!carryFlag)
+        }
+        else
+        {
+            // Iterate recursively:
+            for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
             {
-                break;
+                m_indices[dimIndex] = i;
+                ForEachRecursive(op, dimIndex + 1);
             }
         }
     }
@@ -163,34 +215,13 @@ inline std::vector<T> Tensor::GenerateData(const std::function<T(rad::ArrayRef<s
     assert(sizeof(T) == GetElementSizeInBytes());
     std::vector<T> bufferData(GetBufferSizeInElements(), T(0));
     std::vector<size_t> indices(m_sizes.size(), 0);
-    GenerateDataDimByDim(bufferData, generator, indices, 0);
-    return bufferData;
-}
-
-template<rad::TriviallyCopyable T>
-inline void Tensor::GenerateDataDimByDim(std::vector<T>& bufferData,
-    const std::function<T(rad::ArrayRef<size_t> indices)>& generator,
-    std::vector<size_t>& indices, size_t dimIndex) const
-{
-    if (dimIndex == m_sizes.size() - 1)
-    {
-        // Iterate the last dimension:
-        for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
+    TensorIterator iter(m_sizes);
+    iter.ForEach([&](rad::ArrayRef<size_t> indices)
         {
-            indices[dimIndex] = i;
             size_t bufferIndex = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
             bufferData[bufferIndex] = generator(indices);
-        }
-    }
-    else
-    {
-        // Iterate recursively:
-        for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
-        {
-            indices[dimIndex] = i;
-            GenerateDataDimByDim(bufferData, generator, indices, dimIndex + 1);
-        }
-    }
+        });
+    return bufferData;
 }
 
 template<rad::TriviallyCopyable T>

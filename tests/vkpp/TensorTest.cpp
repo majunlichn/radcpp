@@ -139,12 +139,12 @@ TEST(Tensor, ElementWise)
     rad::Ref<vkpp::Tensor> tensor = RAD_NEW vkpp::Tensor(g_device);
     tensor->Init(vk::ComponentTypeKHR::eFloat16, { 1, 4, 30, 30 }, vkpp::Tensor::MakeStrides({ 1, 4, 32, 32 }));
     tensor->FillNormalDistribution();
-    tensor->m_sizes = { 1, 3, 32, 32 };
+    tensor->m_sizes = { 1, 4, 32, 32 };
     tensor->DumpTextToFile("TensorPadded.txt");
     TestElementWiseSqrt({ 2, 4, 512, 512 });
 
     vkpp::TensorIterator iter({ 2, 4, 8, 8 });
-    iter.ForEach([](rad::ArrayRef<size_t> indices) {
+    iter.ForEachRecursive([](rad::ArrayRef<size_t> indices) {
         VKPP_LOG(info, "Indices: {}", rad::ToString(indices));
         });
 }

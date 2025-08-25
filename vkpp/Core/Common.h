@@ -160,6 +160,8 @@ bool IsIntegerType(vk::ComponentTypeKHR type);
 
 vk::ImageAspectFlags GetImageAspectFromFormat(vk::Format format);
 
+std::string FormatValueFixedWidthDec(vk::ComponentTypeKHR dataType, const void* data);
+std::string FormatValueFixedWidthHex(vk::ComponentTypeKHR dataType, const void* data);
 
 // Forward Declarations
 

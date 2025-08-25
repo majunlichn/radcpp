@@ -249,10 +249,49 @@ std::string Tensor::DumpText(TextFormat format)
     Read(bufferData.data());
     std::string text;
     text.reserve(4 * 1024 * 1024); // Reserve 4MB for dump.
-    std::vector<size_t> indices(m_sizes.size(), 0);
     text += std::format("# Sizes = {}\n", rad::ToString(m_sizes));
     text += std::format("# Strides = {}\n", rad::ToString(m_strides));
-    DumpTextDimByDim(text, bufferData, format, indices, 0);
+    TensorIterator iter(ExpandSizeDimensions(m_sizes, 2));
+    do {
+        iter.Reset2D();
+        auto& indices = iter.m_indices;
+        text += std::format("# Indices = {}\n", rad::ToString(indices));
+        for (size_t i = 0; i < m_sizes[m_sizes.size() - 2]; ++i)
+        {
+            indices[m_sizes.size() - 2] = i;
+            for (size_t j = 0; j < m_sizes[m_sizes.size() - 1]; ++j)
+            {
+                indices[m_sizes.size() - 1] = j;
+                size_t index = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
+                size_t offsetInBytes = index * GetElementSizeInBytes();
+                if (offsetInBytes < bufferData.size())
+                {
+                    if (format == TextFormat::Dec)
+                    {
+                        text += FormatValueFixedWidthDec(m_dataType, &bufferData[offsetInBytes]) + ", ";
+                    }
+                    else if (format == TextFormat::Hex)
+                    {
+                        text += FormatValueFixedWidthHex(m_dataType, &bufferData[offsetInBytes]) + ", ";
+                    }
+                }
+                else // with robust buffer access
+                {
+                    uint64_t value = 0;
+                    if (format == TextFormat::Dec)
+                    {
+                        text += FormatValueFixedWidthDec(m_dataType, &value) + ", ";
+                    }
+                    else if (format == TextFormat::Hex)
+                    {
+                        text += FormatValueFixedWidthHex(m_dataType, &value) + ", ";
+                    }
+                }
+            }
+            text.pop_back();
+            text += "\n"; // New line after the last dimension
+        }
+    } while (iter.Next2D());
     return text;
 }
 
@@ -269,156 +308,6 @@ bool Tensor::DumpTextToFile(std::string_view fileName, TextFormat format)
         }
     }
     return false;
-}
-
-static std::string DumpElementDec(vk::ComponentTypeKHR dataType, const void* data)
-{
-    if (dataType == vk::ComponentTypeKHR::eFloat16)
-    {
-        uint16_t value = *reinterpret_cast<const uint16_t*>(data);
-        return std::format("{:11.4f}", rad::fp16_ieee_to_fp32_value(value));
-    }
-    else if (dataType == vk::ComponentTypeKHR::eFloat32)
-    {
-        float value = *reinterpret_cast<const float*>(data);
-        if (value < 1000000)
-        {
-            return std::format("{:14.6f}", value);
-        }
-        else
-        {
-            return std::format("{:14.6e}", value);
-        }
-    }
-    else if (dataType == vk::ComponentTypeKHR::eFloat64)
-    {
-        double value = *reinterpret_cast<const double*>(data);
-        if (value < 1000000)
-        {
-            return std::format("{:14.6f}", value);
-        }
-        else
-        {
-            return std::format("{:14.6e}", value);
-        }
-    }
-    else if (dataType == vk::ComponentTypeKHR::eSint8)
-    {
-        int8_t value = *reinterpret_cast<const int8_t*>(data);
-        return std::format("{:4d}", value);
-    }
-    else if (dataType == vk::ComponentTypeKHR::eSint16)
-    {
-        int16_t value = *reinterpret_cast<const int16_t*>(data);
-        return std::format("{:6d}", value);
-    }
-    else if (dataType == vk::ComponentTypeKHR::eSint32)
-    {
-        int32_t value = *reinterpret_cast<const int32_t*>(data);
-        return std::format("{:11d}", value);
-    }
-    else if (dataType == vk::ComponentTypeKHR::eSint64)
-    {
-        int64_t value = *reinterpret_cast<const int64_t*>(data);
-        return std::format("{:20d}", value);
-    }
-    else if (dataType == vk::ComponentTypeKHR::eUint8)
-    {
-        uint8_t value = *reinterpret_cast<const uint8_t*>(data);
-        return std::format("{:4d}", value);
-    }
-    else if (dataType == vk::ComponentTypeKHR::eUint16)
-    {
-        uint16_t value = *reinterpret_cast<const uint16_t*>(data);
-        return std::format("{:5d}", value);
-    }
-    else if (dataType == vk::ComponentTypeKHR::eUint32)
-    {
-        uint32_t value = *reinterpret_cast<const uint32_t*>(data);
-        return std::format("{:10d}", value);
-    }
-    else if (dataType == vk::ComponentTypeKHR::eUint64)
-    {
-        uint64_t value = *reinterpret_cast<const uint64_t*>(data);
-        return std::format("{:20d}", value);
-    }
-    else
-    {
-        RAD_UNREACHABLE();
-        return {};
-    }
-}
-
-static std::string DumpElementHex(vk::ComponentTypeKHR dataType, const void* data)
-{
-    size_t elementSize = GetComponentSizeInBytes(dataType);
-    if (elementSize == 1)
-    {
-        uint8_t value = *reinterpret_cast<const uint8_t*>(data);
-        return std::format("0x{:02X}", value);
-    }
-    else if (elementSize == 2)
-    {
-        uint16_t value = *reinterpret_cast<const uint16_t*>(data);
-        return std::format("0x{:04X}", value);
-    }
-    else if (elementSize == 4)
-    {
-        uint32_t value = *reinterpret_cast<const uint32_t*>(data);
-        return std::format("0x{:08X}", value);
-    }
-    else if (elementSize == 8)
-    {
-        uint64_t value = *reinterpret_cast<const uint64_t*>(data);
-        return std::format("0x{:016X}", value);
-    }
-    else
-    {
-        RAD_UNREACHABLE();
-        return {};
-    }
-}
-
-void Tensor::DumpTextDimByDim(
-    std::string& text, std::vector<uint8_t>& bufferData, TextFormat format,
-    std::vector<size_t>& indices, size_t dimIndex)
-{
-    if (dimIndex == m_sizes.size() - 1)
-    {
-        // Iterate the last dimension:
-        for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
-        {
-            indices[dimIndex] = i;
-            size_t index = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
-            if (format == TextFormat::Dec)
-            {
-                text += DumpElementDec(m_dataType, &bufferData[index * GetElementSizeInBytes()]) + ", ";
-            }
-            else if (format == TextFormat::Hex)
-            {
-                text += DumpElementHex(m_dataType, &bufferData[index * GetElementSizeInBytes()]) + ", ";
-            }
-        }
-        text.pop_back();
-        text += "\n"; // New line after the last dimension
-    }
-    else
-    {
-        if (dimIndex == m_sizes.size() - 2)
-        {
-            for (size_t i = dimIndex; i < m_sizes.size(); ++i)
-            {
-                indices[i] = 0;
-            }
-            text += std::format("# Indices = {}\n", rad::ToString(indices));
-        }
-        // Iterate recursively:
-        for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
-        {
-            indices[dimIndex] = i;
-            DumpTextDimByDim(text, bufferData,  format, indices, dimIndex + 1);
-        }
-    }
 }
 
 } // namespace vkpp
