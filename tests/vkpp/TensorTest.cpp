@@ -109,8 +109,9 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     std::vector<uint16_t> results(tensor->GetBufferSizeInElements());
     tensor->Read(results.data());
     float maxDiff = 0.0f;
-    float tolerance = 0.0005f;
-    Verify(tensor->m_sizes, tensor->m_strides, [&](rad::ArrayRef<size_t> indices) {
+    const float tolerance = 0.0005f;
+    vkpp::TensorIterator iter(tensor->m_sizes);
+    iter.ForEach([&](rad::ArrayRef<size_t> indices) {
         size_t index = std::inner_product(indices.begin(), indices.end(), tensor->m_strides.begin(), size_t(0));
         float result = rad::fp16_ieee_to_fp32_value(results[index]);
         float resultRef = std::sqrt(rad::fp16_ieee_to_fp32_value(inputData[index]));
@@ -122,6 +123,7 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
         EXPECT_TRUE(diff < tolerance);
         if (diff >= tolerance)
         {
+            VKPP_LOG(err, "Verification failed at {}", rad::ToString(indices));
             return false;
         }
         return true;
@@ -144,7 +146,7 @@ TEST(Tensor, ElementWise)
     TestElementWiseSqrt({ 2, 4, 512, 512 });
 
     vkpp::TensorIterator iter({ 2, 4, 8, 8 });
-    iter.ForEachRecursive([](rad::ArrayRef<size_t> indices) {
+    iter.ForEach([](rad::ArrayRef<size_t> indices) {
         VKPP_LOG(info, "Indices: {}", rad::ToString(indices));
         });
 }

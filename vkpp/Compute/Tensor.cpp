@@ -252,6 +252,7 @@ std::string Tensor::DumpText(TextFormat format)
     text += std::format("# Sizes = {}\n", rad::ToString(m_sizes));
     text += std::format("# Strides = {}\n", rad::ToString(m_strides));
     TensorIterator iter(ExpandSizeDimensions(m_sizes, 2));
+    auto strides = ExpandStrideDimensions(m_strides, 2);
     do {
         iter.Reset2D();
         auto& indices = iter.m_indices;
@@ -262,7 +263,7 @@ std::string Tensor::DumpText(TextFormat format)
             for (size_t j = 0; j < m_sizes[m_sizes.size() - 1]; ++j)
             {
                 indices[m_sizes.size() - 1] = j;
-                size_t index = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
+                size_t index = std::inner_product(indices.begin(), indices.end(), strides.begin(), size_t(0));
                 size_t offsetInBytes = index * GetElementSizeInBytes();
                 if (offsetInBytes < bufferData.size())
                 {
@@ -275,7 +276,7 @@ std::string Tensor::DumpText(TextFormat format)
                         text += FormatValueFixedWidthHex(m_dataType, &bufferData[offsetInBytes]) + ", ";
                     }
                 }
-                else // with robust buffer access
+                else // robust buffer access
                 {
                     uint64_t value = 0;
                     if (format == TextFormat::Dec)

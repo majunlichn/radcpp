@@ -88,19 +88,19 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
 {
     m_desc = desc;
 
-    m_dispatchSizes = Tensor::ExpandSizeDimensions(m_desc.sizes, DimCountPerDispatch);
-    m_dispatchInputStrides = Tensor::ExpandStrideDimensions(m_desc.inputStrides, DimCountPerDispatch);
-    m_dispatchOutputStrides = Tensor::ExpandStrideDimensions(m_desc.outputStrides, DimCountPerDispatch);
+    m_dispatchSizes = Tensor::ExpandSizeDimensions(m_desc.sizes, DispatchDimCount);
+    m_dispatchInputStrides = Tensor::ExpandStrideDimensions(m_desc.inputStrides, DispatchDimCount);
+    m_dispatchOutputStrides = Tensor::ExpandStrideDimensions(m_desc.outputStrides, DispatchDimCount);
 
     size_t dimCount = m_dispatchSizes.size();
 
-    assert(dimCount >= DimCountPerDispatch);
+    assert(dimCount >= DispatchDimCount);
     assert(dimCount == m_dispatchInputStrides.size());
     assert(m_dispatchInputStrides.size() == m_dispatchOutputStrides.size());
 
     m_threadGroupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(m_dispatchSizes[dimCount - 1]), 16u);  // W
     m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(m_dispatchSizes[dimCount - 2]), 16u);  // H
-    m_threadGroupCount.z = static_cast<uint32_t>(m_dispatchSizes[dimCount - DimCountPerDispatch]);
+    m_threadGroupCount.z = static_cast<uint32_t>(m_dispatchSizes[dimCount - DispatchDimCount]);
 
     std::string sourceRoot = "./Shaders/";
     const char* env = std::getenv("VKPP_SHADERS_ROOT");
@@ -187,19 +187,10 @@ void TensorOpElementWiseUnary::Execute()
     cmdBuffer->BindDescriptorSets(vk::PipelineBindPoint::eCompute, m_pipelineLayout->GetHandle(), 0,
         { m_descSet->GetHandle() }, {});
 
-    std::vector<size_t> offsets(m_dispatchSizes.size(), 0);
-    ExecuteDimByDim(cmdBuffer.get(), offsets, 0);
-
-    cmdBuffer->End();
-
-    m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
-}
-
-void TensorOpElementWiseUnary::ExecuteDimByDim(CommandBuffer* cmdBuffer, std::vector<size_t>& offsets, size_t dimIndex)
-{
-    if (dimIndex == m_dispatchSizes.size() - DimCountPerDispatch)
-    {
+    TensorIterator iter(m_dispatchSizes);
+    do {
         PushConstants pushConstants = {};
+        const auto& offsets = iter.m_indices;
         pushConstants.inputIndexOffset =
             std::inner_product(offsets.begin(), offsets.end(), m_dispatchInputStrides.begin(), size_t(0));
         pushConstants.outputIndexOffset =
@@ -207,15 +198,11 @@ void TensorOpElementWiseUnary::ExecuteDimByDim(CommandBuffer* cmdBuffer, std::ve
         cmdBuffer->SetPushConstants<PushConstants>(
             m_pipelineLayout->GetHandle(), vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
         cmdBuffer->Dispatch(m_threadGroupCount.x, m_threadGroupCount.y, m_threadGroupCount.z);
-    }
-    else
-    {
-        for (size_t i = 0; i < m_dispatchSizes[dimIndex]; ++i)
-        {
-            offsets[dimIndex] = i;
-            ExecuteDimByDim(cmdBuffer, offsets, dimIndex + 1);
-        }
-    }
+    } while ((m_dispatchSizes.size() > DispatchDimCount) && iter.NextND(DispatchDimCount));
+
+    cmdBuffer->End();
+
+    m_cmdStream->SubmitAndWaitForCompletion(cmdBuffer->GetHandle(), m_executeWaits, m_executeSignalSemaphores);
 }
 
 } // namespace vkpp

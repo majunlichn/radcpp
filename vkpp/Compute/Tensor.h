@@ -127,10 +127,7 @@ public:
     {
         size_t dimCount = m_sizes.size();
         assert(dimCount >= n);
-        for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - n); dimIndex < ptrdiff_t(dimCount); ++dimIndex)
-        {
-            m_indices[dimIndex] = 0;
-        }
+        std::fill_n(m_indices.end() - n, n, 0);
     }
 
     void Reset1D() { ResetND(1); }
@@ -179,13 +176,13 @@ public:
         } while (Next1D());
     }
 
-    void ForEachRecursive(const ElementWiseOp& op)
+    void ForEachRecursively(const ElementWiseOp& op)
     {
         Reset();
-        ForEachRecursive(op, 0);
+        ForEachRecursively(op, 0);
     }
 
-    void ForEachRecursive(const ElementWiseOp& op, size_t dimIndex)
+    void ForEachRecursively(const ElementWiseOp& op, size_t dimIndex)
     {
         if (dimIndex == m_sizes.size() - 1)
         {
@@ -198,11 +195,10 @@ public:
         }
         else
         {
-            // Iterate recursively:
             for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
             {
                 m_indices[dimIndex] = i;
-                ForEachRecursive(op, dimIndex + 1);
+                ForEachRecursively(op, dimIndex + 1);
             }
         }
     }
