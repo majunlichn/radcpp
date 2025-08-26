@@ -251,48 +251,66 @@ std::string Tensor::DumpText(TextFormat format)
     text.reserve(4 * 1024 * 1024); // Reserve 4MB for dump.
     text += std::format("# Sizes = {}\n", rad::ToString(m_sizes));
     text += std::format("# Strides = {}\n", rad::ToString(m_strides));
-    TensorIterator iter(ExpandSizeDimensions(m_sizes, 2));
-    auto strides = ExpandStrideDimensions(m_strides, 2);
-    do {
-        iter.Reset2D();
-        auto& indices = iter.m_indices;
-        text += std::format("# Indices = {}\n", rad::ToString(indices));
-        for (size_t i = 0; i < m_sizes[m_sizes.size() - 2]; ++i)
+    TensorIterator iter(m_sizes);
+    auto& indices = iter.m_indices;
+    auto dump1D = [&]() {
+        size_t dimCount = m_sizes.size();
+        for (size_t i = 0; i < m_sizes[dimCount - 1]; ++i)
         {
-            indices[m_sizes.size() - 2] = i;
-            for (size_t j = 0; j < m_sizes[m_sizes.size() - 1]; ++j)
+            indices[dimCount - 1] = i;
+            size_t index = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
+            size_t offsetInBytes = index * GetElementSizeInBytes();
+            if (offsetInBytes < bufferData.size())
             {
-                indices[m_sizes.size() - 1] = j;
-                size_t index = std::inner_product(indices.begin(), indices.end(), strides.begin(), size_t(0));
-                size_t offsetInBytes = index * GetElementSizeInBytes();
-                if (offsetInBytes < bufferData.size())
+                if (format == TextFormat::Dec)
                 {
-                    if (format == TextFormat::Dec)
-                    {
-                        text += FormatValueFixedWidthDec(m_dataType, &bufferData[offsetInBytes]) + ", ";
-                    }
-                    else if (format == TextFormat::Hex)
-                    {
-                        text += FormatValueFixedWidthHex(m_dataType, &bufferData[offsetInBytes]) + ", ";
-                    }
+                    text += FormatValueFixedWidthDec(m_dataType, &bufferData[offsetInBytes]) + ", ";
                 }
-                else // robust buffer access
+                else if (format == TextFormat::Hex)
                 {
-                    uint64_t value = 0;
-                    if (format == TextFormat::Dec)
-                    {
-                        text += FormatValueFixedWidthDec(m_dataType, &value) + ", ";
-                    }
-                    else if (format == TextFormat::Hex)
-                    {
-                        text += FormatValueFixedWidthHex(m_dataType, &value) + ", ";
-                    }
+                    text += FormatValueFixedWidthHex(m_dataType, &bufferData[offsetInBytes]) + ", ";
                 }
             }
-            text.pop_back();
-            text += "\n"; // New line after the last dimension
+            else // Simulate robust buffer access:
+            {
+                uint64_t value = 0;
+                if (format == TextFormat::Dec)
+                {
+                    text += FormatValueFixedWidthDec(m_dataType, &value) + ", ";
+                }
+                else if (format == TextFormat::Hex)
+                {
+                    text += FormatValueFixedWidthHex(m_dataType, &value) + ", ";
+                }
+            }
         }
-    } while (iter.Next2D());
+        text.pop_back();
+        text += "\n"; // New line after the last dimension
+        };  // dump1D
+
+    if (m_sizes.size() == 1)
+    {
+        dump1D();
+    }
+    else if (m_sizes.size() == 2)
+    {
+        do {
+            iter.Reset1D();
+            dump1D();
+        } while (iter.Next1D());
+    }
+    else // >2D
+    {
+        do {
+            iter.Reset2D();
+            text += std::format("# Indices = {}\n", rad::ToString(indices));
+            for (size_t row = 0; row < m_sizes[m_sizes.size() - 2]; ++row)
+            {
+                iter.m_indices[m_sizes.size() - 2] = row;
+                dump1D();
+            }
+        } while (iter.Next2D());
+    }
     return text;
 }
 

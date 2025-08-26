@@ -123,7 +123,7 @@ public:
         m_indices.resize(m_sizes.size(), 0);
     }
 
-    void ResetND(ptrdiff_t n)
+    void ResetND(size_t n)
     {
         size_t dimCount = m_sizes.size();
         assert(dimCount >= n);
@@ -135,11 +135,11 @@ public:
     void Reset3D() { ResetND(3); }
     void Reset4D() { ResetND(4); }
 
-    bool NextND(ptrdiff_t n)
+    bool NextND(size_t n)
     {
         size_t dimCount = m_sizes.size();
         assert(dimCount >= n + 1);
-        for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - n - 1); dimIndex >= 0; --dimIndex)
+        for (ptrdiff_t dimIndex = dimCount - ptrdiff_t(n) - 1; dimIndex >= 0; --dimIndex)
         {
             if (m_indices[dimIndex] < m_sizes[dimIndex] - 1)
             {
@@ -201,6 +201,40 @@ public:
                 ForEachRecursively(op, dimIndex + 1);
             }
         }
+    }
+
+    void ForEachParallel(const ElementWiseOp& op)
+    {
+        size_t elementCount = 1;
+        size_t dimGranularity = 0;
+        for (auto iter = m_sizes.rbegin(); iter != m_sizes.rend(); ++iter)
+        {
+            elementCount *= *iter;
+            ++dimGranularity;
+            if (elementCount >= 1024 * 1024)
+            {
+                break;
+            }
+        }
+        ForEachParallel(op, dimGranularity);
+    }
+
+    // @param dimGranularity: the number of dimensions to process in parallel.
+    void ForEachParallel(const ElementWiseOp& op, size_t dimGranularity)
+    {
+        if (dimGranularity >= m_sizes.size())
+        {
+            return ForEach(op);
+        }
+        Reset();
+        tf::Executor executor;
+        do {
+            ResetND(dimGranularity);
+            executor.silent_async([&, iter = *this]() mutable {
+                iter.ForEachRecursively(op, m_sizes.size() - dimGranularity);
+                });
+        } while (NextND(dimGranularity));
+        executor.wait_for_all();
     }
 
 }; // class TensorIterator

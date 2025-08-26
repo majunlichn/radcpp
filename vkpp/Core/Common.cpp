@@ -185,7 +185,7 @@ std::string FormatValueFixedWidthDec(vk::ComponentTypeKHR dataType, const void* 
     else if (dataType == vk::ComponentTypeKHR::eFloat32)
     {
         float value = *reinterpret_cast<const float*>(data);
-        if (value < 1000000)
+        if (std::abs(value) < 1000000)
         {
             return std::format("{:14.6f}", value);
         }
@@ -197,7 +197,7 @@ std::string FormatValueFixedWidthDec(vk::ComponentTypeKHR dataType, const void* 
     else if (dataType == vk::ComponentTypeKHR::eFloat64)
     {
         double value = *reinterpret_cast<const double*>(data);
-        if (value < 1000000)
+        if (std::abs(value) < 1000000)
         {
             return std::format("{:14.6f}", value);
         }
