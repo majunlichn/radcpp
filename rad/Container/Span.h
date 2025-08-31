@@ -18,15 +18,14 @@ namespace rad
 template<typename T>
 using Span = std::span<T>;
 
+// Const reference to an array, more flexible and easy to use,, inspired by:
+// https://github.com/llvm-mirror/llvm/blob/master/include/llvm/ADT/ArrayRef.h
+// https://github.com/KhronosGroup/Vulkan-Hpp/blob/main/vulkan/vulkan.hpp
 template <typename T>
-class ArrayRef
+class [[nodiscard]] ArrayRef
 {
-    const T* m_data = nullptr;
-    size_t m_count = 0;
-
 public:
     using value_type = T;
-    using size_type = size_t;
     using pointer = value_type*;
     using const_pointer = const value_type*;
     using reference = value_type&;
@@ -35,7 +34,14 @@ public:
     using const_iterator = const_pointer;
     using reverse_iterator = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+    using size_type = size_t;
+    using difference_type = ptrdiff_t;
 
+private:
+    const T* m_data = nullptr;
+    size_type m_count = 0;
+
+public:
     constexpr ArrayRef() noexcept :
         m_data(nullptr),
         m_count(0)
@@ -79,7 +85,7 @@ public:
 #pragma GCC diagnostic ignored "-Winit-list-lifetime"
 #endif
 
-    ArrayRef(const std::initializer_list<T>& list) noexcept :
+    ArrayRef(std::initializer_list<T> const& list) noexcept :
         m_data(list.begin()),
         m_count(list.size())
     {
@@ -89,8 +95,8 @@ public:
         }
     }
 
-    template <typename Elem = T, typename std::enable_if_t<std::is_const_v<Elem>, int> = 0>
-    ArrayRef(const std::initializer_list<typename std::remove_const_t<T>>& list) noexcept :
+    template <typename Element = T, typename std::enable_if_t<std::is_const_v<Element>, int> = 0>
+    ArrayRef(std::initializer_list<typename std::remove_const_t<T>> const& list) noexcept :
         m_data(list.begin()),
         m_count(list.size())
     {
@@ -109,6 +115,10 @@ public:
         m_data(std::ranges::data(r)),
         m_count(std::ranges::size(r))
     {
+        if (m_count == 0)
+        {
+            m_data = 0;
+        }
     }
 
     const T* data() const noexcept
