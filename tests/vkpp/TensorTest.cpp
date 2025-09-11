@@ -79,6 +79,7 @@ TEST(Tensor, ElementWise)
     TestElementWiseSqrt({ 2, 4, 512, 512 });
 
     vkpp::TensorIterator iter({ 2, 4, 8, 8 });
+    iter.m_permutation = { 1, 3, 2, 0 };
     iter.ForEach([](rad::ArrayRef<size_t> indices) {
         VKPP_LOG(info, "Indices: {}", rad::ToString(indices));
         });

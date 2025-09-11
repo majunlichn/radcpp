@@ -49,6 +49,9 @@ public:
     bool IsNCDHW() const;
     bool IsNDHWC() const;
 
+    static std::vector<size_t> GetMemoryOrder(rad::ArrayRef<size_t> strides);
+    std::vector<size_t> GetMemoryOrder() const;
+
     rad::Ref<Device> m_device;
 
     vk::ComponentTypeKHR m_dataType = vk::ComponentTypeKHR::eFloat16;
@@ -108,6 +111,7 @@ class TensorIterator
 public:
     std::vector<size_t> m_sizes;
     std::vector<size_t> m_indices;
+    std::vector<size_t> m_permutation;
 
     TensorIterator(rad::ArrayRef<size_t> sizes) :
         m_sizes(sizes)
@@ -159,21 +163,50 @@ public:
     bool Next3D() { return NextND(3); }
     bool Next4D() { return NextND(4); }
 
+    bool Next()
+    {
+        size_t dimCount = m_sizes.size();
+        for (size_t i = 0; i < dimCount; ++i)
+        {
+            size_t dimIndex = m_permutation[i];
+            if (m_indices[dimIndex] < m_sizes[dimIndex] - 1)
+            {
+                ++m_indices[dimIndex];
+                return true;
+            }
+            else
+            {
+                m_indices[dimIndex] = 0;
+            }
+        }
+        return false;
+    }
+
     using ElementWiseOp = std::function<void(rad::ArrayRef<size_t> indices)>;
 
     void ForEach(const ElementWiseOp& op)
     {
         Reset();
-        do
+        if (m_permutation.empty())
         {
-            // Iterate the last dimension:
-            size_t dimCount = m_sizes.size();
-            for (size_t i = 0; i < m_sizes[dimCount - 1]; ++i)
+            do
             {
-                m_indices[dimCount - 1] = i;
+                // Iterate the last dimension:
+                size_t dimCount = m_sizes.size();
+                for (size_t i = 0; i < m_sizes[dimCount - 1]; ++i)
+                {
+                    m_indices[dimCount - 1] = i;
+                    op(m_indices);
+                }
+            } while (Next1D());
+        }
+        else
+        {
+            do
+            {
                 op(m_indices);
-            }
-        } while (Next1D());
+            } while (Next());
+        }
     }
 
     void ForEachRecursively(const ElementWiseOp& op)

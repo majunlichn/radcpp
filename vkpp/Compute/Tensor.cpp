@@ -1,5 +1,6 @@
 #include <vkpp/Compute/Tensor.h>
 #include <vkpp/Core/Command.h>
+#include <rad/Core/Algorithm.h>
 #include <rad/IO/Format.h>
 
 namespace vkpp
@@ -70,7 +71,7 @@ std::vector<size_t> Tensor::MakeStrides(rad::ArrayRef<size_t> sizes)
     return strides;
 }
 
-std::vector<size_t> MakeStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
+std::vector<size_t> Tensor::MakeStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
 {
     std::vector<size_t> strides(sizes.size());
     size_t stride = 1;
@@ -190,6 +191,34 @@ bool Tensor::IsNDHWC() const
         return true;
     }
     return false;
+}
+
+std::vector<size_t> Tensor::GetMemoryOrder(rad::ArrayRef<size_t> strides)
+{
+    std::vector<size_t> order(strides.size());
+    std::iota(order.begin(), order.end(), size_t(0));
+    std::ranges::stable_sort(order,
+        [&](size_t i, size_t j) {
+            if (strides[i] < strides[j])
+            {
+                return true;
+            }
+            else if (strides[i] > strides[j])
+            {
+                return false;
+            }
+            else
+            {
+                return i > j;
+            }
+        }
+    );
+    return order;
+}
+
+std::vector<size_t> Tensor::GetMemoryOrder() const
+{
+    return GetMemoryOrder(m_strides);
 }
 
 void Tensor::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
