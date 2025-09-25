@@ -1,7 +1,7 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
-#include <rad/Core/Integer.h>
+#include <rad/Common/Platform.h>
+#include <rad/Common/Integer.h>
 #include <cfenv>
 #include <cfloat>
 #include <cmath>

@@ -1,6 +1,6 @@
 #include <rad/IO/Json.h>
 #include <rad/IO/File.h>
-#include <rad/Core/String.h>
+#include <rad/Common/String.h>
 
 namespace rad
 {

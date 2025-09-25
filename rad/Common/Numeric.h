@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 #include <numeric>
 #include <boost/numeric/conversion/cast.hpp>
 

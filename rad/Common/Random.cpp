@@ -1,4 +1,4 @@
-#include <rad/Core/Numeric.h>
+#include <rad/Common/Random.h>
 
 namespace rad
 {

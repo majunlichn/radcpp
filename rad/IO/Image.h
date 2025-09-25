@@ -1,9 +1,9 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
-#include <rad/Core/Memory.h>
-#include <rad/Core/RefCounted.h>
-#include <rad/Core/String.h>
+#include <rad/Common/Platform.h>
+#include <rad/Common/Memory.h>
+#include <rad/Common/RefCounted.h>
+#include <rad/Common/String.h>
 
 #include <glm/glm.hpp>
 

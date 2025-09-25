@@ -1,4 +1,4 @@
-#include <rad/Core/String.h>
+#include <rad/Common/String.h>
 
 #if defined(RAD_OS_WINDOWS)
 #include <Windows.h>

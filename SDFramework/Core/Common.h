@@ -1,12 +1,12 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
-#include <rad/Core/Integer.h>
-#include <rad/Core/Float.h>
-#include <rad/Core/Flags.h>
-#include <rad/Core/Memory.h>
-#include <rad/Core/RefCounted.h>
-#include <rad/Core/TypeTraits.h>
+#include <rad/Common/Platform.h>
+#include <rad/Common/Integer.h>
+#include <rad/Common/Float.h>
+#include <rad/Common/Flags.h>
+#include <rad/Common/Memory.h>
+#include <rad/Common/RefCounted.h>
+#include <rad/Common/TypeTraits.h>
 #include <rad/Container/SmallVector.h>
 #include <rad/Container/Span.h>
 #include <rad/IO/File.h>

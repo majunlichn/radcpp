@@ -1,6 +1,6 @@
 #include <rad/Container/SmallVector.h>
 #include <rad/Container/Span.h>
-#include <rad/Core/Algorithm.h>
+#include <rad/Common/Algorithm.h>
 
 #include <gtest/gtest.h>
 

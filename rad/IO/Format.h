@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rad/Core/String.h>
+#include <rad/Common/String.h>
 #include <rad/Container/Span.h>
 
 namespace rad

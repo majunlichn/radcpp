@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 
 #include <stdexec/execution.hpp>
 #include <exec/static_thread_pool.hpp>

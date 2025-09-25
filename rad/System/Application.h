@@ -1,8 +1,8 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
-#include <rad/Core/RefCounted.h>
-#include <rad/Core/String.h>
+#include <rad/Common/Platform.h>
+#include <rad/Common/RefCounted.h>
+#include <rad/Common/String.h>
 #include <rad/IO/Logging.h>
 
 namespace rad

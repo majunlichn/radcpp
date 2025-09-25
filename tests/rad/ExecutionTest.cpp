@@ -1,6 +1,6 @@
-#include <rad/Core/ThreadPool.h>
-#include <rad/Core/Algorithm.h>
-#include <rad/Core/Numeric.h>
+#include <rad/Common/ThreadPool.h>
+#include <rad/Common/Algorithm.h>
+#include <rad/Common/Numeric.h>
 
 #include <rad/IO/Logging.h>
 #include <rad/System/Time.h>

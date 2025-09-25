@@ -6,7 +6,7 @@
 #include <vkpp/Compute/Tensor.h>
 #include <vkpp/Compute/TensorOp.h>
 
-#include <rad/Core/Float.h>
+#include <rad/Common/Float.h>
 #include <random>
 
 #include <gtest/gtest.h>

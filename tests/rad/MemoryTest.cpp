@@ -1,5 +1,5 @@
-#include <rad/Core/Memory.h>
-#include <rad/Core/RefCounted.h>
+#include <rad/Common/Memory.h>
+#include <rad/Common/RefCounted.h>
 #include <atomic>
 
 #include <gtest/gtest.h>

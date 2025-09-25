@@ -8,23 +8,23 @@ target_include_directories(rad
 )
 
 list(APPEND RAD_HEADERS
+    Common/Algorithm.h
+    Common/Flags.h
+    Common/Float.h
+    Common/Integer.h
+    Common/Literals.h
+    Common/Math.h
+    Common/Memory.h
+    Common/Numeric.h
+    Common/Platform.h
+    Common/pystring.h
+    Common/Random.h
+    Common/RefCounted.h
+    Common/String.h
+    Common/TypeTraits.h
+    Common/ThreadPool.h
     Container/SmallVector.h
     Container/Span.h
-    Core/Algorithm.h
-    Core/Flags.h
-    Core/Float.h
-    Core/Integer.h
-    Core/Literals.h
-    Core/Math.h
-    Core/Memory.h
-    Core/Numeric.h
-    Core/Platform.h
-    Core/pystring.h
-    Core/Random.h
-    Core/RefCounted.h
-    Core/String.h
-    Core/TypeTraits.h
-    Core/ThreadPool.h
     IO/File.h
     IO/Format.h
     IO/Image.h
@@ -37,19 +37,19 @@ list(APPEND RAD_HEADERS
     System/Time.h
 )
 list(APPEND RAD_PRIVATE_SOURCES
-    Core/BFloat16.cpp
-    Core/Float.cpp
-    Core/Float16.cpp
-    Core/Float8.cpp
-    Core/Integer.cpp
-    Core/Math.cpp
-    Core/Memory.cpp
-    Core/Numeric.cpp
-    Core/Platform.cpp
-    Core/Random.cpp
-    Core/String.cpp
-    Core/pystring.cpp
-    Core/ThreadPool.cpp
+    Common/BFloat16.cpp
+    Common/Float.cpp
+    Common/Float16.cpp
+    Common/Float8.cpp
+    Common/Integer.cpp
+    Common/Math.cpp
+    Common/Memory.cpp
+    Common/Numeric.cpp
+    Common/Platform.cpp
+    Common/Random.cpp
+    Common/String.cpp
+    Common/pystring.cpp
+    Common/ThreadPool.cpp
     IO/File.cpp
     IO/Format.cpp
     IO/Image.cpp

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
-#include <rad/Core/pystring.h>
+#include <rad/Common/Platform.h>
+#include <rad/Common/pystring.h>
 
 #include <algorithm>
 #include <format>

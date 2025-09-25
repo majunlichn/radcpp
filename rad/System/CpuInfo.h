@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 
 // https://github.com/google/cpu_features
 #include <cpu_features_macros.h>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rad/Config.h>
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 
 #include <cassert>
 #include <cstdint>

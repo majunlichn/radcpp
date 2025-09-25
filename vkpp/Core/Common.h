@@ -5,14 +5,14 @@
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #define VULKAN_HPP_FLAGS_MASK_TYPE_AS_PUBLIC 1
 
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 
-#include <rad/Core/Integer.h>
-#include <rad/Core/Float.h>
-#include <rad/Core/Memory.h>
-#include <rad/Core/RefCounted.h>
-#include <rad/Core/String.h>
-#include <rad/Core/TypeTraits.h>
+#include <rad/Common/Integer.h>
+#include <rad/Common/Float.h>
+#include <rad/Common/Memory.h>
+#include <rad/Common/RefCounted.h>
+#include <rad/Common/String.h>
+#include <rad/Common/TypeTraits.h>
 #include <rad/Container/SmallVector.h>
 #include <rad/Container/Span.h>
 #include <rad/IO/File.h>

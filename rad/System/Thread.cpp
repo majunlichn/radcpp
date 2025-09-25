@@ -1,5 +1,5 @@
 #include <rad/System/Thread.h>
-#include <rad/Core/String.h>
+#include <rad/Common/String.h>
 #include <array>
 
 #if defined(RAD_OS_WINDOWS)

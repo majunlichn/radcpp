@@ -4,7 +4,7 @@
 #define _USE_MATH_DEFINES
 #endif
 
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 #include <cassert>
 #include <cmath>
 #include <numbers>

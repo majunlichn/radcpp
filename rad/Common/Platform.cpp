@@ -1,4 +1,4 @@
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 
 namespace rad
 {

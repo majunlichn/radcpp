@@ -1,4 +1,4 @@
-#include <rad/Core/Memory.h>
+#include <rad/Common/Memory.h>
 #include <cassert>
 #include <cstdlib>
 

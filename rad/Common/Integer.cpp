@@ -1,4 +1,4 @@
-#include <rad/Core/Integer.h>
+#include <rad/Common/Integer.h>
 
 namespace rad
 {

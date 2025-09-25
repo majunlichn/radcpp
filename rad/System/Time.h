@@ -1,7 +1,7 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
-#include <rad/Core/TypeTraits.h>
+#include <rad/Common/Platform.h>
+#include <rad/Common/TypeTraits.h>
 
 #include <cassert>
 #include <ctime>

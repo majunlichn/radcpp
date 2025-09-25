@@ -1,6 +1,6 @@
 #include <vkpp/Compute/Tensor.h>
 #include <vkpp/Core/Command.h>
-#include <rad/Core/Algorithm.h>
+#include <rad/Common/Algorithm.h>
 #include <rad/IO/Format.h>
 
 namespace vkpp

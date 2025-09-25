@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 #include <rad/IO/Format.h>
 #include <spdlog/spdlog.h>
 // https://fmt.dev/dev/api/

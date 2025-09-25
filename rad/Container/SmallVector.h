@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rad/Core/Platform.h>
+#include <rad/Common/Platform.h>
 #include <boost/container/small_vector.hpp>
 
 namespace rad
