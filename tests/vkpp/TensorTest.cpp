@@ -54,12 +54,13 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
         {
             maxDiff = diff;
         }
-        EXPECT_TRUE(diff < tolerance);
         if (diff >= tolerance)
         {
-            VKPP_LOG(err, "Verification failed at {}", rad::ToString(indices));
+            VKPP_LOG(err, "Verification failed at {}: Init={:14.6f}; Result={:14.6f}; Ref={:14.6f}; Diff={:14.6f}", rad::ToString(indices),
+                rad::fp16_ieee_to_fp32_value(inputData[index]), result, resultRef, diff);
         }
         });
+    EXPECT_TRUE(maxDiff < tolerance);
     if (maxDiff < tolerance)
     {
         VKPP_LOG(info, "Verification passed with MaxDiff={:.6f}", maxDiff);
@@ -78,9 +79,9 @@ TEST(Tensor, ElementWise)
 
     TestElementWiseSqrt({ 2, 4, 512, 512 });
 
-    vkpp::TensorIterator iter({ 2, 4, 8, 8 });
+    vkpp::TensorIterator iter({ 2, 4, 4, 4 });
     iter.m_permutation = { 1, 3, 2, 0 };
     iter.ForEach([](rad::ArrayRef<size_t> indices) {
-        VKPP_LOG(info, "Indices: {}", rad::ToString(indices));
+        VKPP_LOG(info, "Indices={}", rad::ToString(indices));
         });
 }

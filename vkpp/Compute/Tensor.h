@@ -131,7 +131,18 @@ public:
     {
         size_t dimCount = m_sizes.size();
         assert(dimCount >= n);
-        std::fill_n(m_indices.end() - n, n, 0);
+        if (m_permutation.empty())
+        {
+            std::fill_n(m_indices.end() - n, n, 0);
+        }
+        else
+        {
+            for (size_t i = 0; i < n; ++i)
+            {
+                size_t dimIndex = m_permutation[i];
+                m_indices[dimIndex] = 0;
+            }
+        }
     }
 
     void Reset1D() { ResetND(1); }
@@ -142,45 +153,46 @@ public:
     bool NextND(size_t n)
     {
         size_t dimCount = m_sizes.size();
-        assert(dimCount >= n + 1);
-        for (ptrdiff_t dimIndex = dimCount - ptrdiff_t(n) - 1; dimIndex >= 0; --dimIndex)
+        assert(dimCount > n);
+        if (m_permutation.empty())
         {
-            if (m_indices[dimIndex] < m_sizes[dimIndex] - 1)
+            for (ptrdiff_t dimIndex = dimCount - ptrdiff_t(n) - 1; dimIndex >= 0; --dimIndex)
             {
-                ++m_indices[dimIndex];
-                return true;
+                if (m_indices[dimIndex] < m_sizes[dimIndex] - 1)
+                {
+                    ++m_indices[dimIndex];
+                    return true;
+                }
+                else
+                {
+                    m_indices[dimIndex] = 0;
+                }
             }
-            else
-            {
-                m_indices[dimIndex] = 0;
-            }
+            return false;
         }
-        return false;
+        else
+        {
+            for (size_t i = n; i < dimCount; ++i)
+            {
+                size_t dimIndex = m_permutation[i];
+                if (m_indices[dimIndex] < m_sizes[dimIndex] - 1)
+                {
+                    ++m_indices[dimIndex];
+                    return true;
+                }
+                else
+                {
+                    m_indices[dimIndex] = 0;
+                }
+            }
+            return false;
+        }
     }
 
     bool Next1D() { return NextND(1); }
     bool Next2D() { return NextND(2); }
     bool Next3D() { return NextND(3); }
     bool Next4D() { return NextND(4); }
-
-    bool Next()
-    {
-        size_t dimCount = m_sizes.size();
-        for (size_t i = 0; i < dimCount; ++i)
-        {
-            size_t dimIndex = m_permutation[i];
-            if (m_indices[dimIndex] < m_sizes[dimIndex] - 1)
-            {
-                ++m_indices[dimIndex];
-                return true;
-            }
-            else
-            {
-                m_indices[dimIndex] = 0;
-            }
-        }
-        return false;
-    }
 
     using ElementWiseOp = std::function<void(rad::ArrayRef<size_t> indices)>;
 
@@ -189,23 +201,76 @@ public:
         Reset();
         if (m_permutation.empty())
         {
+            // Iterate the last dimension:
+            size_t dimCount = m_sizes.size();
             do
             {
-                // Iterate the last dimension:
-                size_t dimCount = m_sizes.size();
                 for (size_t i = 0; i < m_sizes[dimCount - 1]; ++i)
                 {
                     m_indices[dimCount - 1] = i;
                     op(m_indices);
                 }
-            } while (Next1D());
+            } while ((dimCount > 1) && Next1D());
         }
         else
         {
+            assert(m_permutation.size() == m_sizes.size());
+            size_t dimCount = m_sizes.size();
             do
             {
-                op(m_indices);
-            } while (Next());
+                size_t dimIndexPermuted = m_permutation[0];
+                for (size_t i = 0; i < m_sizes[dimIndexPermuted]; ++i)
+                {
+                    m_indices[dimIndexPermuted] = i;
+                    op(m_indices);
+                }
+            } while ((dimCount > 1) && Next1D());
+        }
+    }
+
+    void ForEachRecursively(const ElementWiseOp& op, size_t dimIndex)
+    {
+        if (m_permutation.empty())
+        {
+            if (dimIndex == m_sizes.size() - 1)
+            {
+                // Iterate the last dimension:
+                for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
+                {
+                    m_indices[dimIndex] = i;
+                    op(m_indices);
+                }
+            }
+            else
+            {
+                for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
+                {
+                    m_indices[dimIndex] = i;
+                    ForEachRecursively(op, dimIndex + 1);
+                }
+            }
+        }
+        else
+        {
+            size_t dimCount = m_sizes.size();
+            size_t dimIndexPermuted = m_permutation[dimCount - dimIndex - 1];
+            if (dimIndex == m_sizes.size() - 1)
+            {
+                // Iterate the last dimension:
+                for (size_t i = 0; i < m_sizes[dimIndexPermuted]; ++i)
+                {
+                    m_indices[dimIndexPermuted] = i;
+                    op(m_indices);
+                }
+            }
+            else
+            {
+                for (size_t i = 0; i < m_sizes[dimIndexPermuted]; ++i)
+                {
+                    m_indices[dimIndexPermuted] = i;
+                    ForEachRecursively(op, dimIndex + 1);
+                }
+            }
         }
     }
 
@@ -215,45 +280,8 @@ public:
         ForEachRecursively(op, 0);
     }
 
-    void ForEachRecursively(const ElementWiseOp& op, size_t dimIndex)
-    {
-        if (dimIndex == m_sizes.size() - 1)
-        {
-            // Iterate the last dimension:
-            for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
-            {
-                m_indices[dimIndex] = i;
-                op(m_indices);
-            }
-        }
-        else
-        {
-            for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
-            {
-                m_indices[dimIndex] = i;
-                ForEachRecursively(op, dimIndex + 1);
-            }
-        }
-    }
-
-    void ForEachParallel(const ElementWiseOp& op)
-    {
-        size_t elementCount = 1;
-        size_t dimGranularity = 0;
-        for (auto iter = m_sizes.rbegin(); iter != m_sizes.rend(); ++iter)
-        {
-            elementCount *= *iter;
-            ++dimGranularity;
-            if (elementCount >= 1024 * 1024)
-            {
-                break;
-            }
-        }
-        ForEachParallel(op, dimGranularity);
-    }
-
     // @param dimGranularity: the number of dimensions to process in parallel.
-    void ForEachParallel(const ElementWiseOp& op, size_t dimGranularity)
+    void ForEachParallelND(const ElementWiseOp& op, size_t dimGranularity)
     {
         if (dimGranularity >= m_sizes.size())
         {
@@ -268,6 +296,22 @@ public:
                 });
         } while (NextND(dimGranularity));
         executor.wait_for_all();
+    }
+
+    void ForEachParallel(const ElementWiseOp& op)
+    {
+        size_t elementCount = 1;
+        size_t dimGranularity = 0;
+        while (dimGranularity < m_sizes.size())
+        {
+            elementCount *= m_sizes[m_sizes.size() - dimGranularity - 1];
+            ++dimGranularity;
+            if (elementCount >= 1000000)
+            {
+                break;
+            }
+        }
+        ForEachParallelND(op, dimGranularity);
     }
 
 }; // class TensorIterator

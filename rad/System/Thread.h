@@ -9,4 +9,6 @@ namespace rad
 bool SetThreadName(std::string name);
 std::string GetThreadName();
 
+uint64_t GetCurrentThreadId();
+
 } // namespace rad

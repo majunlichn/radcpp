@@ -4,6 +4,8 @@
 
 #if defined(RAD_OS_WINDOWS)
 #include <Windows.h>
+#else
+#include <sys/types.h>
 #endif
 
 #if defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
@@ -58,6 +60,16 @@ std::string GetThreadName()
 #else
     return {};
 #endif
+}
+
+uint64_t GetCurrentThreadId()
+{
+#if defined(RAD_OS_WINDOWS)
+    return ::GetCurrentThreadId();
+#else
+    return ::gettid();
+#endif
+    return 0;
 }
 
 } // namespace rad

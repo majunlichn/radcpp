@@ -32,17 +32,17 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
     assert(m_sizes.size() == m_strides.size());
 
     size_t elementCount = GetElementCount();
-    size_t indexOfLastElement = 0;
+    size_t lastIndex = 0;
     for (size_t i = 0; i < m_sizes.size(); ++i)
     {
-        indexOfLastElement += (m_sizes[i] - 1) * m_strides[i];
+        lastIndex += (m_sizes[i] - 1) * m_strides[i];
     }
-    if (indexOfLastElement + 1 == elementCount)
+    if (lastIndex + 1 == elementCount)
     {
         m_isContiguous = true;
     }
 
-    m_bufferSize = VkDeviceSize(indexOfLastElement + 1) * GetElementSizeInBytes();
+    m_bufferSize = VkDeviceSize(lastIndex + 1) * GetElementSizeInBytes();
     m_bufferSize = rad::Pow2AlignUp(m_bufferSize, VkDeviceSize(4));
 
     if (buffer)
@@ -120,12 +120,12 @@ std::vector<size_t> Tensor::ExpandStrideDimensions(rad::ArrayRef<size_t> strides
 
 VkDeviceSize Tensor::GetBufferSizeInBytes(vk::ComponentTypeKHR dataType, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)
 {
-    size_t indexOfLastElement = 0;
+    size_t lastIndex = 0;
     for (size_t i = 0; i < sizes.size(); ++i)
     {
-        indexOfLastElement += (sizes[i] - 1) * strides[i];
+        lastIndex += (sizes[i] - 1) * strides[i];
     }
-    VkDeviceSize bufferSize = VkDeviceSize(indexOfLastElement + 1) * GetComponentSizeInBytes(dataType);
+    VkDeviceSize bufferSize = VkDeviceSize(lastIndex + 1) * GetComponentSizeInBytes(dataType);
     return rad::Pow2AlignUp<VkDeviceSize>(bufferSize, VkDeviceSize(4));
 }
 
