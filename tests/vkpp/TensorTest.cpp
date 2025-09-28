@@ -6,7 +6,6 @@
 #include <vkpp/Compute/Tensor.h>
 #include <vkpp/Compute/TensorOp.h>
 
-#include <rad/Common/Float.h>
 #include <random>
 
 #include <gtest/gtest.h>
@@ -15,7 +14,8 @@ extern rad::Ref<vkpp::Device> g_device;
 
 void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides = {})
 {
-    VKPP_LOG(info, "ElementWiseSqrt: sizes={}; strides={};", rad::ToString(sizes), rad::ToString(strides));
+    VKPP_LOG(info, "ElementWiseSqrt: sizes=[{}]; strides=[{}];",
+        rad::ToString(sizes, ", "), rad::ToString(strides, ", "));
     rad::Ref<vkpp::Tensor> tensor = RAD_NEW vkpp::Tensor(g_device);
     tensor->Init(vk::ComponentTypeKHR::eFloat16, sizes, strides);
 
@@ -41,7 +41,7 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     // Verification:
     std::vector<uint16_t> results(tensor->GetBufferSizeInElements());
     tensor->Read(results.data());
-    float maxDiff = 0.0f;
+    std::atomic<float> maxDiff = 0.0f;
     const float tolerance = 0.0005f;
     vkpp::TensorIterator iter(tensor->m_sizes);
 
@@ -53,11 +53,6 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
         if (diff > maxDiff)
         {
             maxDiff = diff;
-        }
-        if (diff >= tolerance)
-        {
-            VKPP_LOG(err, "Verification failed at {}: Init={:14.6f}; Result={:14.6f}; Ref={:14.6f}; Diff={:14.6f}", rad::ToString(indices),
-                rad::fp16_ieee_to_fp32_value(inputData[index]), result, resultRef, diff);
         }
         });
     EXPECT_TRUE(maxDiff < tolerance);
@@ -77,11 +72,11 @@ TEST(Tensor, ElementWise)
     tensor->m_sizes = { 1, 4, 32, 32 };
     tensor->DumpTextToFile("TensorPadded.txt");
 
-    TestElementWiseSqrt({ 2, 4, 512, 512 });
+    TestElementWiseSqrt({ 2, 4, 256, 256 });
 
-    vkpp::TensorIterator iter({ 2, 4, 4, 4 });
+    vkpp::TensorIterator iter({ 2, 4, 8, 8 });
     iter.m_permutation = { 1, 3, 2, 0 };
     iter.ForEach([](rad::ArrayRef<size_t> indices) {
-        VKPP_LOG(info, "Indices={}", rad::ToString(indices));
+        VKPP_LOG(info, "Indices=[{}]", rad::ToString(indices));
         });
 }

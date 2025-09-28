@@ -162,6 +162,8 @@ vk::ImageAspectFlags GetImageAspectFromFormat(vk::Format format);
 
 std::string FormatValueFixedWidthDec(vk::ComponentTypeKHR dataType, const void* data);
 std::string FormatValueFixedWidthHex(vk::ComponentTypeKHR dataType, const void* data);
+std::string FormatValueFixedWidthDecNA(vk::ComponentTypeKHR dataType);
+std::string FormatValueFixedWidthHexNA(vk::ComponentTypeKHR dataType);
 
 // Forward Declarations
 

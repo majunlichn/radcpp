@@ -40,8 +40,8 @@ void TestSpan()
     EXPECT_EQ(Sum(vec), 10);
     rad::ArrayRef<int> ref = vec;
     rad::ArrayRef<int> ref1 = ref.slice(1, 2);
-    ref.drop_front();
-    ref.drop_back();
+    ref.drop_front_in_place();
+    ref.drop_back_in_place();
     EXPECT_TRUE(ref.equals(ref1));
 }
 

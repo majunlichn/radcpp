@@ -6,6 +6,4 @@
 namespace rad
 {
 
-std::string ToString(rad::ArrayRef<size_t> numbers);
-
 } // namespace rad

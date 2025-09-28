@@ -1,7 +1,7 @@
 #include <vkpp/Compute/Tensor.h>
 #include <vkpp/Core/Command.h>
 #include <rad/Common/Algorithm.h>
-#include <rad/IO/Format.h>
+
 
 namespace vkpp
 {
@@ -278,8 +278,8 @@ std::string Tensor::DumpText(TextFormat format)
     Read(bufferData.data());
     std::string text;
     text.reserve(4 * 1024 * 1024); // Reserve 4MB for dump.
-    text += std::format("# Sizes = {}\n", rad::ToString(m_sizes));
-    text += std::format("# Strides = {}\n", rad::ToString(m_strides));
+    text += std::format("# Sizes = [{}]\n", rad::ToString(m_sizes));
+    text += std::format("# Strides = [{}]\n", rad::ToString(m_strides));
     TensorIterator iter(m_sizes);
     auto& indices = iter.m_indices;
     auto dump1D = [&]() {
@@ -302,19 +302,18 @@ std::string Tensor::DumpText(TextFormat format)
             }
             else // Simulate robust buffer access:
             {
-                uint64_t value = 0;
                 if (format == TextFormat::Dec)
                 {
-                    text += FormatValueFixedWidthDec(m_dataType, &value) + ", ";
+                    text += FormatValueFixedWidthDecNA(m_dataType) + ", ";
                 }
                 else if (format == TextFormat::Hex)
                 {
-                    text += FormatValueFixedWidthHex(m_dataType, &value) + ", ";
+                    text += FormatValueFixedWidthHexNA(m_dataType) + ", ";
                 }
             }
         }
         text.pop_back();
-        text += "\n"; // New line after the last dimension
+        text += "\n";
         };  // dump1D
 
     if (m_sizes.size() == 1)
@@ -332,7 +331,7 @@ std::string Tensor::DumpText(TextFormat format)
     {
         do {
             iter.Reset2D();
-            text += std::format("# Indices = {}\n", rad::ToString(indices));
+            text += std::format("# Indices = [{}]\n", rad::ToString(indices));
             for (size_t row = 0; row < m_sizes[m_sizes.size() - 2]; ++row)
             {
                 iter.m_indices[m_sizes.size() - 2] = row;

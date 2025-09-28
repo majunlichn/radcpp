@@ -323,7 +323,7 @@ inline std::vector<T> Tensor::GenerateData(const std::function<T(rad::ArrayRef<s
     std::vector<T> bufferData(GetBufferSizeInElements(), T(0));
     std::vector<size_t> indices(m_sizes.size(), 0);
     TensorIterator iter(m_sizes);
-    iter.ForEach([&](rad::ArrayRef<size_t> indices)
+    iter.ForEachParallel([&](rad::ArrayRef<size_t> indices)
         {
             size_t bufferIndex = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
             bufferData[bufferIndex] = generator(indices);

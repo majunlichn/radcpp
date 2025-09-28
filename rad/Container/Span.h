@@ -5,12 +5,16 @@
 #include <span>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
-#include <cstdint>
+#include <cstddef>
 #include <initializer_list>
-#include <ranges>
+#include <iterator>
+#include <memory>
 #include <type_traits>
 #include <vector>
+
+#include <ranges>
 
 namespace rad
 {
@@ -26,10 +30,10 @@ class [[nodiscard]] ArrayRef
 {
 public:
     using value_type = T;
-    using pointer = value_type*;
-    using const_pointer = const value_type*;
-    using reference = value_type&;
-    using const_reference = const value_type&;
+    using pointer = value_type *;
+    using const_pointer = const value_type *;
+    using reference = value_type &;
+    using const_reference = const value_type &;
     using iterator = const_pointer;
     using const_iterator = const_pointer;
     using reverse_iterator = std::reverse_iterator<iterator>;
@@ -54,6 +58,7 @@ public:
     {
     }
 
+    // Construct an ArrayRef from a single element.
     ArrayRef(const T& value) noexcept :
         m_data(&value),
         m_count(1)
@@ -73,8 +78,15 @@ public:
         assert(first <= last);
     }
 
+    template<std::ranges::contiguous_range R>
+    constexpr ArrayRef(const R& r) :
+        m_data(std::ranges::data(r)),
+        m_count(std::ranges::size(r))
+    {
+    }
+
     template <size_t N>
-    ArrayRef(const T(&arr)[N]) noexcept :
+    constexpr ArrayRef(const T(&arr)[N]) noexcept :
         m_data(arr),
         m_count(N)
     {
@@ -89,10 +101,6 @@ public:
         m_data(list.begin()),
         m_count(list.size())
     {
-        if (m_count == 0)
-        {
-            m_data = 0;
-        }
     }
 
     template <typename Element = T, typename std::enable_if_t<std::is_const_v<Element>, int> = 0>
@@ -100,26 +108,27 @@ public:
         m_data(list.begin()),
         m_count(list.size())
     {
-        if (m_count == 0)
-        {
-            m_data = 0;
-        }
     }
 
 #if __GNUC__ >= 9
 #pragma GCC diagnostic pop
 #endif
 
-    template<std::ranges::contiguous_range R>
-    ArrayRef(const R& r) :
-        m_data(std::ranges::data(r)),
-        m_count(std::ranges::size(r))
-    {
-        if (m_count == 0)
-        {
-            m_data = 0;
-        }
-    }
+    /// Disallow accidental assignment from a temporary.
+    ///
+    /// The declaration here is extra complicated so that "arrayRef = {}"
+    /// continues to select the move assignment operator.
+    template <typename U>
+    std::enable_if_t<std::is_same<U, T>::value, ArrayRef<T>>&
+        operator=(U&& temp) = delete;
+
+    /// Disallow accidental assignment from a temporary.
+    ///
+    /// The declaration here is extra complicated so that "arrayRef = {}"
+    /// continues to select the move assignment operator.
+    template <typename U>
+    std::enable_if_t<std::is_same<U, T>::value, ArrayRef<T>>&
+        operator=(std::initializer_list<U>) = delete;
 
     const T* data() const noexcept
     {
@@ -149,7 +158,7 @@ public:
 
     const T& operator[](size_t index) const
     {
-        assert(index < m_count);
+        assert(index < m_count && "Invalid index!");
         return m_data[index];
     }
 
@@ -163,6 +172,20 @@ public:
     {
         assert(m_data && (m_count > 0));
         return *(m_data + m_count - 1);
+    }
+
+    /// consume_front() - Returns the first element and drops it from ArrayRef.
+    const T& consume_front() {
+        const T& ret = front();
+        *this = drop_front();
+        return ret;
+    }
+
+    /// consume_back() - Returns the last element and drops it from ArrayRef.
+    const T& consume_back() {
+        const T& ret = back();
+        *this = drop_back();
+        return ret;
     }
 
     /// equals - Check for element-wise equality.
@@ -187,7 +210,7 @@ public:
     ArrayRef<T> slice(size_t n) const { return slice(n, size() - n); }
 
     /// Drop the first \p n elements of the array.
-    void drop_front(size_t n = 1)
+    void drop_front_in_place(size_t n = 1)
     {
         assert(size() >= n && "Dropping more elements than exist");
         m_data = m_data + n;
@@ -195,15 +218,76 @@ public:
     }
 
     /// Drop the last \p n elements of the array.
-    void drop_back(size_t n = 1)
+    void drop_back_in_place(size_t n = 1)
     {
         assert(size() >= n && "Dropping more elements than exist");
         m_count = m_count - n;
     }
 
-    operator std::vector<T>() const
+    /// Drop the first \p n elements of the array.
+    ArrayRef<T> drop_front(size_t n = 1) const
     {
-        return std::vector<T>(m_data, m_data + m_count);
+        assert(size() >= n && "Dropping more elements than exist");
+        return slice(n, size() - n);
+    }
+
+    /// Drop the last \p n elements of the array.
+    ArrayRef<T> drop_back(size_t n = 1) const
+    {
+        assert(size() >= n && "Dropping more elements than exist");
+        return slice(0, size() - n);
+    }
+
+    /// Return a copy of *this with the first N elements satisfying the
+    /// given predicate removed.
+    template <class Predicate> ArrayRef<T> drop_while(Predicate pred) const {
+        return ArrayRef<T>(std::ranges::find_if_not(*this, pred), end());
+    }
+
+    /// Return a copy of *this with the first N elements not satisfying
+    /// the given predicate removed.
+    template <class Predicate> ArrayRef<T> drop_until(Predicate pred) const {
+        return ArrayRef<T>(std::ranges::find_if(*this, pred), end());
+    }
+
+    /// Return a copy of *this with only the first \p N elements.
+    ArrayRef<T> take_front(size_t n = 1) const {
+        if (n >= size())
+        {
+            return *this;
+        }
+        return drop_back(size() - n);
+    }
+
+    /// Return a copy of *this with only the last \p N elements.
+    ArrayRef<T> take_back(size_t n = 1) const {
+        if (n >= size())
+        {
+            return *this;
+        }
+        return drop_front(size() - n);
+    }
+
+    /// Return the first N elements of this Array that satisfy the given predicate.
+    template <class Predicate> ArrayRef<T> take_while(Predicate pred) const {
+        return ArrayRef<T>(begin(), std::ranges::find_if_not(*this, pred));
+    }
+
+    /// Return the first N elements of this Array that don't satisfy the given predicate.
+    template <class Predicate> ArrayRef<T> take_until(Predicate pred) const {
+        return ArrayRef<T>(begin(), std::ranges::find_if(*this, pred));
+    }
+
+    template <typename Allocator = std::allocator<T>>
+    std::vector<T, Allocator> copy() const
+    {
+        return std::vector<T, Allocator>(m_data, m_data + m_count);
+    }
+
+    template <typename Allocator = std::allocator<T>>
+    operator std::vector<T, Allocator>() const
+    {
+        return copy<Allocator>();
     }
 
 }; // class ArrayRef

@@ -229,7 +229,7 @@ std::string FormatValueFixedWidthDec(vk::ComponentTypeKHR dataType, const void* 
     else if (dataType == vk::ComponentTypeKHR::eUint8)
     {
         uint8_t value = *reinterpret_cast<const uint8_t*>(data);
-        return std::format("{:4d}", value);
+        return std::format("{:3d}", value);
     }
     else if (dataType == vk::ComponentTypeKHR::eUint16)
     {
@@ -245,6 +245,59 @@ std::string FormatValueFixedWidthDec(vk::ComponentTypeKHR dataType, const void* 
     {
         uint64_t value = *reinterpret_cast<const uint64_t*>(data);
         return std::format("{:20d}", value);
+    }
+    else
+    {
+        RAD_UNREACHABLE();
+        return {};
+    }
+}
+
+std::string FormatValueFixedWidthDecNA(vk::ComponentTypeKHR dataType)
+{
+    if (dataType == vk::ComponentTypeKHR::eFloat16)
+    {
+        return std::format("{:>11}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eFloat32)
+    {
+        return std::format("{:>14}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eFloat64)
+    {
+        return std::format("{:>14}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eSint8)
+    {
+        return std::format("{:>4}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eSint16)
+    {
+        return std::format("{:>6}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eSint32)
+    {
+        return std::format("{:>11}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eSint64)
+    {
+        return std::format("{:>20}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eUint8)
+    {
+        return std::format("{:>3}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eUint16)
+    {
+        return std::format("{:>5}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eUint32)
+    {
+        return std::format("{:>10}", "NA");
+    }
+    else if (dataType == vk::ComponentTypeKHR::eUint64)
+    {
+        return std::format("{:>20}", "NA");
     }
     else
     {
@@ -275,6 +328,32 @@ std::string FormatValueFixedWidthHex(vk::ComponentTypeKHR dataType, const void* 
     {
         uint64_t value = *reinterpret_cast<const uint64_t*>(data);
         return std::format("0x{:016X}", value);
+    }
+    else
+    {
+        RAD_UNREACHABLE();
+        return {};
+    }
+}
+
+std::string FormatValueFixedWidthHexNA(vk::ComponentTypeKHR dataType)
+{
+    size_t elementSize = GetComponentSizeInBytes(dataType);
+    if (elementSize == 1)
+    {
+        return std::format("{:>4}", "NA");
+    }
+    else if (elementSize == 2)
+    {
+        return std::format("{:>6}", "NA");
+    }
+    else if (elementSize == 4)
+    {
+        return std::format("{:>10}", "NA");
+    }
+    else if (elementSize == 8)
+    {
+        return std::format("{:>18}", "NA");
     }
     else
     {

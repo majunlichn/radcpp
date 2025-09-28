@@ -111,19 +111,19 @@ struct StringLessCaseInsensitive
 bool RegexMatch(const std::string& str, const std::regex& expr);
 std::vector<std::string> RegexSplit(const std::string& str, const std::regex& expr);
 
-template<std::ranges::range Container>
-inline std::string JoinToString(const Container& tokens, const std::string& delim)
+template <std::ranges::contiguous_range R>
+std::string ToString(const R& list, std::string_view sep = ", ")
 {
-    std::ostringstream ss;
-    for (auto it = tokens.begin(); it != tokens.end(); it++)
+    std::string str;
+    for (auto iter = std::ranges::cbegin(list); iter != std::ranges::cend(list); iter++)
     {
-        if (it != tokens.begin())
+        str += std::format("{}", *iter);
+        if (iter != std::ranges::cend(list) - 1) [[likely]]
         {
-            ss << delim;
+            str += sep;
         }
-        ss << *it;
     }
-    return ss.str();
+    return str;
 }
 
 } // namespace rad
