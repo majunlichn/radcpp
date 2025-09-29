@@ -3,825 +3,496 @@
 namespace sdf
 {
 
-AudioChunk::AudioChunk(Mix_Chunk* chunk) :
-    m_chunk(chunk)
+Audio::Audio(MIX_Audio* handle) :
+    m_handle(handle)
 {
-}
-
-AudioChunk::~AudioChunk()
-{
-    if (m_chunk)
+    if (m_handle)
     {
-        Mix_FreeChunk(m_chunk);
-        m_chunk = nullptr;
+        m_props = MIX_GetAudioProperties(m_handle);
+        if (!m_props)
+        {
+            SDF_LOG(err, "MIX_GetAudioProperties failed: {}", SDL_GetError());
+        }
     }
 }
 
-int AudioChunk::SetVolume(int volume)
+Audio::~Audio()
 {
-    return Mix_VolumeChunk(m_chunk, volume);
-}
-
-int AudioChunk::GetVolume()
-{
-    return Mix_VolumeChunk(m_chunk, -1);
-}
-
-Music::Music(Mix_Music* music) :
-    m_music(music)
-{
-}
-
-Music::~Music()
-{
-    if (m_music)
+    if (m_handle)
     {
-        Mix_FreeMusic(m_music);
-        m_music = nullptr;
+        MIX_DestroyAudio(m_handle);
+        m_handle = nullptr;
     }
 }
 
-Mix_MusicType Music::GetType()
+Sint64 Audio::GetDurationInFrames()
 {
-    return Mix_GetMusicType(m_music);
+    return MIX_GetAudioDuration(m_handle);
 }
 
-const char* Music::GetTitle()
+bool Audio::GetFormat(SDL_AudioSpec* spec)
 {
-    return Mix_GetMusicTitle(m_music);
+    return MIX_GetAudioFormat(m_handle, spec);
 }
 
-const char* Music::GetTag()
+const char* Audio::GetTitle()
 {
-    return Mix_GetMusicTitleTag(m_music);
+    return SDL_GetStringProperty(m_props, MIX_PROP_METADATA_TITLE_STRING, "");
 }
 
-const char* Music::GetArtistTag()
+const char* Audio::GetArtist()
 {
-    return Mix_GetMusicArtistTag(m_music);
+    return SDL_GetStringProperty(m_props, MIX_PROP_METADATA_ARTIST_STRING, "");
 }
 
-const char* Music::GetAlbumTag()
+const char* Audio::GetAlbum()
 {
-    return Mix_GetMusicAlbumTag(m_music);
+    return SDL_GetStringProperty(m_props, MIX_PROP_METADATA_ALBUM_STRING, "");
 }
 
-const char* Music::GetCopyrightTag()
+const char* Audio::GetCopyright()
 {
-    return Mix_GetMusicCopyrightTag(m_music);
+    return SDL_GetStringProperty(m_props, MIX_PROP_METADATA_COPYRIGHT_STRING, "");
 }
 
-int Music::SetVolume(int volume)
+Sint64 Audio::GetTrackIndex()
 {
-    return Mix_VolumeMusic(volume);
+    return SDL_GetNumberProperty(m_props, MIX_PROP_METADATA_TRACK_NUMBER, 0);
 }
 
-int Music::GetVolume()
+Sint64 Audio::GetTotalTrackCount()
 {
-    return Mix_GetMusicVolume(m_music);
+    return SDL_GetNumberProperty(m_props, MIX_PROP_METADATA_TOTAL_TRACKS_NUMBER, 0);
 }
 
-int Music::GetTrackCount()
+Sint64 Audio::GetYear()
 {
-    return Mix_GetNumTracks(m_music);
+    return SDL_GetNumberProperty(m_props, MIX_PROP_METADATA_YEAR_NUMBER, 0);
 }
 
-bool Music::StartTrack(int track)
+Sint64 Audio::GetFrameCount()
 {
-    bool result = Mix_StartTrack(m_music, track);
-    if (result)
+    return SDL_GetNumberProperty(m_props, MIX_PROP_METADATA_DURATION_FRAMES_NUMBER, 0);
+}
+
+bool Audio::IsInfinite()
+{
+    return SDL_GetBooleanProperty(m_props, MIX_PROP_METADATA_DURATION_INFINITE_BOOLEAN, false);
+}
+
+Sint64 Audio::MSToFrames(Sint64 ms)
+{
+    return MIX_AudioMSToFrames(m_handle, ms);
+}
+
+Sint64 Audio::FramesToMS(Sint64 frames)
+{
+    return MIX_AudioFramesToMS(m_handle, frames);
+}
+
+
+AudioTrack::AudioTrack(rad::Ref<AudioMixer> mixer, MIX_Track* handle) :
+    m_mixer(std::move(mixer)),
+    m_handle(handle)
+{
+    if (m_handle)
     {
-        return true;
+        MIX_Mixer* mixerHandle = MIX_GetTrackMixer(m_handle);
+        assert(mixerHandle == mixer->GetHandle());
+
+        m_props = MIX_GetTrackProperties(m_handle);
+        if (!m_props)
+        {
+            SDF_LOG(err, "MIX_GetTrackProperties failed: {}", SDL_GetError());
+        }
+    }
+}
+
+AudioTrack::~AudioTrack()
+{
+    if (m_handle)
+    {
+        MIX_DestroyTrack(m_handle);
+    }
+}
+
+bool AudioTrack::SetAudio(MIX_Audio* audio)
+{
+    return MIX_SetTrackAudio(m_handle, audio);
+}
+
+bool AudioTrack::SetAudio(Audio* audio)
+{
+    return SetAudio(audio->GetHandle());
+}
+
+bool AudioTrack::SetAudioStream(SDL_AudioStream* stream)
+{
+    return MIX_SetTrackAudioStream(m_handle, stream);
+}
+
+bool AudioTrack::SetIOStream(SDL_IOStream* io, bool closeIO)
+{
+    return MIX_SetTrackIOStream(m_handle, io, closeIO);
+}
+
+bool AudioTrack::SetRawIOStream(SDL_IOStream* io, const SDL_AudioSpec* spec, bool closeIO)
+{
+    return MIX_SetTrackRawIOStream(m_handle, io, spec, closeIO);
+}
+
+bool AudioTrack::Tag(std::string_view tag)
+{
+    return MIX_TagTrack(m_handle, tag.data());
+}
+
+void AudioTrack::Untag(std::string_view tag)
+{
+    MIX_UntagTrack(m_handle, tag.data());
+}
+
+bool AudioTrack::SetPlaybackPosition(Sint64 frames)
+{
+    return MIX_SetTrackPlaybackPosition(m_handle, frames);
+}
+
+Sint64 AudioTrack::GetPlaybackPosition()
+{
+    return MIX_GetTrackPlaybackPosition(m_handle);
+}
+
+bool AudioTrack::IsLooping()
+{
+    return MIX_TrackLooping(m_handle);
+}
+
+MIX_Audio* AudioTrack::GetTrackAudio()
+{
+    return MIX_GetTrackAudio(m_handle);
+}
+
+SDL_AudioStream* AudioTrack::GetTrackAudioStream()
+{
+    return MIX_GetTrackAudioStream(m_handle);
+}
+
+Sint64 AudioTrack::GetRemainingFrames()
+{
+    return MIX_GetTrackRemaining(m_handle);
+}
+
+Sint64 AudioTrack::MSToFrames(Sint64 ms)
+{
+    return MIX_TrackMSToFrames(m_handle, ms);
+}
+
+Sint64 AudioTrack::FramesToMS(Sint64 frames)
+{
+    return MIX_TrackFramesToMS(m_handle, frames);
+}
+
+bool AudioTrack::Play(SDL_PropertiesID options)
+{
+    return MIX_PlayTrack(m_handle, options);
+}
+
+bool AudioTrack::Stop(Sint64 fadeOutFrames)
+{
+    return MIX_StopTrack(m_handle, fadeOutFrames);
+}
+
+bool AudioTrack::Pause()
+{
+    return MIX_PauseTrack(m_handle);
+}
+
+bool AudioTrack::Resume()
+{
+    return MIX_ResumeTrack(m_handle);
+}
+
+bool AudioTrack::IsPlaying()
+{
+    return MIX_TrackPlaying(m_handle);
+}
+
+bool AudioTrack::IsPaused()
+{
+    return MIX_TrackPaused(m_handle);
+}
+
+bool AudioTrack::SetGain(float gain)
+{
+    return MIX_SetTrackGain(m_handle, gain);
+}
+
+float AudioTrack::GetGain()
+{
+    return MIX_GetTrackGain(m_handle);
+}
+
+bool AudioTrack::SetFrequencyRatio(float ratio)
+{
+    return MIX_SetTrackFrequencyRatio(m_handle, ratio);
+}
+
+float AudioTrack::GetFrequencyRatio()
+{
+    return MIX_GetTrackFrequencyRatio(m_handle);
+}
+
+bool AudioTrack::SetOutputChannelMap(const int* chmap, int count)
+{
+    return MIX_SetTrackOutputChannelMap(m_handle, chmap, count);
+}
+
+bool AudioTrack::SetStereo(const MIX_StereoGains* gains)
+{
+    return MIX_SetTrackStereo(m_handle, gains);
+}
+
+bool AudioTrack::Set3DPosition(const MIX_Point3D* position)
+{
+    return MIX_SetTrack3DPosition(m_handle, position);
+}
+
+bool AudioTrack::Get3DPosition(MIX_Point3D* position)
+{
+    return MIX_GetTrack3DPosition(m_handle, position);
+}
+
+AudioMixer::AudioMixer(SDL_AudioDeviceID deviceID, const SDL_AudioSpec* spec)
+{
+    if (MIX_Init())
+    {
+        m_version = MIX_Version();
+        SDF_LOG(info, "SDL Mixer initialized: {}.{}.{}",
+            SDL_VERSIONNUM_MAJOR(m_version),
+            SDL_VERSIONNUM_MINOR(m_version),
+            SDL_VERSIONNUM_MICRO(m_version));
     }
     else
     {
-        SDF_LOG(err, "Mix_StartTrack failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-double Music::GetPosition()
-{
-    return Mix_GetMusicPosition(m_music);
-}
-
-double Music::GetDuration()
-{
-    return Mix_MusicDuration(m_music);
-}
-
-double Music::GetLoopStartTime()
-{
-    return Mix_GetMusicLoopStartTime(m_music);
-}
-
-double Music::GetLoopEndTime()
-{
-    return Mix_GetMusicLoopEndTime(m_music);
-}
-
-double Music::GetLoopLengthTime()
-{
-    return Mix_GetMusicLoopLengthTime(m_music);
-}
-
-AudioMixer::AudioMixer()
-{
-    m_modules = Mix_Init(
-        MIX_INIT_FLAC | MIX_INIT_MOD |
-        MIX_INIT_MP3 | MIX_INIT_OGG |
-        MIX_INIT_MID | MIX_INIT_OPUS |
-        MIX_INIT_WAVPACK);
-
-    std::string moduleNames;
-    if (rad::HasBits<uint32_t>(m_modules, MIX_INIT_FLAC))
-    {
-        moduleNames += "FLAC,";
-    }
-    if (rad::HasBits<uint32_t>(m_modules, MIX_INIT_MOD))
-    {
-        moduleNames += "MOD,";
-    }
-    if (rad::HasBits<uint32_t>(m_modules, MIX_INIT_MP3))
-    {
-        moduleNames += "MP3,";
-    }
-    if (rad::HasBits<uint32_t>(m_modules, MIX_INIT_OGG))
-    {
-        moduleNames += "OGG,";
-    }
-    if (rad::HasBits<uint32_t>(m_modules, MIX_INIT_MID))
-    {
-        moduleNames += "MID,";
-    }
-    if (rad::HasBits<uint32_t>(m_modules, MIX_INIT_OPUS))
-    {
-        moduleNames += "OPUS,";
-    }
-    if (rad::HasBits<uint32_t>(m_modules, MIX_INIT_WAVPACK))
-    {
-        moduleNames += "WAVEPACK,";
+        SDF_LOG(err, "MIX_Init failed: {}", SDL_GetError());
     }
 
-    if ((m_modules != 0) && !moduleNames.empty())
+    int decoderCount = MIX_GetNumAudioDecoders();
+    m_decoders.resize(decoderCount);
+    for (int i = 0; i < decoderCount; ++i)
     {
-        moduleNames.pop_back();
-        SDF_LOG(info, "Initialized audio modules: {}", moduleNames);
+        m_decoders[i] = MIX_GetAudioDecoder(i);
+        SDF_LOG(info, "Decoder#{}: {}", i, m_decoders[i]);
+    }
+
+    m_handle = MIX_CreateMixerDevice(deviceID, spec);
+    if (m_handle)
+    {
+        m_props = MIX_GetMixerProperties(m_handle);
+        if (!m_props)
+        {
+            SDF_LOG(err, "MIX_GetMixerProperties failed: {}", SDL_GetError());
+        }
+    }
+    else
+    {
+        SDF_LOG(err, "MIX_CreateMixerDevice failed: {}", SDL_GetError());
     }
 }
 
 AudioMixer::~AudioMixer()
 {
-    if (m_opened)
+    if (m_handle)
     {
-        Close();
+        MIX_DestroyMixer(m_handle);
     }
-    Mix_Quit();
-    m_modules = 0;
+    MIX_Quit();
 }
 
-bool AudioMixer::Open(SDL_AudioDeviceID deviceID, const SDL_AudioSpec* spec)
+bool AudioMixer::HasDecoder(std::string_view decoder)
 {
-    bool result = Mix_OpenAudio(deviceID, spec);
-    if (result)
+    return std::find(m_decoders.begin(), m_decoders.end(), decoder) != m_decoders.end();
+}
+
+bool AudioMixer::GetFormat(SDL_AudioSpec* spec)
+{
+    return MIX_GetMixerFormat(m_handle, spec);;
+}
+
+rad::Ref<Audio> AudioMixer::LoadAudioIO(SDL_IOStream* io, bool predecode, bool closeIO)
+{
+    MIX_Audio* audio = MIX_LoadAudio_IO(m_handle, io, predecode, closeIO);
+    if (audio)
     {
-        m_opened = true;
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_OpenAudio failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-void AudioMixer::Close()
-{
-    assert(m_opened);
-    Mix_CloseAudio();
-    m_opened = false;
-}
-
-bool AudioMixer::IsFormatSupported(int flags) const
-{
-    return rad::HasBits<uint32_t>(m_modules, flags);
-}
-
-void AudioMixer::Pause()
-{
-    assert(m_opened);
-    Mix_PauseAudio(1);
-}
-
-void AudioMixer::Resume()
-{
-    assert(m_opened);
-    Mix_PauseAudio(0);
-}
-
-bool AudioMixer::QuerySpec(int* frequency, SDL_AudioFormat* format, int* channels)
-{
-    assert(m_opened);
-    return Mix_QuerySpec(frequency, format, channels);
-}
-
-int AudioMixer::AllocateChannels(int channelCount)
-{
-    return Mix_AllocateChannels(channelCount);
-}
-
-rad::Ref<AudioChunk> AudioMixer::LoadWAV(SDL_IOStream* src, bool closeio)
-{
-    Mix_Chunk* chunk = Mix_LoadWAV_IO(src, closeio);
-    if (chunk)
-    {
-        return RAD_NEW AudioChunk(chunk);
+        return RAD_NEW Audio(audio);
     }
     else
     {
+        SDF_LOG(err, "MIX_LoadAudio_IO failed: {}", SDL_GetError());
         return nullptr;
     }
 }
 
-rad::Ref<AudioChunk> AudioMixer::LoadWAVFromFile(std::string_view fileName)
+rad::Ref<Audio> AudioMixer::LoadAudio(std::string_view path, bool predecode)
 {
-    Mix_Chunk* chunk = Mix_LoadWAV(fileName.data());
-    if (chunk)
+    MIX_Audio* audio = MIX_LoadAudio(m_handle, path.data(), predecode);
+    if (audio)
     {
-        return RAD_NEW AudioChunk(chunk);
+        return RAD_NEW Audio(audio);
     }
     else
     {
+        SDF_LOG(err, "MIX_LoadAudio failed: {}", SDL_GetError());
         return nullptr;
     }
 }
 
-rad::Ref<AudioChunk> AudioMixer::LoadWAVFromMemory(Uint8* memory)
+rad::Ref<Audio> AudioMixer::LoadAudioWithProperties(SDL_PropertiesID props)
 {
-    Mix_Chunk* chunk = Mix_QuickLoad_WAV(memory);
-    if (chunk)
+    MIX_Audio* audio = MIX_LoadAudioWithProperties(props);
+    if (audio)
     {
-        return RAD_NEW AudioChunk(chunk);
+        return RAD_NEW Audio(audio);
     }
     else
     {
+        SDF_LOG(err, "MIX_LoadAudioWithProperties failed: {}", SDL_GetError());
         return nullptr;
     }
 }
 
-rad::Ref<Music> AudioMixer::LoadMusic(SDL_IOStream* src, bool closeio)
+rad::Ref<Audio> AudioMixer::LoadRawAudioIO(SDL_IOStream* io, const SDL_AudioSpec* spec, bool closeIO)
 {
-    Mix_Music* music = Mix_LoadMUS_IO(src, closeio);
-    if (music)
+    MIX_Audio* audio = MIX_LoadRawAudio_IO(m_handle, io, spec, closeIO);
+    if (audio)
     {
-        return RAD_NEW Music(music);
+        return RAD_NEW Audio(audio);
     }
     else
     {
+        SDF_LOG(err, "MIX_LoadRawAudio_IO failed: {}", SDL_GetError());
         return nullptr;
     }
 }
 
-rad::Ref<Music> AudioMixer::LoadMusic(SDL_IOStream* src, Mix_MusicType type, bool closeio)
+rad::Ref<Audio> AudioMixer::LoadRawAudio(const void* data, size_t dataSize, const SDL_AudioSpec* spec)
 {
-    Mix_Music* music = Mix_LoadMUSType_IO(src, type, closeio);
-    if (music)
+    MIX_Audio* audio = MIX_LoadRawAudio(m_handle, data, dataSize, spec);
+    if (audio)
     {
-        return RAD_NEW Music(music);
+        return RAD_NEW Audio(audio);
     }
     else
     {
+        SDF_LOG(err, "MIX_LoadRawAudio failed: {}", SDL_GetError());
         return nullptr;
     }
 }
 
-rad::Ref<Music> AudioMixer::LoadMusicFromFile(std::string_view fileName)
+rad::Ref<Audio> AudioMixer::LoadRawAudioNoCopy(const void* data, size_t dataSize, const SDL_AudioSpec* spec)
 {
-    Mix_Music* music = Mix_LoadMUS(fileName.data());
-    if (music)
+    MIX_Audio* audio = MIX_LoadRawAudioNoCopy(m_handle, data, dataSize, spec, false);
+    if (audio)
     {
-        return RAD_NEW Music(music);
+        return RAD_NEW Audio(audio);
     }
     else
     {
-        SDF_LOG(err, "Mix_LoadMUS(\"{}\") failed: {}",
-            fileName, SDL_GetError());
+        SDF_LOG(err, "MIX_LoadRawAudioNoCopy failed: {}", SDL_GetError());
         return nullptr;
     }
 }
 
-rad::Ref<AudioChunk> AudioMixer::LoadRawFromMemory(Uint8* memory, Uint32 sizeInBytes)
+rad::Ref<Audio> AudioMixer::CreateSineWaveAudio(int hz, int amplitude)
 {
-    Mix_Chunk* chunk = Mix_QuickLoad_RAW(memory, sizeInBytes);
-    if (chunk)
+    MIX_Audio* audio = MIX_CreateSineWaveAudio(m_handle, hz, amplitude);
+    if (audio)
     {
-        return RAD_NEW AudioChunk(chunk);
+        return RAD_NEW Audio(audio);
     }
     else
     {
+        SDF_LOG(err, "MIX_CreateSineWaveAudio failed: {}", SDL_GetError());
         return nullptr;
     }
 }
 
-std::vector<const char*> AudioMixer::GetChunkDecoders()
+rad::Ref<AudioTrack> AudioMixer::CreateTrack()
 {
-    std::vector<const char*> decoders;
-    int count = Mix_GetNumChunkDecoders();
-    if (count > 0)
+    MIX_Track* track = MIX_CreateTrack(m_handle);
+    if (track)
     {
-        decoders.resize(count);
-        for (int i = 0; i < count; ++i)
-        {
-            decoders[i] = Mix_GetChunkDecoder(i);
-        }
-    }
-    return decoders;
-}
-
-bool AudioMixer::HasChunkDecoder(std::string_view name)
-{
-    return (Mix_HasChunkDecoder(name.data()) == true);
-}
-
-std::vector<const char*> AudioMixer::GetMusicDecoders()
-{
-    std::vector<const char*> decoders;
-    int count = Mix_GetNumMusicDecoders();
-    if (count > 0)
-    {
-        decoders.resize(count);
-        for (int i = 0; i < count; ++i)
-        {
-            decoders[i] = Mix_GetMusicDecoder(i);
-        }
-    }
-    return decoders;
-}
-
-bool AudioMixer::HasMusicDecoder(std::string_view name)
-{
-    return (Mix_HasMusicDecoder(name.data()) == true);
-}
-
-void AudioMixer::SetPostMixingCallback(Mix_MixCallback callback, void* arg)
-{
-    Mix_SetPostMix(callback, arg);
-}
-
-void AudioMixer::HookMusic(Mix_MixCallback mixFunc, void* arg)
-{
-    Mix_HookMusic(mixFunc, arg);
-}
-
-void* AudioMixer::GetMusicHookData()
-{
-    return Mix_GetMusicHookData();
-}
-
-void AudioMixer::HookMusicFinished(Mix_MusicFinishedCallback musicFinished)
-{
-    Mix_HookMusicFinished(musicFinished);
-}
-
-void AudioMixer::SetChannelFinishedCallback(Mix_ChannelFinishedCallback channelFinished)
-{
-    Mix_ChannelFinished(channelFinished);
-}
-
-bool AudioMixer::RegisterEffect(int channel, Mix_EffectFunc_t f, Mix_EffectDone_t d, void* arg)
-{
-    bool result = Mix_RegisterEffect(channel, f, d, arg);
-    if (result)
-    {
-        return true;
+        return RAD_NEW AudioTrack(this, track);
     }
     else
     {
-        SDF_LOG(err, "Mix_RegisterEffect failed: {}", SDL_GetError());
-        return false;
+        SDF_LOG(err, "MIX_CreateTrack failed: {}", SDL_GetError());
+        return nullptr;
     }
 }
 
-bool AudioMixer::UnregisterEffect(int channel, Mix_EffectFunc_t f)
+bool AudioMixer::PlayTag(std::string_view tag, SDL_PropertiesID options)
 {
-    bool result = Mix_UnregisterEffect(channel, f);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_UnregisterEffect failed: {}", SDL_GetError());
-        return false;
-    }
+    return MIX_PlayTag(m_handle, tag.data(), options);
 }
 
-bool AudioMixer::UnregisterAllEffects(int channel)
+bool AudioMixer::PlayAudio(MIX_Audio* audio)
 {
-    bool result = Mix_UnregisterAllEffects(channel);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_UnregisterAllEffects failed: {}", SDL_GetError());
-        return false;
-    }
+    return MIX_PlayAudio(m_handle, audio);
 }
 
-bool AudioMixer::SetPanning(int channel, Uint8 left, Uint8 right)
+bool AudioMixer::StopAllTracks(Sint64 fadeOutMS)
 {
-    bool result = Mix_SetPanning(channel, left, right);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_SetPanning failed: {}", SDL_GetError());
-        return false;
-    }
+    return MIX_StopAllTracks(m_handle, fadeOutMS);
 }
 
-bool AudioMixer::SetPosition(int channel, Sint16 angle, Uint8 distance)
+bool AudioMixer::StopTag(std::string_view tag, Sint64 fadeOutMS)
 {
-    bool result = Mix_SetPosition(channel, angle, distance);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_SetPosition failed: {}", SDL_GetError());
-        return false;
-    }
+    return MIX_StopTag(m_handle, tag.data(), fadeOutMS);
 }
 
-bool AudioMixer::SetDistance(int channel, Uint8 distance)
+bool AudioMixer::PauseAllTracks()
 {
-    bool result = Mix_SetDistance(channel, distance);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_SetDistance failed: {}", SDL_GetError());
-        return false;
-    }
+    return MIX_PauseAllTracks(m_handle);
 }
 
-bool AudioMixer::SetReverseStereo(int channel, bool flip)
+bool AudioMixer::PauseTag(std::string_view tag)
 {
-    bool result = Mix_SetReverseStereo(channel, flip);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_SetReverseStereo failed: {}", SDL_GetError());
-        return false;
-    }
+    return MIX_PauseTag(m_handle, tag.data());
 }
 
-int AudioMixer::ReserveChannels(int num)
+bool AudioMixer::ResumeAllTracks()
 {
-    return Mix_ReserveChannels(num);
+    return MIX_ResumeAllTracks(m_handle);
 }
 
-bool AudioMixer::GroupChannel(int which, int tag)
+bool AudioMixer::ResumeTag(std::string_view tag)
 {
-    bool result = Mix_GroupChannel(which, tag);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_GroupChannel failed: {}", SDL_GetError());
-        return false;
-    }
+    return MIX_ResumeTag(m_handle, tag.data());
 }
 
-bool AudioMixer::GroupChannels(int from, int to, int tag)
+bool AudioMixer::SetMasterGain(float gain)
 {
-    bool result = Mix_GroupChannels(from, to, tag);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_GroupChannels failed: {}", SDL_GetError());
-        return false;
-    }
+    return MIX_SetMasterGain(m_handle, gain);
 }
 
-int AudioMixer::GetGroupChannelAvailable(int tag)
+float AudioMixer::GetMasterGain()
 {
-    return Mix_GroupAvailable(tag);
+    return MIX_GetMasterGain(m_handle);
 }
 
-int AudioMixer::GetGroupChannelCount(int tag)
+bool AudioMixer::SetTagGain(std::string_view tag, float gain)
 {
-    return Mix_GroupCount(tag);
+    return MIX_SetTagGain(m_handle, tag.data(), gain);
 }
 
-int AudioMixer::GetGroupChannelOldest(int tag)
+bool AudioMixer::SetPostMixCallback(MIX_PostMixCallback cb, void* userData)
 {
-    return Mix_GroupOldest(tag);
+    return MIX_SetPostMixCallback(m_handle, cb, userData);
 }
 
-int AudioMixer::GetGroupChannelNewer(int tag)
+bool AudioMixer::Generate(void* buffer, int bufferSize)
 {
-    return Mix_GroupNewer(tag);
-}
-
-int AudioMixer::SetVolume(int channel, int volume)
-{
-    return Mix_Volume(channel, volume);
-}
-
-int AudioMixer::GetVolume(int channel)
-{
-    return Mix_Volume(channel, -1);
-}
-
-int AudioMixer::SetMusicVolume(int volume)
-{
-    return Mix_VolumeMusic(volume);
-}
-
-int AudioMixer::GetMusicVolume()
-{
-    return Mix_VolumeMusic(-1);
-}
-
-int AudioMixer::SetMasterVolume(int volume)
-{
-    return Mix_MasterVolume(volume);
-}
-
-int AudioMixer::GetMasterVolume()
-{
-    return Mix_MasterVolume(-1);
-}
-
-int AudioMixer::PlayChannel(int channel, AudioChunk* chunk, int loops)
-{
-    return Mix_PlayChannel(channel, chunk->GetChunk(), loops);
-}
-
-int AudioMixer::PlayChannelTimed(int channel, AudioChunk* chunk, int loops, int ticks)
-{
-    return Mix_PlayChannelTimed(channel, chunk->GetChunk(), loops, ticks);
-}
-
-int AudioMixer::PlayChannelFadeIn(int channel, AudioChunk* chunk, int loops, int ms)
-{
-    return Mix_FadeInChannel(channel, chunk->GetChunk(), loops, ms);
-}
-
-int AudioMixer::PlayChannelFadeInTimed(int channel, AudioChunk* chunk, int loops, int ms, int ticks)
-{
-    return Mix_FadeInChannelTimed(channel, chunk->GetChunk(), loops, ms, ticks);
-}
-
-Mix_Chunk* AudioMixer::GetChunk(int channel)
-{
-    return Mix_GetChunk(channel);
-}
-
-bool AudioMixer::PlayMusic(Music* music, int loops)
-{
-    bool result = Mix_PlayMusic(music->GetMusic(), loops);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_PlayMusic failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-bool AudioMixer::PlayMusicFadeIn(Music* music, int loops, int ms)
-{
-    bool result = Mix_FadeInMusic(music->GetMusic(), loops, ms);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_FadeInMusic failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-bool AudioMixer::PlayMusicFadeInFromPosition(Music* music, int loops, int ms, double position)
-{
-    bool result = Mix_FadeInMusicPos(music->GetMusic(), loops, ms, position);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_FadeInMusicPos failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-void AudioMixer::HaltChannel(int channel)
-{
-    Mix_HaltChannel(channel);
-}
-
-void AudioMixer::HaltGroup(int tag)
-{
-    Mix_HaltGroup(tag);
-}
-
-void AudioMixer::HaltMusic()
-{
-    Mix_HaltMusic();
-}
-
-int AudioMixer::ExpireChannel(int channel, int ticks)
-{
-    return Mix_ExpireChannel(channel, ticks);
-}
-
-int AudioMixer::ExpireAllChannels(int ticks)
-{
-    return Mix_ExpireChannel(-1, ticks);
-}
-
-int AudioMixer::FadeOutChannel(int which, int ms)
-{
-    return Mix_FadeOutChannel(which, ms);
-}
-
-int AudioMixer::FadeOutGroup(int tag, int ms)
-{
-    return Mix_FadeOutGroup(tag, ms);
-}
-
-bool AudioMixer::FadeOutMusic(int ms)
-{
-    return Mix_FadeOutMusic(ms);
-}
-
-Mix_Fading AudioMixer::GetMusicFading()
-{
-    return Mix_FadingMusic();
-}
-
-Mix_Fading AudioMixer::GetChannelFading(int which)
-{
-    return Mix_FadingChannel(which);
-}
-
-void AudioMixer::Pause(int channel)
-{
-    Mix_Pause(channel);
-}
-
-void AudioMixer::PauseGroup(int tag)
-{
-    Mix_PauseGroup(tag);
-}
-
-void AudioMixer::Resume(int channel)
-{
-    Mix_Resume(channel);
-}
-
-void AudioMixer::ResumeGroup(int tag)
-{
-    Mix_ResumeGroup(tag);
-}
-
-bool AudioMixer::IsChannelPaused(int channel)
-{
-    int result = Mix_Paused(channel);
-    return (result == 1);
-}
-
-int AudioMixer::GetPausedChannelCount()
-{
-    return Mix_Paused(-1);
-}
-
-void AudioMixer::PauseMusic()
-{
-    Mix_PauseMusic();
-}
-
-void AudioMixer::ResumeMusic()
-{
-    Mix_ResumeMusic();
-}
-
-void AudioMixer::RewindMusic()
-{
-    Mix_RewindMusic();
-}
-
-bool AudioMixer::IsMusicPaused()
-{
-    return (Mix_PausedMusic() == 1);
-}
-
-bool AudioMixer::ModMusicJumpToOrder(int order)
-{
-    bool result = Mix_ModMusicJumpToOrder(order);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_ModMusicJumpToOrder failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-bool AudioMixer::SetMusicPosition(double position)
-{
-    bool result = Mix_SetMusicPosition(position);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_SetMusicPosition failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-bool AudioMixer::IsChannelPlaying(int channel)
-{
-    int result = Mix_Playing(channel);
-    return (result != 0);
-}
-
-int AudioMixer::GetPlayingChannelCount()
-{
-    return Mix_Playing(-1);
-}
-
-bool AudioMixer::IsPlayingMusic()
-{
-    return Mix_PlayingMusic();
-}
-
-bool AudioMixer::SetSoundFonts(std::string_view paths)
-{
-    bool result = Mix_SetSoundFonts(paths.data());
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_SetSoundFonts failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-const char* AudioMixer::GetSoundFonts()
-{
-    return Mix_GetSoundFonts();
-}
-
-bool AudioMixer::IterateSoundFonts(Mix_EachSoundFontCallback function, void* data)
-{
-    return Mix_EachSoundFont(function, data);
-}
-
-bool AudioMixer::SetTimidityCfg(std::string_view path)
-{
-    bool result = Mix_SetTimidityCfg(path.data());
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "Mix_SetTimidityCfg failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
-const char* AudioMixer::GetTimidityCfg()
-{
-    return Mix_GetTimidityCfg();
+    return MIX_Generate(m_handle, buffer, bufferSize);
 }
 
 } // namespace sdf

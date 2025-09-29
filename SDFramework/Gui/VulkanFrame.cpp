@@ -290,27 +290,22 @@ void main()
     initInfo.QueueFamily = m_device->GetQueueFamilyIndex(vkpp::QueueFamily::Graphics);
     initInfo.Queue = m_cmdStream->GetQueueHandle();
     initInfo.DescriptorPool = VK_NULL_HANDLE;
-    initInfo.RenderPass = VK_NULL_HANDLE;
+    initInfo.DescriptorPoolSize = 4096;
     initInfo.MinImageCount = m_swapchain->GetImageCount();
     initInfo.ImageCount = m_swapchain->GetImageCount();
-    initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    // (Optional)
-    initInfo.PipelineCache;
-    initInfo.Subpass;
-    // (Optional) Set to create internal descriptor pool instead of using DescriptorPool
-    initInfo.DescriptorPoolSize = 4096;
-    // (Optional) Dynamic Rendering
-    // Need to explicitly enable VK_KHR_dynamic_rendering extension to use this, even for Vulkan 1.3.
+    initInfo.PipelineCache = VK_NULL_HANDLE;
+    initInfo.PipelineInfoMain.RenderPass = VK_NULL_HANDLE;
+    initInfo.PipelineInfoMain.Subpass = 0;
+    initInfo.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    initInfo.PipelineInfoMain.PipelineRenderingCreateInfo = renderingInfo;
+    // Need to explicitly enable VK_KHR_dynamic_rendering extension to use this, even for Vulkan 1.3 + setup PipelineInfoMain.PipelineRenderingCreateInfo.
     initInfo.UseDynamicRendering = true;
-    VkPipelineRenderingCreateInfo& guiRenderingInfo = initInfo.PipelineRenderingCreateInfo;
-    guiRenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-    guiRenderingInfo.colorAttachmentCount = 1;
-    guiRenderingInfo.pColorAttachmentFormats =
-        reinterpret_cast<const VkFormat*>(&overlayFormat);
     // (Optional) Allocation, Debugging
     initInfo.Allocator = nullptr;
     initInfo.CheckVkResultFn = CheckVulkanResult;
     initInfo.MinAllocationSize = 1024 * 1024;
+    initInfo.CustomShaderVertCreateInfo = {};
+    initInfo.CustomShaderFragCreateInfo = {};
 
     ImGui_ImplVulkan_LoadFunctions(m_device->m_properties.apiVersion,
         [](const char* functionName, void* userData) {

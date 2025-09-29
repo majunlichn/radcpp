@@ -57,7 +57,6 @@ public:
     bool BindStream(SDL_AudioStream* stream);
     void UnbindAudioStream(SDL_AudioStream* stream);
 
-    bool SetIterationCallbacks(SDL_AudioIterationCallback start, SDL_AudioIterationCallback end, void* userdata);
     bool SetPostmixCallback(SDL_AudioPostmixCallback callback, void* userData);
 
 private:

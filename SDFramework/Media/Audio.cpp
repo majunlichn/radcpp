@@ -300,20 +300,6 @@ void AudioDevice::UnbindAudioStream(SDL_AudioStream* stream)
     SDL_UnbindAudioStream(stream);
 }
 
-bool AudioDevice::SetIterationCallbacks(SDL_AudioIterationCallback start, SDL_AudioIterationCallback end, void* userdata)
-{
-    bool result = SDL_SetAudioIterationCallbacks(m_id, start, end, userdata);
-    if (result)
-    {
-        return true;
-    }
-    else
-    {
-        SDF_LOG(err, "SDL_SetAudioIterationCallbacks failed: {}", SDL_GetError());
-        return false;
-    }
-}
-
 bool AudioDevice::SetPostmixCallback(SDL_AudioPostmixCallback callback, void* userData)
 {
     bool result = SDL_SetAudioPostmixCallback(m_id, callback, userData);

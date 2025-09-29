@@ -6,155 +6,137 @@
 namespace sdf
 {
 
-class AudioChunk : public rad::RefCounted<AudioChunk>
+class AudioMixer;
+
+class Audio : public rad::RefCounted<Audio>
 {
 public:
-    AudioChunk(Mix_Chunk* chunk);
-    ~AudioChunk();
+    Audio(MIX_Audio* handle);
+    ~Audio();
 
-    Mix_Chunk* GetChunk() { return m_chunk; }
-    int SetVolume(int volume);
-    int GetVolume();
+    MIX_Audio* GetHandle() const { return m_handle; }
 
-private:
-    Mix_Chunk* m_chunk;
+    // MIX_DURATION_UNKNOWN
+    // MIX_DURATION_INFINITE
+    Sint64 GetDurationInFrames();
+    Sint64 GetDurationInMS() { return FramesToMS(GetDurationInFrames()); }
+    bool GetFormat(SDL_AudioSpec* spec);
 
-}; // class AudioChunk
-
-class Music : public rad::RefCounted<Music>
-{
-public:
-    Music(Mix_Music* music);
-    ~Music();
-
-    Mix_Music* GetMusic() { return m_music; }
-
-    Mix_MusicType GetType();
     const char* GetTitle();
-    const char* GetTag();
-    const char* GetArtistTag();
-    const char* GetAlbumTag();
-    const char* GetCopyrightTag();
+    const char* GetArtist();
+    const char* GetAlbum();
+    const char* GetCopyright();
+    Sint64 GetTrackIndex();
+    Sint64 GetTotalTrackCount();
+    Sint64 GetYear();
+    // Same as GetDurationInFrames.
+    Sint64 GetFrameCount();
+    bool IsInfinite();
 
-    static int SetVolume(int volume);
-    int GetVolume();
-
-    int GetTrackCount();
-    bool StartTrack(int track);
-    double GetPosition();
-    double GetDuration();
-    double GetLoopStartTime();
-    double GetLoopEndTime();
-    double GetLoopLengthTime();
+    Sint64 MSToFrames(Sint64 ms);
+    Sint64 FramesToMS(Sint64 frames);
 
 private:
-    Mix_Music* m_music;
-}; // class Music
+    MIX_Audio* m_handle;
+    SDL_PropertiesID m_props = 0;
+}; // class Audio
+
+class AudioTrack : public rad::RefCounted<AudioTrack>
+{
+public:
+    AudioTrack(rad::Ref<AudioMixer> mixer, MIX_Track* handle);
+    ~AudioTrack();
+
+    bool SetAudio(MIX_Audio* audio);
+    bool SetAudio(Audio* audio);
+    bool SetAudioStream(SDL_AudioStream* stream);
+    bool SetIOStream(SDL_IOStream* io, bool closeIO);
+    bool SetRawIOStream(SDL_IOStream* io, const SDL_AudioSpec* spec, bool closeIO);
+
+    bool Tag(std::string_view tag);
+    void Untag(std::string_view tag);
+
+    bool SetPlaybackPosition(Sint64 frames);
+    Sint64 GetPlaybackPosition();
+
+    bool IsLooping();
+
+    MIX_Audio* GetTrackAudio();
+    SDL_AudioStream* GetTrackAudioStream();
+
+    Sint64 GetRemainingFrames();
+    Sint64 MSToFrames(Sint64 ms);
+    Sint64 FramesToMS(Sint64 frames);
+
+    bool Play(SDL_PropertiesID options);
+    bool Stop(Sint64 fadeOutFrames);
+    bool Pause();
+    bool Resume();
+
+    bool IsPlaying();
+    bool IsPaused();
+
+    bool SetGain(float gain);
+    float GetGain();
+
+    bool SetFrequencyRatio(float ratio);
+    float GetFrequencyRatio();
+
+    bool SetOutputChannelMap(const int* chmap, int count);
+    bool SetStereo(const MIX_StereoGains* gains);
+    bool Set3DPosition(const MIX_Point3D* position);
+    bool Get3DPosition(MIX_Point3D* position);
+
+    rad::Ref<AudioMixer> m_mixer;
+    MIX_Track* m_handle;
+    SDL_PropertiesID m_props = 0;
+
+}; // class AudioTrack
 
 class AudioMixer : public rad::RefCounted<AudioMixer>
 {
 public:
-    AudioMixer();
+    AudioMixer(SDL_AudioDeviceID deviceID, const SDL_AudioSpec* spec);
     ~AudioMixer();
 
-    bool Open(SDL_AudioDeviceID deviceID, const SDL_AudioSpec* spec);
-    void Close();
+    MIX_Mixer* GetHandle() const { return m_handle; }
 
-    bool IsFormatSupported(int flags) const;
+    bool HasDecoder(std::string_view decoder);
 
-    void Pause();
-    void Resume();
-    bool QuerySpec(int* frequency, SDL_AudioFormat* format, int* channels);
-    int AllocateChannels(int channelCount);
-    rad::Ref<AudioChunk> LoadWAV(SDL_IOStream* src, bool closeio);
-    rad::Ref<AudioChunk> LoadWAVFromFile(std::string_view fileName);
-    rad::Ref<AudioChunk> LoadWAVFromMemory(Uint8* memory);
-    rad::Ref<Music> LoadMusic(SDL_IOStream* src, bool closeio);
-    rad::Ref<Music> LoadMusic(SDL_IOStream* src, Mix_MusicType type, bool closeio);
-    rad::Ref<Music> LoadMusicFromFile(std::string_view fileName);
-    rad::Ref<AudioChunk> LoadRawFromMemory(Uint8* memory, Uint32 sizeInBytes);
+    bool GetFormat(SDL_AudioSpec* spec);
 
-    std::vector<const char*> GetChunkDecoders();
-    bool HasChunkDecoder(std::string_view name);
-    std::vector<const char*> GetMusicDecoders();
-    bool HasMusicDecoder(std::string_view name);
+    rad::Ref<Audio> LoadAudioIO(SDL_IOStream* io, bool predecode, bool closeIO);
+    rad::Ref<Audio> LoadAudio(std::string_view path, bool predecode);
+    rad::Ref<Audio> LoadAudioWithProperties(SDL_PropertiesID props);
+    rad::Ref<Audio> LoadRawAudioIO(SDL_IOStream* io, const SDL_AudioSpec* spec, bool closeIO);
+    rad::Ref<Audio> LoadRawAudio(const void* data, size_t dataSize, const SDL_AudioSpec* spec);
+    rad::Ref<Audio> LoadRawAudioNoCopy(const void* data, size_t dataSize, const SDL_AudioSpec* spec);
+    rad::Ref<Audio> CreateSineWaveAudio(int hz, int amplitude);
 
-    void SetPostMixingCallback(Mix_MixCallback callback, void* arg);
-    void HookMusic(Mix_MixCallback mixFunc, void* arg);
-    void* GetMusicHookData();
-    void HookMusicFinished(Mix_MusicFinishedCallback musicFinished);
+    rad::Ref<AudioTrack> CreateTrack();
 
-    void SetChannelFinishedCallback(Mix_ChannelFinishedCallback channelFinished);
-    bool RegisterEffect(int channel, Mix_EffectFunc_t f, Mix_EffectDone_t d, void* arg);
-    bool UnregisterEffect(int channel, Mix_EffectFunc_t f);
-    bool UnregisterAllEffects(int channel);
+    bool PlayTag(std::string_view tag, SDL_PropertiesID options);
+    bool PlayAudio(MIX_Audio* audio);
+    bool StopAllTracks(Sint64 fadeOutMS);
+    bool StopTag(std::string_view tag, Sint64 fadeOutMS);
+    bool PauseAllTracks();
+    bool PauseTag(std::string_view tag);
+    bool ResumeAllTracks();
+    bool ResumeTag(std::string_view tag);
 
-    bool SetPanning(int channel, Uint8 left, Uint8 right);
-    bool SetPosition(int channel, Sint16 angle, Uint8 distance);
-    bool SetDistance(int channel, Uint8 distance);
-    bool SetReverseStereo(int channel, bool flip);
+    bool SetMasterGain(float gain);
+    float GetMasterGain();
 
-    int ReserveChannels(int num);
-    bool GroupChannel(int which, int tag);
-    bool GroupChannels(int from, int to, int tag);
-    int GetGroupChannelAvailable(int tag);
-    int GetGroupChannelCount(int tag);
-    int GetGroupChannelOldest(int tag);
-    int GetGroupChannelNewer(int tag);
+    bool SetTagGain(std::string_view tag, float gain);
 
-    int SetVolume(int channel, int volume);
-    int GetVolume(int channel);
-    int SetMusicVolume(int volume);
-    int GetMusicVolume();
-    int SetMasterVolume(int volume);
-    int GetMasterVolume();
-
-    int PlayChannel(int channel, AudioChunk* chunk, int loops);
-    int PlayChannelTimed(int channel, AudioChunk* chunk, int loops, int ticks);
-    int PlayChannelFadeIn(int channel, AudioChunk* chunk, int loops, int ms);
-    int PlayChannelFadeInTimed(int channel, AudioChunk* chunk, int loops, int ms, int ticks);
-    Mix_Chunk* GetChunk(int channel);
-    bool PlayMusic(Music* music, int loops);
-    bool PlayMusicFadeIn(Music* music, int loops, int ms);
-    bool PlayMusicFadeInFromPosition(Music* music, int loops, int ms, double position);
-    void HaltChannel(int channel);
-    void HaltGroup(int tag);
-    void HaltMusic();
-    int ExpireChannel(int channel, int ticks);
-    int ExpireAllChannels(int ticks);
-    int FadeOutChannel(int which, int ms);
-    int FadeOutGroup(int tag, int ms);
-    bool FadeOutMusic(int ms);
-    Mix_Fading GetMusicFading();
-    Mix_Fading GetChannelFading(int which);
-    void Pause(int channel);
-    void PauseGroup(int tag);
-    void Resume(int channel);
-    void ResumeGroup(int tag);
-    bool IsChannelPaused(int channel);
-    int GetPausedChannelCount();
-    void PauseMusic();
-    void ResumeMusic();
-    void RewindMusic();
-    bool IsMusicPaused();
-    bool ModMusicJumpToOrder(int order);
-    bool SetMusicPosition(double position);
-
-    bool IsChannelPlaying(int channel);
-    int GetPlayingChannelCount();
-    bool IsPlayingMusic();
-
-    bool SetSoundFonts(std::string_view paths);
-    const char* GetSoundFonts();
-    bool IterateSoundFonts(Mix_EachSoundFontCallback function, void* data);
-
-    bool SetTimidityCfg(std::string_view path);
-    const char* GetTimidityCfg();
+    bool SetPostMixCallback(MIX_PostMixCallback cb, void* userData);
+    bool Generate(void* buffer, int bufferSize);
 
 private:
-    // Save initialized modules, with bits of MIX_InitFlags.
-    MIX_InitFlags m_modules = 0;
-    bool m_opened = false;
+    int m_version = 0;
+    std::vector<std::string> m_decoders;
+    MIX_Mixer* m_handle = nullptr;
+    SDL_PropertiesID m_props = 0;
 
 }; // class AudioMixer
 

@@ -25,6 +25,12 @@ bool GuiContext::Init()
 
     ImGui::StyleColorsDark();
 
+    // Setup scaling:
+    ImGuiStyle& style = ImGui::GetStyle();
+    float mainScale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+    style.ScaleAllSizes(mainScale);
+    style.FontScaleDpi = mainScale;
+
     // Setup Platform/Renderer backends:
     bool result = ImGui_ImplSDL3_InitForSDLRenderer(m_window->GetHandle(), m_renderer->GetHandle());
     if (!result)
@@ -41,7 +47,7 @@ bool GuiContext::Init()
 
     SDL_DisplayID displayID = SDL_GetDisplayForWindow(m_window->GetHandle());
     SDL_Rect rect = {};
-    float fontSize = 24.0f;
+    float fontSize = 16.0f;
 #if defined(_WIN32)
     auto fonts = ImGui::GetIO().Fonts;
     fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\consola.ttf", fontSize);
@@ -79,7 +85,9 @@ void GuiContext::NewFrame()
 
 void GuiContext::Render()
 {
+    ImGuiIO& io = ImGui::GetIO();
     ImGui::Render();
+    SDL_SetRenderScale(m_renderer->GetHandle(), io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
     ImGui_ImplSDLRenderer3_RenderDrawData(
         ImGui::GetDrawData(), m_renderer->GetHandle());
 }
