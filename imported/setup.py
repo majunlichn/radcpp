@@ -41,7 +41,8 @@ def build_SDL():
         run_shell("git clone https://github.com/libsdl-org/SDL.git")
     chdir("SDL")
     run_shell("git clean -xdf")
-    run_shell("git pull")
+    run_shell("git fetch --all")
+    run_shell("git checkout 86da08b0bebd78087a003384536725297b2f10e8")
     run_shell("git submodule update --init")
     run_shell(f"cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=build/installed")
     run_shell(f"cmake --build build --target install --config Release")
@@ -51,7 +52,8 @@ def build_SDL_mixer():
         run_shell("git clone https://github.com/libsdl-org/SDL_mixer.git")
     chdir("SDL_mixer")
     run_shell("git clean -xdf")
-    run_shell("git pull")
+    run_shell("git fetch --all")
+    run_shell("git checkout 5cdf029bae982df1d6c210f915fc151a616d982f")
     run_shell("git submodule update --init")
     sdl3_dir = script_root + f"/SDL/build/installed"
     run_shell(f"cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=build/installed",
