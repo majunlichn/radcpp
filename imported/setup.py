@@ -42,7 +42,7 @@ def build_SDL():
     chdir("SDL")
     run_shell("git clean -xdf")
     run_shell("git fetch --all")
-    run_shell("git checkout 86da08b0bebd78087a003384536725297b2f10e8")
+    run_shell("git checkout a864dcac25f8d6aa1991a24642ca04d9a90c5fc6")
     run_shell("git submodule update --init")
     run_shell(f"cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=build/installed")
     run_shell(f"cmake --build build --target install --config Release")
@@ -78,9 +78,10 @@ def main() -> int:
         if "SDL" in tasks:
             chdir(script_root)
             build_SDL()
+        if "SDL_mixer" in tasks:
             chdir(script_root)
             build_SDL_mixer()
-            chdir(script_root)
+        chdir(script_root)
         if platform.system() == "Windows":
             chdir(script_root)
             setup_windows(tasks)

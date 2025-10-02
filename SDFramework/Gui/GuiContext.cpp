@@ -88,6 +88,7 @@ void GuiContext::Render()
     ImGuiIO& io = ImGui::GetIO();
     ImGui::Render();
     SDL_SetRenderScale(m_renderer->GetHandle(), io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    m_renderer->Clear();
     ImGui_ImplSDLRenderer3_RenderDrawData(
         ImGui::GetDrawData(), m_renderer->GetHandle());
 }
