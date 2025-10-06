@@ -75,22 +75,22 @@ void TensorOp::SetTensor(uint32_t binding, Tensor* tensor)
     m_bindings[binding] = tensor;
 }
 
-TensorOpElementWiseUnary::TensorOpElementWiseUnary(rad::Ref<Device> device) :
+TensorElementWiseUnaryOp::TensorElementWiseUnaryOp(rad::Ref<Device> device) :
     TensorOp(std::move(device))
 {
 }
 
-TensorOpElementWiseUnary::~TensorOpElementWiseUnary()
+TensorElementWiseUnaryOp::~TensorElementWiseUnaryOp()
 {
 }
 
-bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
+bool TensorElementWiseUnaryOp::Init(const TensorElementWiseUnaryOpDesc& desc)
 {
     m_desc = desc;
 
-    m_dispatchSizes = Tensor::ExpandSizeDimensions(m_desc.sizes, DispatchDimCount);
-    m_dispatchInputStrides = Tensor::ExpandStrideDimensions(m_desc.inputStrides, DispatchDimCount);
-    m_dispatchOutputStrides = Tensor::ExpandStrideDimensions(m_desc.outputStrides, DispatchDimCount);
+    m_dispatchSizes = Tensor::ExpandSizeND(m_desc.sizes, DispatchDimCount);
+    m_dispatchInputStrides = Tensor::ExpandStrideND(m_desc.inputStrides, DispatchDimCount);
+    m_dispatchOutputStrides = Tensor::ExpandStrideND(m_desc.outputStrides, DispatchDimCount);
 
     size_t dimCount = m_dispatchSizes.size();
 
@@ -135,7 +135,7 @@ bool TensorOpElementWiseUnary::Init(const TensorOpElementWiseUnaryDesc& desc)
     return true;
 }
 
-void TensorOpElementWiseUnary::UpdateUniforms()
+void TensorElementWiseUnaryOp::UpdateUniforms()
 {
     size_t dimCount = m_dispatchSizes.size();
     assert(dimCount >= 4);
@@ -154,7 +154,7 @@ void TensorOpElementWiseUnary::UpdateUniforms()
     SetUniforms(m_uniforms);
 }
 
-void TensorOpElementWiseUnary::SetTensor(uint32_t binding, Tensor* tensor)
+void TensorElementWiseUnaryOp::SetTensor(uint32_t binding, Tensor* tensor)
 {
     TensorOp::SetTensor(binding, tensor);
     assert((binding == 1) || (binding == 2));
@@ -170,7 +170,7 @@ void TensorOpElementWiseUnary::SetTensor(uint32_t binding, Tensor* tensor)
     }
 }
 
-void TensorOpElementWiseUnary::Execute()
+void TensorElementWiseUnaryOp::Execute()
 {
     rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
 
@@ -190,7 +190,7 @@ void TensorOpElementWiseUnary::Execute()
     TensorIterator iter(m_dispatchSizes);
     do {
         PushConstants pushConstants = {};
-        const auto& offsets = iter.m_indices;
+        const auto& offsets = iter.m_coords;
         pushConstants.inputIndexOffset =
             std::inner_product(offsets.begin(), offsets.end(), m_dispatchInputStrides.begin(), size_t(0));
         pushConstants.outputIndexOffset =

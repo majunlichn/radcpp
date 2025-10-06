@@ -21,6 +21,8 @@ set(VKPP_HEADERS
     Core/Pipeline.h
     Core/Surface.h
     Core/Swapchain.h
+    Compute/TensorIterator.h
+    Compute/HostTensor.h
     Compute/Tensor.h
     Compute/TensorOp.h
 )
@@ -45,6 +47,7 @@ set(VKPP_SOURCE_FILES
     Core/Pipeline.cpp
     Core/Surface.cpp
     Core/Swapchain.cpp
+    Compute/HostTensor.cpp
     Compute/Tensor.cpp
     Compute/TensorOp.cpp
 )

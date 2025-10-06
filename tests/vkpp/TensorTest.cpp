@@ -22,11 +22,11 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     std::default_random_engine gen;
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
     std::vector<uint16_t> inputData = tensor->GenerateData<uint16_t>(
-        [&](rad::ArrayRef<size_t> indices) { return rad::fp16_ieee_from_fp32_value(dist(gen)); });
+        [&](rad::ArrayRef<size_t> coords) { return rad::fp16_ieee_from_fp32_value(dist(gen)); });
     tensor->Write(inputData.data());
 
-    rad::Ref<vkpp::TensorOpElementWiseUnary> opSqrt = RAD_NEW vkpp::TensorOpElementWiseUnary(g_device);
-    vkpp::TensorOpElementWiseUnaryDesc opDesc = {};
+    rad::Ref<vkpp::TensorElementWiseUnaryOp> opSqrt = RAD_NEW vkpp::TensorElementWiseUnaryOp(g_device);
+    vkpp::TensorElementWiseUnaryOpDesc opDesc = {};
     opDesc.opName = "sqrt";
     opDesc.dataType = vk::ComponentTypeKHR::eFloat16;
     opDesc.sizes = tensor->m_sizes;
@@ -45,8 +45,8 @@ void TestElementWiseSqrt(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> stri
     const float tolerance = 0.0005f;
     vkpp::TensorIterator iter(tensor->m_sizes);
 
-    iter.ForEachParallel([&](rad::ArrayRef<size_t> indices) {
-        size_t index = std::inner_product(indices.begin(), indices.end(), tensor->m_strides.begin(), size_t(0));
+    iter.ForEachParallel([&](rad::ArrayRef<size_t> coords) {
+        size_t index = std::inner_product(coords.begin(), coords.end(), tensor->m_strides.begin(), size_t(0));
         float result = rad::fp16_ieee_to_fp32_value(results[index]);
         float resultRef = std::sqrt(rad::fp16_ieee_to_fp32_value(inputData[index]));
         float diff = std::abs(result - resultRef);
@@ -76,7 +76,10 @@ TEST(Tensor, ElementWise)
 
     vkpp::TensorIterator iter({ 2, 4, 8, 8 });
     iter.m_permutation = { 1, 3, 2, 0 };
-    iter.ForEach([](rad::ArrayRef<size_t> indices) {
-        VKPP_LOG(info, "Indices=[{}]", rad::ToString(indices));
+    iter.ForEach([](rad::ArrayRef<size_t> coords) {
+        VKPP_LOG(info, "Coords=[{}]", rad::ToString(coords));
         });
+
+    vkpp::HostTensor<float> hostTensor({ 2, 4, 8, 8 },
+        vkpp::MakeTensorStrides({ 2, 4, 8, 8 }, { 1, 3, 2, 0 }));
 }

@@ -53,7 +53,7 @@ public:
 
 // binding[1]: the input tensor.
 // binding[2]: the output tensor.
-struct TensorOpElementWiseUnaryDesc
+struct TensorElementWiseUnaryOpDesc
 {
     std::string opName;
     vk::ComponentTypeKHR dataType;
@@ -62,11 +62,11 @@ struct TensorOpElementWiseUnaryDesc
     std::vector<size_t> outputStrides;
 };
 
-class TensorOpElementWiseUnary : public TensorOp
+class TensorElementWiseUnaryOp : public TensorOp
 {
 public:
-    TensorOpElementWiseUnary(rad::Ref<Device> device);
-    ~TensorOpElementWiseUnary();
+    TensorElementWiseUnaryOp(rad::Ref<Device> device);
+    ~TensorElementWiseUnaryOp();
 
     struct PushConstants
     {
@@ -81,7 +81,7 @@ public:
         glm::uvec4 outputStrides;
     };
 
-    bool Init(const TensorOpElementWiseUnaryDesc& desc);
+    bool Init(const TensorElementWiseUnaryOpDesc& desc);
 
     void UpdateUniforms();
     // binding[1]: the input tensor.
@@ -93,7 +93,7 @@ public:
 
     virtual void Execute() override;
 
-    TensorOpElementWiseUnaryDesc m_desc = {};
+    TensorElementWiseUnaryOpDesc m_desc = {};
     std::vector<size_t> m_dispatchSizes;
     std::vector<size_t> m_dispatchInputStrides;
     std::vector<size_t> m_dispatchOutputStrides;

@@ -62,28 +62,38 @@ bool Tensor::Init(vk::ComponentTypeKHR dataType,
     return true;
 }
 
-std::vector<size_t> Tensor::MakeStrides(rad::ArrayRef<size_t> sizes)
+std::vector<size_t> Tensor::MakeStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder, rad::ArrayRef<size_t> alignments)
 {
-    std::vector<size_t> strides(sizes.size(), 0);
-    strides.back() = 1;
-    std::partial_sum(
-        sizes.rbegin(), sizes.rend() - 1, strides.rbegin() + 1, std::multiplies<std::size_t>());
-    return strides;
-}
+    assert(memoryOrder.empty() || (memoryOrder.size() == sizes.size()));
+    assert(alignments.empty() || (alignments.size() == sizes.size()));
 
-std::vector<size_t> Tensor::MakeStridesByMemoryOrder(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder)
-{
-    std::vector<size_t> strides(sizes.size());
-    size_t stride = 1;
-    for (size_t i = 0; i < sizes.size(); ++i)
+    std::vector<size_t> strides(sizes.size(), 0);
+    if (memoryOrder.empty())
     {
-        strides[memoryOrder[i]] = stride;
-        stride *= sizes[memoryOrder[i]];
+        strides.back() = 1;
+        std::partial_sum(
+            sizes.rbegin(), sizes.rend() - 1, strides.rbegin() + 1, std::multiplies<std::size_t>());
+    }
+    else
+    {
+        size_t stride = 1;
+        for (size_t i = 0; i < sizes.size(); ++i)
+        {
+            strides[memoryOrder[i]] = stride;
+            stride *= sizes[memoryOrder[i]];
+        }
+    }
+    for (size_t i = 0; i < alignments.size(); ++i)
+    {
+        if (alignments[i] > 0)
+        {
+            strides[i] = rad::RoundUpToMultiple(strides[i], alignments[i]);
+        }
     }
     return strides;
 }
 
-std::vector<size_t> Tensor::ExpandSizeDimensions(rad::ArrayRef<size_t> sizes, size_t dimCount)
+std::vector<size_t> Tensor::ExpandSizeND(rad::ArrayRef<size_t> sizes, size_t dimCount)
 {
     if (dimCount > sizes.size())
     {
@@ -100,7 +110,7 @@ std::vector<size_t> Tensor::ExpandSizeDimensions(rad::ArrayRef<size_t> sizes, si
     }
 }
 
-std::vector<size_t> Tensor::ExpandStrideDimensions(rad::ArrayRef<size_t> strides, size_t dimCount)
+std::vector<size_t> Tensor::ExpandStrideND(rad::ArrayRef<size_t> strides, size_t dimCount)
 {
     if (dimCount > strides.size())
     {
@@ -281,13 +291,13 @@ std::string Tensor::DumpText(TextFormat format)
     text += std::format("# Sizes = [{}]\n", rad::ToString(m_sizes));
     text += std::format("# Strides = [{}]\n", rad::ToString(m_strides));
     TensorIterator iter(m_sizes);
-    auto& indices = iter.m_indices;
+    auto& coords = iter.m_coords;
     auto dump1D = [&]() {
         size_t dimCount = m_sizes.size();
         for (size_t i = 0; i < m_sizes[dimCount - 1]; ++i)
         {
-            indices[dimCount - 1] = i;
-            size_t index = std::inner_product(indices.begin(), indices.end(), m_strides.begin(), size_t(0));
+            coords[dimCount - 1] = i;
+            size_t index = std::inner_product(coords.begin(), coords.end(), m_strides.begin(), size_t(0));
             size_t offsetInBytes = index * GetElementSizeInBytes();
             if (offsetInBytes < bufferData.size())
             {
@@ -331,10 +341,10 @@ std::string Tensor::DumpText(TextFormat format)
     {
         do {
             iter.Reset2D();
-            text += std::format("# Indices = [{}]\n", rad::ToString(indices));
+            text += std::format("# Indices = [{}]\n", rad::ToString(coords));
             for (size_t row = 0; row < m_sizes[m_sizes.size() - 2]; ++row)
             {
-                iter.m_indices[m_sizes.size() - 2] = row;
+                iter.m_coords[m_sizes.size() - 2] = row;
                 dump1D();
             }
         } while (iter.Next2D());
