@@ -12,8 +12,13 @@
 #include <boost/math/special_functions/next.hpp>
 #include <boost/math/special_functions/relative_difference.hpp>
 
+#include <rad/Common/half.hpp>
+
 namespace rad
 {
+
+using Float64 = double;
+using Float32 = float;
 
 // https://github.com/pytorch/pytorch/blob/main/c10/util/floating_point_utils.h
 inline float fp32_from_bits(uint32_t w)
@@ -142,5 +147,77 @@ float fp8e4m3fn_to_fp32_value(uint8_t input);
 uint8_t fp8e4m3fn_from_fp32_value(float f);
 float fp8e5m2_to_fp32_value(uint8_t input);
 uint8_t fp8e5m2_from_fp32_value(float f);
+
+struct BFloat16
+{
+    uint16_t m_bits;
+
+    BFloat16(float value)
+    {
+        m_bits = bf16_from_fp32_round_to_nearest_even(value);
+    }
+
+    ~BFloat16()
+    {
+    }
+
+    operator float() const
+    {
+        return bf16_to_fp32(m_bits);
+    }
+
+}; // struct BFloat16
+
+using Float16 = half_float::half;
+
+struct Float8E4M3
+{
+    uint8_t m_bits;
+
+    Float8E4M3(float value)
+    {
+        m_bits = fp8e4m3fn_from_fp32_value(value);
+    }
+
+    ~Float8E4M3()
+    {
+    }
+
+    operator float() const
+    {
+        return fp8e4m3fn_to_fp32_value(m_bits);
+    }
+
+}; // struct Float8E4M3
+
+struct Float8E5M2
+{
+    uint8_t m_bits;
+
+    Float8E5M2(float value)
+    {
+        m_bits = fp8e5m2_from_fp32_value(value);
+    }
+
+    ~Float8E5M2()
+    {
+    }
+
+    operator float() const
+    {
+        return fp8e5m2_to_fp32_value(m_bits);
+    }
+
+}; // struct Float8E5M2
+
+static_assert(sizeof(Float8E4M3) == 1);
+static_assert(sizeof(Float8E5M2) == 1);
+
+using FP64 = Float64;
+using FP32 = Float32;
+using FP16 = Float16;
+using BF16 = BFloat16;
+using FP8E4M3 = Float8E4M3;
+using FP8E5M2 = Float8E5M2;
 
 } // namespace rad

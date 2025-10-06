@@ -80,6 +80,6 @@ TEST(Tensor, ElementWise)
         VKPP_LOG(info, "Coords=[{}]", rad::ToString(coords));
         });
 
-    vkpp::HostTensor<float> hostTensor({ 2, 4, 8, 8 },
+    vkpp::HostTensor<rad::Float16> hostTensor({ 2, 4, 8, 8 },
         vkpp::MakeTensorStrides({ 2, 4, 8, 8 }, { 1, 3, 2, 0 }));
 }
