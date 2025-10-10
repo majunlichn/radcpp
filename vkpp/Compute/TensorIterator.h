@@ -196,9 +196,7 @@ public:
         do {
             ResetND(dimCountPerThread);
             executor.silent_async([&, iter = *this]() mutable {
-                //iter.ForEachRecursively(op, m_sizes.size() - dimCountPerThread);
-                iter.m_dimCount = dimCountPerThread;
-                iter.ForEach(op);
+                iter.ForEachRecursively(op, m_sizes.size() - dimCountPerThread);
                 });
         } while (NextND(dimCountPerThread));
         executor.wait_for_all();
