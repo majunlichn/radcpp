@@ -76,8 +76,8 @@ TEST(Tensor, ElementWise)
 
     vkpp::TensorIterator iter({ 2, 4, 8, 8 });
     iter.m_permutation = { 1, 3, 2, 0 };
-    iter.ForEach([](rad::ArrayRef<size_t> coords) {
-        VKPP_LOG(info, "Coords=[{}]", rad::ToString(coords));
+    iter.ForEachSubrangeNDPermuted(3, [](rad::ArrayRef<size_t> coords) {
+        VKPP_LOG(info, "Thread#{:>8}: Coords=[{}]", std::this_thread::get_id(), rad::ToString(coords));
         });
 
     vkpp::HostTensor<rad::Float16> hostTensor({ 2, 4, 8, 8 },
