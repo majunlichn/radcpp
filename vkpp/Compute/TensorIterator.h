@@ -184,38 +184,40 @@ public:
         ForEachRecursively(op, 0);
     }
 
-    // @param dimGranularity: the number of dimensions to process in parallel.
-    void ForEachParallelND(const ElementWiseOp& op, size_t dimGranularity)
+    // @param dimCountPerThread: the parallel granularity, which is the number of dimensions processed by each thread (must <dimCount).
+    void ForEachParallel(const ElementWiseOp& op, size_t dimCountPerThread)
     {
-        if (dimGranularity >= m_sizes.size())
+        if (dimCountPerThread >= m_sizes.size())
         {
             return ForEach(op);
         }
         Reset();
         tf::Executor executor;
         do {
-            ResetND(dimGranularity);
+            ResetND(dimCountPerThread);
             executor.silent_async([&, iter = *this]() mutable {
-                iter.ForEachRecursively(op, m_sizes.size() - dimGranularity);
+                //iter.ForEachRecursively(op, m_sizes.size() - dimCountPerThread);
+                iter.m_dimCount = dimCountPerThread;
+                iter.ForEach(op);
                 });
-        } while (NextND(dimGranularity));
+        } while (NextND(dimCountPerThread));
         executor.wait_for_all();
     }
 
     void ForEachParallel(const ElementWiseOp& op)
     {
-        size_t elementCount = 1;
-        size_t dimGranularity = 0;
-        while (dimGranularity < m_sizes.size())
+        size_t elementCountPerThread = 1;
+        size_t dimCountPerThread = 0;
+        while (dimCountPerThread < m_sizes.size())
         {
-            elementCount *= m_sizes[m_sizes.size() - dimGranularity - 1];
-            ++dimGranularity;
-            if (elementCount >= 256 * 256)
+            elementCountPerThread *= m_sizes[m_sizes.size() - dimCountPerThread - 1];
+            ++dimCountPerThread;
+            if (elementCountPerThread >= 64 * 64)
             {
                 break;
             }
         }
-        ForEachParallelND(op, dimGranularity);
+        ForEachParallel(op, dimCountPerThread);
     }
 
 }; // class TensorIterator
