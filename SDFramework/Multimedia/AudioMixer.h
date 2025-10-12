@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SDFramework/Media/Audio.h>
+#include <SDFramework/Multimedia/Audio.h>
 #include <SDL3_mixer/SDL_mixer.h>
 
 namespace sdf

@@ -1,4 +1,4 @@
-#include <SDFramework/Media/Camera.h>
+#include <SDFramework/Multimedia/Camera.h>
 
 namespace sdf
 {

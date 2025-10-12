@@ -17,12 +17,12 @@ set(SDF_SOURCE_FILES
     Gui/Texture.h
     Gui/Window.cpp
     Gui/Window.h
-    Media/Audio.cpp
-    Media/Audio.h
-    Media/AudioMixer.cpp
-    Media/AudioMixer.h
-    Media/Camera.cpp
-    Media/Camera.h
+    Multimedia/Audio.cpp
+    Multimedia/Audio.h
+    Multimedia/AudioMixer.cpp
+    Multimedia/AudioMixer.h
+    Multimedia/Camera.cpp
+    Multimedia/Camera.h
     Rendering/VulkanTexture.h
     Rendering/VulkanTexture.cpp
 )
