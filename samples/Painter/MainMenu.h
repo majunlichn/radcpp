@@ -5,7 +5,7 @@
 class MainMenu : public Widget
 {
 public:
-    MainMenu(PaintManager* manager, sdf::GuiContext* context);
+    MainMenu(PaintManager* manager, sdf::Frame* context);
     ~MainMenu();
 
     virtual void OnIdle() override;

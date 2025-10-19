@@ -39,8 +39,9 @@ public:
 
     bool ProcessEvent(const SDL_Event& event);
 
-    void BeginFrame();
     void Render();
+
+    void BeginFrame();
     void EndFrame();
 
     VulkanWindow* m_window;

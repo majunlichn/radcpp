@@ -26,22 +26,22 @@ bool MainWindow::Init()
     }
     m_renderer->SetVSync(1);
 
-    m_gui = RAD_NEW sdf::GuiContext(this, m_renderer.get());
-    if (!m_gui->Init())
+    m_frame = RAD_NEW sdf::Frame(this, m_renderer.get());
+    if (!m_frame->Init())
     {
         return false;
     }
 
-    m_mainMenu = RAD_NEW MainMenu(m_manager.get(), m_gui.get());
+    m_mainMenu = RAD_NEW MainMenu(m_manager.get(), m_frame.get());
 
     return true;
 }
 
 bool MainWindow::OnEvent(const SDL_Event& event)
 {
-    if (m_gui)
+    if (m_frame)
     {
-        m_gui->ProcessEvent(event);
+        m_frame->ProcessEvent(event);
     }
     return Window::OnEvent(event);
 }
@@ -53,7 +53,7 @@ void MainWindow::OnIdle()
         return;
     }
     m_renderer->Clear();
-    m_gui->NewFrame();
+    m_frame->BeginFrame();
 
     if (m_mainMenu && m_mainMenu->IsEnabled())
     {
@@ -75,8 +75,7 @@ void MainWindow::OnIdle()
         ImGui::ShowAboutWindow(&m_manager->m_showAboutWindow);
     }
 
-    m_gui->Render();
-    m_renderer->Present();
+    m_frame->EndFrame();
 }
 
 void MainWindow::OnShown()

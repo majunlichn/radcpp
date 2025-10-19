@@ -7,8 +7,8 @@ set(SDF_SOURCE_FILES
     Core/EventHandler.cpp
     Core/Timer.h
     Core/Timer.cpp
-    Gui/GuiContext.cpp
-    Gui/GuiContext.h
+    Gui/Frame.cpp
+    Gui/Frame.h
     Gui/Renderer.cpp
     Gui/Renderer.h
     Gui/Surface.cpp

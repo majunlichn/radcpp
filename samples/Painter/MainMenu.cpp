@@ -1,6 +1,6 @@
 #include "MainMenu.h"
 
-MainMenu::MainMenu(PaintManager* manager, sdf::GuiContext* context) :
+MainMenu::MainMenu(PaintManager* manager, sdf::Frame* context) :
     Widget(manager, context)
 {
 }

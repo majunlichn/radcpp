@@ -1,20 +1,20 @@
-#include <SDFramework/Gui/GuiContext.h>
+#include <SDFramework/Gui/Frame.h>
 
 namespace sdf
 {
 
-GuiContext::GuiContext(Window* window, Renderer* renderer) :
+Frame::Frame(Window* window, rad::Ref<Renderer> renderer) :
     m_window(window),
-    m_renderer(renderer)
+    m_renderer(std::move(renderer))
 {
 }
 
-GuiContext::~GuiContext()
+Frame::~Frame()
 {
     Destroy();
 }
 
-bool GuiContext::Init()
+bool Frame::Init()
 {
     IMGUI_CHECKVERSION();
     m_gui = ImGui::CreateContext();
@@ -55,7 +55,7 @@ bool GuiContext::Init()
     return true;
 }
 
-void GuiContext::Destroy()
+void Frame::Destroy()
 {
     if (m_plot)
     {
@@ -71,19 +71,12 @@ void GuiContext::Destroy()
     }
 }
 
-bool GuiContext::ProcessEvent(const SDL_Event& event)
+bool Frame::ProcessEvent(const SDL_Event& event)
 {
     return ImGui_ImplSDL3_ProcessEvent(&event);
 }
 
-void GuiContext::NewFrame()
-{
-    ImGui_ImplSDLRenderer3_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    ImGui::NewFrame();
-}
-
-void GuiContext::Render()
+void Frame::Render()
 {
     ImGuiIO& io = ImGui::GetIO();
     ImGui::Render();
@@ -91,6 +84,19 @@ void GuiContext::Render()
     m_renderer->Clear();
     ImGui_ImplSDLRenderer3_RenderDrawData(
         ImGui::GetDrawData(), m_renderer->GetHandle());
+}
+
+void Frame::BeginFrame()
+{
+    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+}
+
+void Frame::EndFrame()
+{
+    Render();
+    m_renderer->Present();
 }
 
 } // namespace sdf

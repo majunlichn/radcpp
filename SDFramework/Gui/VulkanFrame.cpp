@@ -459,20 +459,6 @@ bool VulkanFrame::ProcessEvent(const SDL_Event& event)
     return ImGui_ImplSDL3_ProcessEvent(&event);
 }
 
-void VulkanFrame::BeginFrame()
-{
-    m_frameThrottles[m_cmdBufferIndex]->Wait();
-    vk::Result err = vk::Result::eSuccess;
-    do {
-        err = m_swapchain->AcquireNextImage(
-            UINT64_MAX, m_swapchainImageAcquiredSemaphores[m_cmdBufferIndex].get(), nullptr, 0x1);
-    } while (err != vk::Result::eSuccess);
-
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    ImGui::NewFrame();
-}
-
 void VulkanFrame::Render()
 {
     ImGui::Render();
@@ -507,6 +493,20 @@ void VulkanFrame::Render()
         cmdBuffer->End();
         m_cmdStream->Submit(cmdBuffer->GetHandle(), {}, {}, nullptr);
     }
+}
+
+void VulkanFrame::BeginFrame()
+{
+    m_frameThrottles[m_cmdBufferIndex]->Wait();
+    vk::Result err = vk::Result::eSuccess;
+    do {
+        err = m_swapchain->AcquireNextImage(
+            UINT64_MAX, m_swapchainImageAcquiredSemaphores[m_cmdBufferIndex].get(), nullptr, 0x1);
+    } while (err != vk::Result::eSuccess);
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
 }
 
 void VulkanFrame::EndFrame()

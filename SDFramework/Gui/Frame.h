@@ -10,26 +10,28 @@
 namespace sdf
 {
 
-class GuiContext : public rad::RefCounted<GuiContext>
+class Frame : public rad::RefCounted<Frame>
 {
 public:
-    GuiContext(Window* window, Renderer* renderer);
-    ~GuiContext();
+    Frame(Window* window, rad::Ref<Renderer> renderer);
+    ~Frame();
 
     bool Init();
     void Destroy();
     bool ProcessEvent(const SDL_Event& event);
 
-    void NewFrame();
     void Render();
+
+    void BeginFrame();
+    void EndFrame();
 
 private:
     Window* m_window;
-    Renderer* m_renderer;
+    rad::Ref<Renderer> m_renderer;
 
     ImGuiContext* m_gui = nullptr;
     ImPlotContext* m_plot = nullptr;
 
-}; // class GuiContext
+}; // class Frame
 
 } // namespace sdf

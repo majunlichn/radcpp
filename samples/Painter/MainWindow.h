@@ -2,7 +2,7 @@
 
 #include <SDFramework/Gui/Window.h>
 #include <SDFramework/Gui/Renderer.h>
-#include <SDFramework/Gui/GuiContext.h>
+#include <SDFramework/Gui/Frame.h>
 
 #include "PaintManager.h"
 #include "Widget.h"
@@ -70,7 +70,7 @@ private:
 
     rad::Ref<PaintManager> m_manager;
     rad::Ref<sdf::Renderer> m_renderer;
-    rad::Ref<sdf::GuiContext> m_gui;
+    rad::Ref<sdf::Frame> m_frame;
 
     rad::Ref<Widget> m_mainMenu;
 
