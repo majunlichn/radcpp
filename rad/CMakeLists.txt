@@ -25,6 +25,9 @@ list(APPEND RAD_HEADERS
     Common/ThreadPool.h
     Container/SmallVector.h
     Container/Span.h
+    Geometry/Line.h
+    Geometry/Point.h
+    Geometry/Triangle.h
     IO/File.h
     IO/Format.h
     IO/Image.h
@@ -50,6 +53,9 @@ list(APPEND RAD_PRIVATE_SOURCES
     Common/String.cpp
     Common/pystring.cpp
     Common/ThreadPool.cpp
+    Geometry/Line.cpp
+    Geometry/Point.cpp
+    Geometry/Triangle.cpp
     IO/File.cpp
     IO/Format.cpp
     IO/Image.cpp
