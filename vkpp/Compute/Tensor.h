@@ -165,7 +165,7 @@ inline void Tensor::FillRandomFloat(Distribution& dist)
             [&](rad::ArrayRef<size_t> coords) { return dist(gen); });
         Write(bufferData.data());
     }
-    else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3NV)
+    else if (m_dataType == vk::ComponentTypeKHR::eFloatE4M3)
     {
         std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
             [&](rad::ArrayRef<size_t> coords)
@@ -173,7 +173,7 @@ inline void Tensor::FillRandomFloat(Distribution& dist)
         );
         Write(bufferData.data());
     }
-    else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2NV)
+    else if (m_dataType == vk::ComponentTypeKHR::eFloatE5M2)
     {
         std::vector<uint8_t> bufferData = GenerateData<uint8_t>(
             [&](rad::ArrayRef<size_t> coords)

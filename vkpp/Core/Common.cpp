@@ -92,8 +92,8 @@ VkDeviceSize GetComponentSizeInBytes(vk::ComponentTypeKHR type)
     case vk::ComponentTypeKHR::eUint64: return 8;
     case vk::ComponentTypeKHR::eSint8PackedNV: return 4;
     case vk::ComponentTypeKHR::eUint8PackedNV: return 4;
-    case vk::ComponentTypeKHR::eFloatE4M3NV: return 1;
-    case vk::ComponentTypeKHR::eFloatE5M2NV: return 1;
+    case vk::ComponentTypeKHR::eFloatE4M3: return 1;
+    case vk::ComponentTypeKHR::eFloatE5M2: return 1;
     default: RAD_UNREACHABLE();
     }
 }
@@ -103,8 +103,8 @@ bool IsFloatingPointType(vk::ComponentTypeKHR type)
     if ((type == vk::ComponentTypeKHR::eFloat16) ||
         (type == vk::ComponentTypeKHR::eFloat32) ||
         (type == vk::ComponentTypeKHR::eFloat64) ||
-        (type == vk::ComponentTypeKHR::eFloatE4M3NV) ||
-        (type == vk::ComponentTypeKHR::eFloatE5M2NV))
+        (type == vk::ComponentTypeKHR::eFloatE4M3) ||
+        (type == vk::ComponentTypeKHR::eFloatE5M2))
     {
         return true;
     }

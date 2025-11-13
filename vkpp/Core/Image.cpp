@@ -211,7 +211,7 @@ void CopyBufferToImage2D(Buffer* buffer, VkDeviceSize bufferOffset,
     assert(buffer->m_device == image->m_device);
     std::vector<vk::BufferImageCopy> copyInfos(levelCount);
     vk::Extent3D blockExtent = vkuFormatTexelBlockExtent(static_cast<VkFormat>(image->GetFormat()));
-    uint32_t blockSize = vkuFormatElementSize(static_cast<VkFormat>(image->GetFormat()));
+    uint32_t blockSize = vkuFormatTexelBlockSize(static_cast<VkFormat>(image->GetFormat()));
     for (uint32_t i = 0; i < levelCount; i++)
     {
         uint32_t mipLevel = baseMipLevel + i;
