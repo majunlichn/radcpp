@@ -8,6 +8,8 @@ namespace sdf
 
 class Texture;
 
+// 2D rendering context for a window.
+// These functions must be called from the main thread. See this bug for details: https://github.com/libsdl-org/SDL/issues/986
 class Renderer : public rad::RefCounted<Renderer>
 {
 public:

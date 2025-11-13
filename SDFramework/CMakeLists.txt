@@ -25,6 +25,16 @@ set(SDF_SOURCE_FILES
     Multimedia/Camera.h
     Rendering/VulkanTexture.h
     Rendering/VulkanTexture.cpp
+    RHI/GpuDevice.h
+    RHI/GpuDevice.cpp
+    RHI/GpuBuffer.h
+    RHI/GpuBuffer.cpp
+    RHI/GpuTexture.h
+    RHI/GpuTexture.cpp
+    RHI/GpuShader.h
+    RHI/GpuShader.cpp
+    RHI/GpuCommandBuffer.h
+    RHI/GpuCommandBuffer.cpp
 )
 
 if (TARGET vkpp)
