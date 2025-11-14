@@ -5,20 +5,12 @@
 namespace rad
 {
 
-template <std::floating_point T>
-struct Line2D
+template <glm::length_t NumDim, std::floating_point T>
+struct Line
 {
     using value_type = T;
-    Point2D<T> p1;
-    Point2D<T> p2;
-}; // struct Line2D
-
-template <std::floating_point T>
-struct Line3D
-{
-    using value_type = T;
-    Point3D<T> p1;
-    Point3D<T> p2;
-}; // struct Line2D
+    Point<NumDim, T> p1;
+    Point<NumDim, T> p2;
+};
 
 } // namespace rad
