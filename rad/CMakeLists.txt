@@ -27,6 +27,7 @@ list(APPEND RAD_HEADERS
     Container/Span.h
     Geometry/Line.h
     Geometry/Point.h
+    Geometry/Sphere.h
     Geometry/Triangle.h
     IO/File.h
     IO/Format.h
@@ -55,6 +56,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     Common/ThreadPool.cpp
     Geometry/Line.cpp
     Geometry/Point.cpp
+    Geometry/Sphere.cpp
     Geometry/Triangle.cpp
     IO/File.cpp
     IO/Format.cpp

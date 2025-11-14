@@ -16,9 +16,9 @@ struct Triangle
 }; // struct Triangle
 
 template <std::floating_point T>
-using Triangle2D = Vec<2, T>;
+using Triangle2D = Triangle<2, T>;
 template <std::floating_point T>
-using Triangle3D = Vec<3, T>;
+using Triangle3D = Triangle<3, T>;
 
 template<glm::length_t NumDim, std::floating_point T>
 bool IsDegenerate(const Triangle<NumDim, T>& tri)

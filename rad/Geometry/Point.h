@@ -4,6 +4,7 @@
 #include <rad/Common/Math.h>
 #include <rad/Common/Numeric.h>
 #include <glm/glm.hpp>
+#include <glm/ext/scalar_constants.hpp>
 
 namespace rad
 {
@@ -23,6 +24,32 @@ template <std::floating_point T>
 using Point2D = Vec<2, T>;
 template <std::floating_point T>
 using Point3D = Vec<3, T>;
+
+template <glm::length_t NumDim, std::floating_point T>
+bool IsAlmostZero(const Vec<NumDim, T>& v, T epsilon = std::numeric_limits<T>::epsilon() / 2)
+{
+    for (glm::length_t i = 0; i < NumDim; ++i)
+    {
+        if (glm::abs(v[i]) > epsilon)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <glm::length_t NumDim, std::floating_point T>
+bool IsAlmostOrigin(const Point<NumDim, T>& v, T epsilon = std::numeric_limits<T>::epsilon() / 2)
+{
+    for (glm::length_t i = 0; i < NumDim; ++i)
+    {
+        if (glm::abs(v[i]) > epsilon)
+        {
+            return false;
+        }
+    }
+    return true;
+}
 
 // @param epsilon: the min sine of the angle between the vectors (b - a) and (c - a).
 template <glm::length_t NumDim, std::floating_point T>
