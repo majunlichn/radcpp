@@ -38,4 +38,12 @@ T GetLength(const Line<NumDim, T>& line)
     return glm::distance(line.p1, line.p2);
 }
 
+template <glm::length_t NumDim, std::floating_point T>
+T GetDistance(const Line<NumDim, T>& l, const Point<NumDim, T>& p)
+{
+    Vec<NumDim, T> ab = l.p2 - l.p1;
+    Vec<NumDim, T> ap = p - l.p1;
+    return glm::length(glm::cross(glm::vec3(ab), glm::vec3(ap))) / glm::length(ab);
+}
+
 } // namespace rad

@@ -71,7 +71,7 @@ using boost::math::relative_difference;
 // a convenience function that returns relative_difference(a, b) / epsilon.
 using boost::math::epsilon_difference;
 
-// https://entity-toolkit.github.io/wiki/useful/float-comparison/#the-simpler-way
+// https://entity-toolkit.github.io/wiki/content/useful/float-comparison/#the-simpler-way
 template <std::floating_point T>
 auto AlmostEqual(T a, T b, T eps = std::numeric_limits<T>::epsilon()) -> bool
 {

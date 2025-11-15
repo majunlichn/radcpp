@@ -51,6 +51,12 @@ bool IsAlmostOrigin(const Point<NumDim, T>& v, T epsilon = std::numeric_limits<T
     return true;
 }
 
+template <glm::length_t NumDim, std::floating_point T>
+T GetDistance(const Point<NumDim, T>& p1, const Point<NumDim, T>& p2)
+{
+    return glm::distance(p1, p2);
+}
+
 // @param epsilon: the min sine of the angle between the vectors (b - a) and (c - a).
 template <glm::length_t NumDim, std::floating_point T>
 bool IsCollinear(const Point<NumDim, T>& a, const Point<NumDim, T>& b, const Point<NumDim, T>& c, T epsilon = std::numeric_limits<T>::epsilon())
