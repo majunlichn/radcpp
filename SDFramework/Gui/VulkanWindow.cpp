@@ -35,7 +35,7 @@ void VulkanWindow::Destroy()
     Window::Destroy();
 }
 
-std::set<std::string> VulkanWindow::GetVulkanInstanceExtensionsRequired()
+std::set<std::string> VulkanWindow::GetRequiredVulkanInstanceExtensions()
 {
     Uint32 count = 0;
     const char* const* ppExtensionNames = SDL_Vulkan_GetInstanceExtensions(&count);

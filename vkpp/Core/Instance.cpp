@@ -129,11 +129,13 @@ bool Instance::Init(
     vk::DebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCreateInfo =
     {
         {}, // flags
+        vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
+        vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
         vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
         vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
         vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-        vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-        vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
+        vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+        vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
         DebugUtilsMessengerCallback
     };
 
@@ -258,6 +260,11 @@ rad::Ref<Device> Instance::CreateDevice(vk::raii::PhysicalDevice& physicalDevice
     if (!requiredExtensions.contains("VK_EXT_debug_report"))
     {
         requiredExtensions.erase("VK_EXT_debug_marker");
+    }
+
+    if (!requiredExtensions.contains("VK_KHR_surface_maintenance1"))
+    {
+        requiredExtensions.erase("VK_KHR_swapchain_maintenance1");
     }
 
     return CreateDevice(physicalDevice, requiredExtensions);

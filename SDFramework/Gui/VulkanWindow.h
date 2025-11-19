@@ -20,7 +20,7 @@ public:
     virtual bool Create(std::string_view title, int w, int h, SDL_WindowFlags flags) override;
     virtual void Destroy() override;
 
-    static std::set<std::string> GetVulkanInstanceExtensionsRequired();
+    static std::set<std::string> GetRequiredVulkanInstanceExtensions();
     bool CreateVulkanSurface();
     vkpp::Surface* GetVulkanSurface() const { return m_surface.get(); }
 

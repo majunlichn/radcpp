@@ -103,7 +103,7 @@ bool CubeDemo::Init(int argc, char* argv[])
 
     m_instance = RAD_NEW vkpp::Instance();
     std::set<std::string> instanceLayers = {};
-    std::set<std::string> instanceExtensions = GetVulkanInstanceExtensionsRequired();
+    std::set<std::string> instanceExtensions = GetRequiredVulkanInstanceExtensions();
     if (!m_instance->Init(
         APP_NAME, APP_VERSION,
         APP_NAME, APP_VERSION,

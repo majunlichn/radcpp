@@ -139,12 +139,12 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
         rad::Ref<CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
         cmdBuffer->Begin(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
         // Generally considered more efficient to do a global memory barrier than per-resource barriers?
-        vk::MemoryBarrier2 deviceRAW;
+        vk::MemoryBarrier2 deviceRAW = {};
         deviceRAW.srcStageMask = vk::PipelineStageFlagBits2::eAllCommands;
         deviceRAW.srcAccessMask = vk::AccessFlagBits2::eShaderWrite | vk::AccessFlagBits2::eMemoryWrite;
         deviceRAW.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
         deviceRAW.dstAccessMask = vk::AccessFlagBits2::eTransferRead;
-        vk::DependencyInfo dependency;
+        vk::DependencyInfo dependency = {};
         dependency.setMemoryBarriers(deviceRAW);
         cmdBuffer->SetPipelineBarrier2(dependency);
         vk::BufferCopy copyRegion = {};
@@ -152,7 +152,7 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
         copyRegion.dstOffset = 0;
         copyRegion.size = dataSize;
         cmdBuffer->CopyBuffer(GetHandle(), stagingBuffer->GetHandle(), copyRegion);
-        vk::MemoryBarrier2 stagingRAW;
+        vk::MemoryBarrier2 stagingRAW = {};
         stagingRAW.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
         stagingRAW.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
         stagingRAW.dstStageMask = vk::PipelineStageFlagBits2::eHost;
@@ -183,12 +183,12 @@ void Buffer::Write(const void* data, vk::DeviceSize offset, vk::DeviceSize dataS
         copyRegion.dstOffset = offset;
         copyRegion.size = dataSize;
         cmdBuffer->CopyBuffer(stagingBuffer->GetHandle(), GetHandle(), copyRegion);
-        vk::MemoryBarrier2 deviceRAW;
+        vk::MemoryBarrier2 deviceRAW = {};
         deviceRAW.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
         deviceRAW.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
         deviceRAW.dstStageMask = vk::PipelineStageFlagBits2::eAllCommands;
         deviceRAW.dstAccessMask = vk::AccessFlagBits2::eShaderRead | vk::AccessFlagBits2::eMemoryRead;
-        vk::DependencyInfo dependency;
+        vk::DependencyInfo dependency = {};
         dependency.setMemoryBarriers(deviceRAW);
         cmdBuffer->SetPipelineBarrier2(dependency);
         cmdBuffer->End();
