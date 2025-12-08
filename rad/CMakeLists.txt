@@ -34,6 +34,7 @@ list(APPEND RAD_HEADERS
     IO/Image.h
     IO/Json.h
     IO/Logging.h
+    ML/MLDataType.h
     ML/MLDevice.h
     ML/MLContext.h
     ML/MLTensor.h
@@ -70,6 +71,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     IO/Image.cpp
     IO/Json.cpp
     IO/Logging.cpp
+    ML/MLDataType.cpp
     ML/MLDevice.cpp
     ML/MLContext.cpp
     ML/MLTensor.cpp

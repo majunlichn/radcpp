@@ -6,11 +6,22 @@
 namespace rad
 {
 
+enum class MLDeviceType
+{
+    CPU,
+    GPU,
+    NPU,
+};
+
 class MLDevice : public RefCounted<MLDevice>
 {
 public:
     MLDevice() = default;
     virtual ~MLDevice() = default;
+
+    MLDeviceType GetType() const { return m_type; }
+
+    MLDeviceType m_type;
 
 }; // class MLDevice
 

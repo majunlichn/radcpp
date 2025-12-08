@@ -14,6 +14,7 @@ public:
     ~MLCpuTensor();
 
     Ref<MLCpuDevice> m_device;
+    std::vector<uint8_t> m_buffer;
 
 }; // class MLCpuTensor
 
