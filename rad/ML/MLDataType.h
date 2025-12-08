@@ -8,6 +8,7 @@ namespace rad
 
 enum class MLDataType
 {
+    Unknown,
     Float16,
     Float32,
     Float64,

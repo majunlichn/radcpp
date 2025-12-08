@@ -4,12 +4,12 @@
 namespace rad
 {
 
-MLTensorCoord MLTensor::MakeStrides(const MLTensorCoord& sizes, ArrayRef<size_t> order)
+MLTensorCoord MLTensor::MakeStrides(ArrayRef<size_t> sizes, ArrayRef<size_t> memoryOrder)
 {
-    assert(order.empty() || (order.size() == sizes.size()));
+    assert(memoryOrder.empty() || (memoryOrder.size() == sizes.size()));
 
     std::vector<size_t> strides(sizes.size(), 0);
-    if (order.empty())
+    if (memoryOrder.empty())
     {
         strides.back() = 1;
         std::partial_sum(
@@ -20,25 +20,21 @@ MLTensorCoord MLTensor::MakeStrides(const MLTensorCoord& sizes, ArrayRef<size_t>
         size_t stride = 1;
         for (size_t i = 0; i < sizes.size(); ++i)
         {
-            strides[order[i]] = stride;
-            stride *= sizes[order[i]];
+            strides[memoryOrder[i]] = stride;
+            stride *= sizes[memoryOrder[i]];
         }
     }
     return strides;
 }
 
-size_t MLTensor::CalculateBufferSize()
+size_t MLTensor::GetElementCount() const
 {
-    assert(m_sizes.size() > 0);
-    assert(m_strides.empty() || (m_sizes.size() == m_strides.size()));
-
-    size_t lastIndex = 0;
-    for (size_t i = 0; i < m_sizes.size(); ++i)
+    size_t count = m_sizes[0];
+    for (size_t i = 1; i < m_sizes.size(); ++i)
     {
-        lastIndex += (m_sizes[i] - 1) * m_strides[i];
+        count *= m_sizes[i];
     }
-
-    return (lastIndex + 1) * GetElementSize(m_dataType);
+    return count;
 }
 
 } // namespace rad

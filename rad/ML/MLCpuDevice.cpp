@@ -6,6 +6,9 @@ namespace rad
 
 MLCpuDevice::MLCpuDevice()
 {
+#if defined(CPU_FEATURES_ARCH_X86)
+    m_name = StrTrim(g_X86Info.brand_string);
+#endif
 }
 
 MLCpuDevice::~MLCpuDevice()

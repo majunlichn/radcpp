@@ -16,12 +16,12 @@ public:
     MLTensor() = default;
     virtual ~MLTensor() = default;
 
-    static MLTensorCoord MakeStrides(const MLTensorCoord& sizes, ArrayRef<size_t> memoryOrder = {});
-    size_t CalculateBufferSize();
+    static MLTensorCoord MakeStrides(ArrayRef<size_t> sizes, ArrayRef<size_t> memoryOrder = {});
+    size_t GetElementCount() const;
 
+    MLDataType m_dataType = MLDataType::Unknown;
     MLTensorCoord m_sizes;
     MLTensorCoord m_strides;
-    MLDataType m_dataType;
 
 }; // class MLTensor
 
