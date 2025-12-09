@@ -29,6 +29,10 @@ std::vector<size_t> MLTensor::MakeStrides(ArrayRef<size_t> sizes, ArrayRef<size_
 
 size_t MLTensor::GetElementCount() const
 {
+    if (m_sizes.empty())
+    {
+        return 0;
+    }
     size_t count = m_sizes[0];
     for (size_t i = 1; i < m_sizes.size(); ++i)
     {
