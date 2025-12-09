@@ -1,3 +1,4 @@
+#include <rad/Container/ArrayRef.h>
 #include <rad/Container/SmallVector.h>
 #include <rad/Container/Span.h>
 #include <rad/Common/Algorithm.h>

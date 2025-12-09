@@ -13,6 +13,7 @@
 #include <rad/Common/RefCounted.h>
 #include <rad/Common/String.h>
 #include <rad/Common/TypeTraits.h>
+#include <rad/Container/ArrayRef.h>
 #include <rad/Container/SmallVector.h>
 #include <rad/Container/Span.h>
 #include <rad/IO/File.h>
