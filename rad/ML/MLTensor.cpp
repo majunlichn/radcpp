@@ -4,7 +4,7 @@
 namespace rad
 {
 
-MLTensorCoord MLTensor::MakeStrides(ArrayRef<size_t> sizes, ArrayRef<size_t> memoryOrder)
+std::vector<size_t> MLTensor::MakeStrides(ArrayRef<size_t> sizes, ArrayRef<size_t> memoryOrder)
 {
     assert(memoryOrder.empty() || (memoryOrder.size() == sizes.size()));
 
@@ -35,6 +35,29 @@ size_t MLTensor::GetElementCount() const
         count *= m_sizes[i];
     }
     return count;
+}
+
+std::vector<size_t> MLTensor::GetMemoryOrder() const
+{
+    std::vector<size_t> order(m_strides.size());
+    std::iota(order.begin(), order.end(), size_t(0));
+    std::ranges::stable_sort(order,
+        [&](size_t i, size_t j) {
+            if (m_strides[i] < m_strides[j])
+            {
+                return true;
+            }
+            else if (m_strides[i] > m_strides[j])
+            {
+                return false;
+            }
+            else
+            {
+                return i > j;
+            }
+        }
+    );
+    return order;
 }
 
 } // namespace rad
