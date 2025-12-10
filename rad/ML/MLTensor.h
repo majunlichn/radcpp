@@ -11,11 +11,15 @@
 namespace rad
 {
 
+class MLDevice;
+
 class MLTensor : public RefCounted<MLTensor>
 {
 public:
     MLTensor() = default;
     virtual ~MLTensor() = default;
+
+    virtual MLDevice* GetDevice() = 0;
 
     static std::vector<size_t> MakeStrides(ArrayRef<size_t> sizes, ArrayRef<size_t> memoryOrder = {});
 

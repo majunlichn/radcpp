@@ -13,6 +13,11 @@ MLCpuTensor::~MLCpuTensor()
 {
 }
 
+MLDevice* MLCpuTensor::GetDevice()
+{
+    return m_device.get();
+}
+
 bool MLCpuTensor::Init(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides)
 {
     m_dataType = dataType;

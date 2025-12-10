@@ -28,9 +28,19 @@ public:
         return m_tensor->CoordToBufferIndex(coord);
     }
 
+    size_t CoordToBufferIndex()
+    {
+        return m_tensor->CoordToBufferIndex(m_coord);
+    }
+
     size_t CoordToBufferOffset(ArrayRef<size_t> coord)
     {
         return m_tensor->CoordToBufferOffset(coord);
+    }
+
+    size_t CoordToBufferOffset()
+    {
+        return m_tensor->CoordToBufferOffset(m_coord);
     }
 
     void Reset()

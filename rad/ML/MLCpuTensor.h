@@ -13,6 +13,8 @@ public:
     MLCpuTensor(Ref<MLCpuDevice> device);
     ~MLCpuTensor();
 
+    virtual MLDevice* GetDevice() override;
+
     bool Init(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides = {});
 
     Ref<MLCpuDevice> m_device;
