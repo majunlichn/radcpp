@@ -6,7 +6,7 @@ namespace rad
 {
 
 MLCpuTensor::MLCpuTensor(Ref<MLCpuDevice> device) :
-    m_device(std::move(device))
+    MLTensor(std::move(device))
 {
 }
 

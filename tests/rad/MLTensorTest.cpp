@@ -9,20 +9,17 @@
 #include <gtest/gtest.h>
 
 template <typename T>
-void TestMLTensorAdd(rad::MLDataType dataType)
+void TestMLTensorOpAdd(rad::MLDataType dataType)
 {
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using Alpha = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
-    rad::Ref<rad::MLCpuDevice> device = RAD_NEW rad::MLCpuDevice();
-    rad::Ref<rad::MLContext> context = device->CreateContext();
-    rad::Ref<rad::MLTensor> a = device->CreateTensor(dataType, { 2, 4, 8, 8 }, {});
-    rad::Ref<rad::MLTensor> b = device->CreateTensor(dataType, { 2, 4, 8, 8 }, {});
-    rad::Ref<rad::MLTensor> c = device->CreateTensor(dataType, { 2, 4, 8, 8 }, {});
+    rad::Ref<rad::MLTensor> a = MLCreateTensor({ 2, 4, 8, 8 }, dataType);
+    rad::Ref<rad::MLTensor> b = MLCreateTensor({ 2, 4, 8, 8 }, dataType);
 
-    context->FillConstant(a.get(), Alpha(1));
-    context->FillConstant(b.get(), Alpha(2));
-    context->Add(a.get(), b.get(), Alpha(1), c.get());
+    a->FillConstant(Alpha(1));
+    b->FillConstant(Alpha(2));
+    auto c = a->Add(b.get());
 
     const T* results = static_cast<const T*>(c->GetData());
     for (size_t i = 0; i < c->GetElementCount(); ++i)
@@ -32,23 +29,23 @@ void TestMLTensorAdd(rad::MLDataType dataType)
 
     if constexpr (std::is_same_v<T, rad::BFloat16>)
     {
-        RAD_LOG(info, "TensorAdd (BFloat16):\n{}", c->ToString());
+        RAD_LOG(info, "MLTensorContext.Add(2x4x8x8.BFloat16):\n{}", c->ToString());
     }
 }
 
-TEST(ML, MLTensorAdd)
+TEST(ML, MLTensorOpAdd)
 {
-    TestMLTensorAdd<rad::Float32>(rad::MLDataType::Float32);
-    TestMLTensorAdd<rad::Float16>(rad::MLDataType::Float16);
-    TestMLTensorAdd<rad::BFloat16>(rad::MLDataType::BFloat16);
-    TestMLTensorAdd<rad::Float8E4M3>(rad::MLDataType::Float8E4M3);
-    TestMLTensorAdd<rad::Float8E5M2>(rad::MLDataType::Float8E5M2);
-    TestMLTensorAdd<rad::Sint8>(rad::MLDataType::Sint8);
-    TestMLTensorAdd<rad::Sint16>(rad::MLDataType::Sint16);
-    TestMLTensorAdd<rad::Sint32>(rad::MLDataType::Sint32);
-    TestMLTensorAdd<rad::Sint64>(rad::MLDataType::Sint64);
-    TestMLTensorAdd<rad::Uint8>(rad::MLDataType::Uint8);
-    TestMLTensorAdd<rad::Uint16>(rad::MLDataType::Uint16);
-    TestMLTensorAdd<rad::Uint32>(rad::MLDataType::Uint32);
-    TestMLTensorAdd<rad::Uint64>(rad::MLDataType::Uint64);
+    TestMLTensorOpAdd<rad::Float32>(rad::MLDataType::Float32);
+    TestMLTensorOpAdd<rad::Float16>(rad::MLDataType::Float16);
+    TestMLTensorOpAdd<rad::BFloat16>(rad::MLDataType::BFloat16);
+    TestMLTensorOpAdd<rad::Float8E4M3>(rad::MLDataType::Float8E4M3);
+    TestMLTensorOpAdd<rad::Float8E5M2>(rad::MLDataType::Float8E5M2);
+    TestMLTensorOpAdd<rad::Sint8>(rad::MLDataType::Sint8);
+    TestMLTensorOpAdd<rad::Sint16>(rad::MLDataType::Sint16);
+    TestMLTensorOpAdd<rad::Sint32>(rad::MLDataType::Sint32);
+    TestMLTensorOpAdd<rad::Sint64>(rad::MLDataType::Sint64);
+    TestMLTensorOpAdd<rad::Uint8>(rad::MLDataType::Uint8);
+    TestMLTensorOpAdd<rad::Uint16>(rad::MLDataType::Uint16);
+    TestMLTensorOpAdd<rad::Uint32>(rad::MLDataType::Uint32);
+    TestMLTensorOpAdd<rad::Uint64>(rad::MLDataType::Uint64);
 }

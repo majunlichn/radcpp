@@ -9,6 +9,7 @@ namespace rad
 class MLContext;
 class MLTensor;
 
+// Backend: CPU
 class MLCpuDevice : public MLDevice
 {
 public:

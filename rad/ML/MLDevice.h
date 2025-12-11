@@ -27,23 +27,28 @@ class MLTensor;
 class MLDevice : public RefCounted<MLDevice>
 {
 public:
-    MLDevice() = default;
+    MLDevice(std::string_view backend) : m_backend(backend) {}
     virtual ~MLDevice() = default;
 
     MLDeviceType GetType() const { return m_type; }
 
     virtual Ref<MLContext> CreateContext() = 0;
     virtual Ref<MLTensor> CreateTensor(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides) = 0;
+    // Create a tensor that has the same data type, sizes and strides.
+    Ref<MLTensor> CreateTensorLike(MLTensor* input);
 
     MLDeviceType m_type = MLDeviceType::Unknown;
+    std::string m_backend;
     std::string m_name;
     std::string m_driverVersion;
 
 }; // class MLDevice
 
-MLDevice* RegisterGlobalMLDevice(std::string_view name, Ref<MLDevice> device);
-MLDevice* GetGlobalMLDevice(std::string_view name);
-MLContext* RegisterPerThreadMLContext(std::string_view name, Ref<MLContext> context);
-MLContext* GetPerThreadMLContext(std::string_view name);
+MLDevice* MLRegisterGlobalDevice(std::string_view backend, Ref<MLDevice> device);
+MLDevice* MLGetGlobalDevice(std::string_view backend);
+MLContext* MLRegisterPerThreadContext(std::string_view backend, Ref<MLContext> context);
+MLContext* MLGetPerThreadContext(std::string_view backend);
+
+Ref<MLTensor> MLCreateTensor(ArrayRef<size_t> sizes, MLDataType dataType, std::string_view backend = "CPU", ArrayRef<size_t> strides = {});
 
 } // namespace rad

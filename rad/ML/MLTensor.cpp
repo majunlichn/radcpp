@@ -1,4 +1,6 @@
 #include <rad/ML/MLTensor.h>
+#include <rad/ML/MLDevice.h>
+#include <rad/ML/MLContext.h>
 #include <rad/ML/MLTensorIterator.h>
 #include <rad/Common/Algorithm.h>
 
@@ -104,6 +106,74 @@ std::string MLTensor::ToString()
         } while (iter.Next2D());
     }
     return ss.str();
+}
+
+MLTensor* MLTensor::FillConstant(float value)
+{
+    MLContext* context = MLGetPerThreadContext(m_device->m_backend);
+    context->FillConstant(this, value);
+    return this;
+}
+
+MLTensor* MLTensor::FillConstant(int value)
+{
+    MLContext* context = MLGetPerThreadContext(m_device->m_backend);
+    context->FillConstant(this, value);
+    return this;
+}
+
+Ref<MLTensor> MLTensor::Add(MLTensor* other)
+{
+    if (IsFloatingPointType(m_dataType))
+    {
+        return Add(other, 1.0f);
+    }
+    else
+    {
+        return Add(other, 1);
+    }
+}
+
+Ref<MLTensor> MLTensor::Add(MLTensor* other, float alpha)
+{
+    MLContext* context = MLGetPerThreadContext(m_device->m_backend);
+    Ref<MLTensor> output = m_device->CreateTensorLike(this);
+    context->Add(this, other, alpha, output.get());
+    return output;
+}
+
+Ref<MLTensor> MLTensor::Add(MLTensor* other, int alpha)
+{
+    MLContext* context = MLGetPerThreadContext(m_device->m_backend);
+    Ref<MLTensor> output = m_device->CreateTensorLike(this);
+    context->Add(this, other, alpha, output.get());
+    return output;
+}
+
+MLTensor* MLTensor::AddInPlace(MLTensor* other)
+{
+    if (IsFloatingPointType(m_dataType))
+    {
+        return AddInPlace(other, 1.0f);
+    }
+    else
+    {
+        return AddInPlace(other, 1);
+    }
+}
+
+MLTensor* MLTensor::AddInPlace(MLTensor* other, float alpha)
+{
+    MLContext* context = MLGetPerThreadContext(m_device->m_backend);
+    context->Add(this, other, alpha, nullptr);
+    return this;
+}
+
+MLTensor* MLTensor::AddInPlace(MLTensor* other, int alpha)
+{
+    MLContext* context = MLGetPerThreadContext(m_device->m_backend);
+    context->Add(this, other, alpha, nullptr);
+    return this;
 }
 
 } // namespace rad

@@ -17,7 +17,7 @@ class MLDevice;
 class MLTensor : public RefCounted<MLTensor>
 {
 public:
-    MLTensor() = default;
+    MLTensor(Ref<MLDevice> device) : m_device(std::move(device)) {}
     virtual ~MLTensor() = default;
 
     virtual MLDevice* GetDevice() = 0;
@@ -96,6 +96,17 @@ public:
     virtual void* GetData() = 0;
     std::string ToString();
 
+    MLTensor* FillConstant(float value);
+    MLTensor* FillConstant(int value);
+
+    Ref<MLTensor> Add(MLTensor* other);
+    Ref<MLTensor> Add(MLTensor* other, float alpha);
+    Ref<MLTensor> Add(MLTensor* other, int alpha);
+    MLTensor* AddInPlace(MLTensor* other);
+    MLTensor* AddInPlace(MLTensor* other, float alpha);
+    MLTensor* AddInPlace(MLTensor* other, int alpha);
+
+    Ref<MLDevice> m_device;
     MLDataType m_dataType = MLDataType::Unknown;
     std::vector<size_t> m_sizes;
     std::vector<size_t> m_strides;
