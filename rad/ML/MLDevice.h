@@ -41,4 +41,9 @@ public:
 
 }; // class MLDevice
 
+MLDevice* RegisterGlobalMLDevice(std::string_view name, Ref<MLDevice> device);
+MLDevice* GetGlobalMLDevice(std::string_view name);
+MLContext* RegisterPerThreadMLContext(std::string_view name, Ref<MLContext> context);
+MLContext* GetPerThreadMLContext(std::string_view name);
+
 } // namespace rad
