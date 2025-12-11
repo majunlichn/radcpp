@@ -1,7 +1,9 @@
 #pragma once
 
 #include <rad/Common/Platform.h>
+#include <rad/Common/Float.h>
 #include <rad/Common/Integer.h>
+#include <rad/Common/String.h>
 
 namespace rad
 {
@@ -30,5 +32,8 @@ bool IsFloatingPointType(MLDataType type);
 bool IsSignedIntegerType(MLDataType type);
 bool IsUnsignedIntegerType(MLDataType type);
 bool IsIntegerType(MLDataType type);
+
+std::string FormatValueFixedWidthDec(const void* data, MLDataType dataType);
+std::string FormatValueFixedWidthHex(const void* data, MLDataType dataType);
 
 } // namespace rad

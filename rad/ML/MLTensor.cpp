@@ -1,4 +1,5 @@
 #include <rad/ML/MLTensor.h>
+#include <rad/ML/MLTensorIterator.h>
 #include <rad/Common/Algorithm.h>
 
 namespace rad
@@ -62,6 +63,47 @@ std::vector<size_t> MLTensor::GetMemoryOrder() const
         }
     );
     return order;
+}
+
+std::string MLTensor::ToString()
+{
+    if (m_sizes.empty())
+    {
+        return {};
+    }
+    std::stringstream ss;
+    const uint8_t* data = static_cast<const uint8_t*>(GetData());
+    MLTensorIterator iter(this);
+    size_t dimCount = m_sizes.size();
+    if (dimCount == 1)
+    {
+        for (size_t w = 0; w < m_sizes[0]; ++w)
+        {
+            iter.m_coord[0] = w;
+            ss << FormatValueFixedWidthDec(data + iter.CoordToBufferOffset(), m_dataType);
+        }
+        ss << std::endl;
+    }
+    else
+    {
+        do {
+            iter.Reset2D();
+            size_t sizeH = m_sizes[dimCount - 2];
+            size_t sizeW = m_sizes[dimCount - 1];
+            ss << std::format("Indices = [{}]\n", rad::ToString(iter.m_coord, ", "));
+            for (size_t h = 0; h < sizeH; ++h)
+            {
+                iter.m_coord[dimCount - 2] = h;
+                for (size_t w = 0; w < sizeW; ++w)
+                {
+                    iter.m_coord[dimCount - 1] = w;
+                    ss << FormatValueFixedWidthDec(data + iter.CoordToBufferOffset(), m_dataType);
+                }
+                ss << std::endl;
+            }
+        } while (iter.Next2D());
+    }
+    return ss.str();
 }
 
 } // namespace rad

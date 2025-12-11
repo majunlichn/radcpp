@@ -2,6 +2,7 @@
 
 #include <rad/Common/Platform.h>
 #include <rad/Common/Integer.h>
+#include <rad/Common/TypeTraits.h>
 #include <cfenv>
 #include <cfloat>
 #include <cmath>
@@ -148,6 +149,15 @@ uint8_t fp8e4m3fn_from_fp32_value(float f);
 float fp8e5m2_to_fp32_value(uint8_t input);
 uint8_t fp8e5m2_from_fp32_value(float f);
 
+using Float16 = half_float::half;
+static_assert(sizeof(Float16) == 2);
+
+using Float32 = float;
+static_assert(sizeof(Float32) == 4);
+
+using Float64 = double;
+static_assert(sizeof(Float64) == 8);
+
 struct BFloat16
 {
     uint16_t m_bits;
@@ -167,8 +177,6 @@ struct BFloat16
     }
 
 }; // struct BFloat16
-
-using Float16 = half_float::half;
 
 struct Float8E4M3
 {
@@ -213,11 +221,17 @@ struct Float8E5M2
 static_assert(sizeof(Float8E4M3) == 1);
 static_assert(sizeof(Float8E5M2) == 1);
 
-using FP64 = Float64;
-using FP32 = Float32;
 using FP16 = Float16;
+using FP32 = Float32;
+using FP64 = Float64;
 using BF16 = BFloat16;
 using FP8E4M3 = Float8E4M3;
 using FP8E5M2 = Float8E5M2;
+
+template <class T>
+constexpr bool is_non_native_floating_point_v = is_any_of<T, Float16, BFloat16, Float8E4M3, Float8E5M2>;
+
+template <class T>
+constexpr bool is_floating_point_v = std::is_floating_point_v<T> || is_any_of<T, Float16, BFloat16, Float8E4M3, Float8E5M2>;
 
 } // namespace rad

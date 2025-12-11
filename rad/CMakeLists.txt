@@ -38,11 +38,12 @@ list(APPEND RAD_HEADERS
     ML/MLDevice.h
     ML/MLContext.h
     ML/MLTensor.h
+    ML/MLTensorIterator.h
     ML/MLCpuDevice.h
     ML/MLCpuContext.h
     ML/MLCpuTensor.h
-    ML/MLTensorIterator.h
-    ML/MLCpuOp.h
+    ML/MLCpuTensorIterator.h
+    ML/MLCpuTensorOp.h
     System/Application.h
     System/CpuInfo.h
     System/OS.h
@@ -79,7 +80,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     ML/MLCpuDevice.cpp
     ML/MLCpuContext.cpp
     ML/MLCpuTensor.cpp
-    ML/MLCpuOp.cpp
+    ML/MLCpuTensorOp.cpp
     System/Application.cpp
     System/CpuInfo.cpp
     System/OS.cpp

@@ -4,6 +4,7 @@
 #include <rad/Common/Algorithm.h>
 #include <rad/Common/Memory.h>
 #include <rad/Common/RefCounted.h>
+#include <rad/Common/String.h>
 #include <rad/Container/ArrayRef.h>
 #include <rad/Container/SmallVector.h>
 #include <rad/Container/Span.h>
@@ -91,6 +92,9 @@ public:
         }
         return false;
     }
+
+    virtual void* GetData() = 0;
+    std::string ToString();
 
     MLDataType m_dataType = MLDataType::Unknown;
     std::vector<size_t> m_sizes;

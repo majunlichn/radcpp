@@ -7,19 +7,25 @@
 namespace rad
 {
 
-template <typename...>
-struct Sizeof;
+template <class T, class... Types>
+constexpr bool is_any_of = (std::is_same_v<T, Types> || ...);
+
+template <typename T, typename... Types>
+constexpr bool are_all_same = (std::is_same_v<T, Types> && ...);
+
+template <typename... Types>
+struct SizeofAll;
 
 template <>
-struct Sizeof<>
+struct SizeofAll<>
 {
-    static constexpr uint32_t value = 0;
+    static constexpr size_t value = 0;
 };
 
 template <typename T, typename... Rest>
-struct Sizeof<T, Rest...>
+struct SizeofAll<T, Rest...>
 {
-    static constexpr uint32_t value = sizeof(T) + Sizeof<Rest...>::value;
+    static constexpr size_t value = sizeof(T) + SizeofAll<Rest...>::value;
 };
 
 template <typename...>

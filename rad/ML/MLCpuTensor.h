@@ -17,6 +17,8 @@ public:
 
     bool Init(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides = {});
 
+    virtual void* GetData() override { return m_buffer.data(); }
+
     Ref<MLCpuDevice> m_device;
     std::vector<uint8_t> m_buffer;
     bool m_isContiguous = false;
