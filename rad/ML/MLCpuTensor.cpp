@@ -47,4 +47,14 @@ bool MLCpuTensor::Init(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<siz
     return true;
 }
 
+void MLCpuTensor::Read(void* data, size_t offset, size_t sizeInBytes)
+{
+    std::memcpy(data, m_buffer.data() + offset, sizeInBytes);
+}
+
+void MLCpuTensor::Write(const void* data, size_t offset, size_t sizeInBytes)
+{
+    std::memcpy(m_buffer.data() + offset, data, sizeInBytes);
+}
+
 } // namespace rad

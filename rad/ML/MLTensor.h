@@ -93,7 +93,12 @@ public:
         return false;
     }
 
+    // CPU backend only, nullptr if not available.
     virtual void* GetData() = 0;
+
+    virtual void Read(void* data, size_t offset, size_t dataSize) = 0;
+    virtual void Write(const void* data, size_t offset, size_t dataSize) = 0;
+
     std::string ToString();
 
     MLTensor* FillConstant(float value);

@@ -18,6 +18,8 @@ public:
     bool Init(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides = {});
 
     virtual void* GetData() override { return m_buffer.data(); }
+    virtual void Read(void* data, size_t offset, size_t sizeInBytes) override;
+    virtual void Write(const void* data, size_t offset, size_t sizeInBytes) override;
 
     Ref<MLCpuDevice> m_device;
     std::vector<uint8_t> m_buffer;
