@@ -77,7 +77,7 @@ bool IsIntegerType(MLDataType type)
     return IsSignedIntegerType(type) || IsUnsignedIntegerType(type);
 }
 
-std::string FormatValueFixedWidthDec(const void* data, MLDataType dataType)
+std::string ToStringFixedWidthDec(const void* data, MLDataType dataType)
 {
     if (dataType == MLDataType::Float16)
     {
@@ -180,7 +180,7 @@ std::string FormatValueFixedWidthDec(const void* data, MLDataType dataType)
     }
 }
 
-std::string FormatValueFixedWidthHex(const void* data, MLDataType dataType)
+std::string ToStringFixedWidthHex(const void* data, MLDataType dataType)
 {
     size_t elementSize = GetElementSize(dataType);
     if (elementSize == 1)

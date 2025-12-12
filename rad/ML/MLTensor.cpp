@@ -67,7 +67,22 @@ std::vector<size_t> MLTensor::GetMemoryOrder() const
     return order;
 }
 
-std::string MLTensor::ToString()
+size_t MLTensor::GetBufferElementCount() const
+{
+    size_t indexOfTheLastElement = 0;
+    for (size_t i = 0; i < m_sizes.size(); ++i)
+    {
+        indexOfTheLastElement += (m_sizes[i] - 1) * m_strides[i];
+    }
+    return (indexOfTheLastElement + 1);
+}
+
+size_t MLTensor::GetBufferSize() const
+{
+    return GetBufferElementCount() * GetElementSize(m_dataType);
+}
+
+std::string MLTensor::ToString(TextFormat format)
 {
     if (m_sizes.empty())
     {
@@ -75,6 +90,13 @@ std::string MLTensor::ToString()
     }
     std::stringstream ss;
     const uint8_t* data = static_cast<const uint8_t*>(GetData());
+    std::vector<uint8_t> stagingBuffer;
+    if (!data)
+    {
+        stagingBuffer.resize(GetBufferSize());
+        Read(stagingBuffer.data(), 0, stagingBuffer.size());
+        data = stagingBuffer.data();
+    }
     MLTensorIterator iter(this);
     size_t dimCount = m_sizes.size();
     if (dimCount == 1)
@@ -82,7 +104,7 @@ std::string MLTensor::ToString()
         for (size_t w = 0; w < m_sizes[0]; ++w)
         {
             iter.m_coord[0] = w;
-            ss << FormatValueFixedWidthDec(data + iter.CoordToBufferOffset(), m_dataType);
+            ss << ToStringFixedWidthDec(data + iter.CoordToBufferOffset(), m_dataType);
         }
         ss << std::endl;
     }
@@ -99,7 +121,14 @@ std::string MLTensor::ToString()
                 for (size_t w = 0; w < sizeW; ++w)
                 {
                     iter.m_coord[dimCount - 1] = w;
-                    ss << FormatValueFixedWidthDec(data + iter.CoordToBufferOffset(), m_dataType);
+                    if (format == TextFormat::Dec)
+                    {
+                        ss << ToStringFixedWidthDec(data + iter.CoordToBufferOffset(), m_dataType) + ", ";
+                    }
+                    else // if (format == TextFormat::Hex)
+                    {
+                        ss << ToStringFixedWidthHex(data + iter.CoordToBufferOffset(), m_dataType) + ", ";
+                    }
                 }
                 ss << std::endl;
             }

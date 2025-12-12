@@ -28,6 +28,9 @@ public:
     size_t GetElementCount() const;
     std::vector<size_t> GetMemoryOrder() const;
 
+    virtual size_t GetBufferElementCount() const;
+    virtual size_t GetBufferSize() const;
+
     size_t CoordToBufferIndex(ArrayRef<size_t> coord)
     {
         assert(coord.size() == m_strides.size());
@@ -99,7 +102,12 @@ public:
     virtual void Read(void* data, size_t offset, size_t dataSize) = 0;
     virtual void Write(const void* data, size_t offset, size_t dataSize) = 0;
 
-    std::string ToString();
+    enum class TextFormat
+    {
+        Dec,
+        Hex,
+    };
+    std::string ToString(TextFormat format = TextFormat::Dec);
 
     MLTensor* FillConstant(float value);
     MLTensor* FillConstant(int value);
