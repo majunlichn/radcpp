@@ -33,14 +33,14 @@ Ref<MLContext> MLCpuDevice::CreateContext()
     return RAD_NEW MLCpuContext(this);
 }
 
-Ref<MLTensor> MLCpuDevice::CreateTensor(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides)
+Ref<MLTensor> MLCpuDevice::CreateTensor(ArrayRef<size_t> sizes, MLDataType dataType, const MLTensorOptions& options)
 {
     if (dataType == MLDataType::Unknown)
     {
         dataType = MLDataType::Float32;
     }
     Ref<MLCpuTensor> tensor = RAD_NEW MLCpuTensor(this);
-    if (tensor->Init(dataType, sizes, strides))
+    if (tensor->Init(dataType, sizes, options.m_strides))
     {
         return tensor;
     }
@@ -52,7 +52,9 @@ Ref<MLTensor> MLCpuDevice::CreateTensor(MLDataType dataType, ArrayRef<size_t> si
 
 Ref<MLTensor> MLDevice::CreateTensorLike(MLTensor* input)
 {
-    return CreateTensor(input->m_dataType, input->m_sizes, input->m_strides);
+    MLTensorOptions options;
+    options.m_strides = input->m_strides;
+    return CreateTensor(input->m_sizes, input->m_dataType, options);
 }
 
 } // namespace rad

@@ -39,6 +39,7 @@ list(APPEND RAD_HEADERS
     ML/MLContext.h
     ML/MLTensor.h
     ML/MLTensorIterator.h
+    ML/MLTensorOptions.h
     ML/MLCpuDevice.h
     ML/MLCpuContext.h
     ML/MLCpuTensor.h

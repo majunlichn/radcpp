@@ -20,7 +20,7 @@ public:
     uint32_t GetLogicalCoreCount() const;
 
     virtual Ref<MLContext> CreateContext() override;
-    virtual Ref<MLTensor> CreateTensor(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides) override;
+    virtual Ref<MLTensor> CreateTensor(ArrayRef<size_t> sizes, MLDataType dataType, const MLTensorOptions& options = {}) override;
 
 }; // class MLCpuDevice
  

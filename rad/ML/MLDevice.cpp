@@ -57,11 +57,11 @@ MLContext* MLGetPerThreadContext(std::string_view backend)
     }
 }
 
-Ref<MLTensor> MLCreateTensor(ArrayRef<size_t> sizes, MLDataType dataType, std::string_view backend, ArrayRef<size_t> strides)
+Ref<MLTensor> MLCreateTensor(ArrayRef<size_t> sizes, MLDataType dataType, std::string_view backend, const MLTensorOptions& options)
 {
     if (auto device = MLGetGlobalDevice(backend))
     {
-        return device->CreateTensor(dataType, sizes, strides);
+        return device->CreateTensor(sizes, dataType, options);
     }
     else
     {
