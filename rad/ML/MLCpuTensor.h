@@ -15,9 +15,10 @@ public:
 
     virtual MLDevice* GetDevice() override;
 
-    bool Init(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides = {});
+    bool Init(ArrayRef<size_t> sizes, MLDataType dataType, const MLTensorOptions& options = {});
 
     virtual void* GetData() override { return m_buffer.data(); }
+    virtual size_t GetDataSize() const override { return m_buffer.size(); }
     virtual void Read(void* data, size_t offset, size_t sizeInBytes) override;
     virtual void Write(const void* data, size_t offset, size_t sizeInBytes) override;
 

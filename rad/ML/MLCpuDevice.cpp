@@ -40,7 +40,7 @@ Ref<MLTensor> MLCpuDevice::CreateTensor(ArrayRef<size_t> sizes, MLDataType dataT
         dataType = MLDataType::Float32;
     }
     Ref<MLCpuTensor> tensor = RAD_NEW MLCpuTensor(this);
-    if (tensor->Init(dataType, sizes, options.m_strides))
+    if (tensor->Init(sizes, dataType, options))
     {
         return tensor;
     }

@@ -67,7 +67,7 @@ std::vector<size_t> MLTensor::GetMemoryOrder() const
     return order;
 }
 
-size_t MLTensor::GetBufferElementCount() const
+size_t MLTensor::GetDataSizeInElement() const
 {
     size_t indexOfTheLastElement = 0;
     for (size_t i = 0; i < m_sizes.size(); ++i)
@@ -77,9 +77,74 @@ size_t MLTensor::GetBufferElementCount() const
     return (indexOfTheLastElement + 1);
 }
 
-size_t MLTensor::GetBufferSize() const
+size_t MLTensor::GetDataSize() const
 {
-    return GetBufferElementCount() * GetElementSize(m_dataType);
+    return GetDataSizeInElement() * GetElementSize(m_dataType);
+}
+
+size_t MLTensor::CoordToBufferIndex(ArrayRef<size_t> coord) const
+{
+    assert(coord.size() == m_strides.size());
+    return std::inner_product(coord.begin(), coord.end(), m_strides.begin(), size_t(0));
+}
+
+size_t MLTensor::CoordToBufferOffset(ArrayRef<size_t> coord) const
+{
+    return CoordToBufferIndex(coord) * GetElementSize(m_dataType);
+}
+
+bool MLTensor::IsNCHW() const
+{
+    if ((m_sizes.size() == 4) &&
+        (m_strides[0] > m_strides[1]) &&
+        (m_strides[1] > m_strides[2]) &&
+        (m_strides[2] > m_strides[3]) &&
+        (m_strides[3] == 1))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool MLTensor::IsNHWC() const
+{
+    if ((m_sizes.size() == 4) &&
+        (m_strides[0] > m_strides[2]) &&
+        (m_strides[2] > m_strides[3]) &&
+        (m_strides[3] > m_strides[1]) &&
+        (m_strides[1] == 1))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool MLTensor::IsNCDHW() const
+{
+    if ((m_sizes.size() == 5) &&
+        (m_strides[0] > m_strides[1]) &&
+        (m_strides[1] > m_strides[2]) &&
+        (m_strides[2] > m_strides[3]) &&
+        (m_strides[3] > m_strides[4]) &&
+        (m_strides[4] == 1))
+    {
+        return true;
+    }
+    return false;
+}
+
+bool MLTensor::IsNDHWC() const
+{
+    if ((m_sizes.size() == 5) &&
+        (m_strides[0] > m_strides[2]) &&
+        (m_strides[2] > m_strides[3]) &&
+        (m_strides[3] > m_strides[4]) &&
+        (m_strides[4] > m_strides[1]) &&
+        (m_strides[1] == 1))
+    {
+        return true;
+    }
+    return false;
 }
 
 std::string MLTensor::ToString(TextFormat format)
@@ -90,12 +155,12 @@ std::string MLTensor::ToString(TextFormat format)
     }
     std::stringstream ss;
     const uint8_t* data = static_cast<const uint8_t*>(GetData());
-    std::vector<uint8_t> stagingBuffer;
+    std::vector<uint8_t> dataBuffer;
     if (!data)
     {
-        stagingBuffer.resize(GetBufferSize());
-        Read(stagingBuffer.data(), 0, stagingBuffer.size());
-        data = stagingBuffer.data();
+        dataBuffer.resize(GetDataSize());
+        Read(dataBuffer.data(), 0, dataBuffer.size());
+        data = dataBuffer.data();
     }
     MLTensorIterator iter(this);
     size_t dimCount = m_sizes.size();

@@ -19,10 +19,11 @@ MLDevice* MLCpuTensor::GetDevice()
     return m_device.get();
 }
 
-bool MLCpuTensor::Init(MLDataType dataType, ArrayRef<size_t> sizes, ArrayRef<size_t> strides)
+bool MLCpuTensor::Init(ArrayRef<size_t> sizes, MLDataType dataType, const MLTensorOptions& options)
 {
     m_dataType = dataType;
     m_sizes = sizes;
+    const auto& strides = options.m_strides;
     if (strides.empty())
     {
         m_strides = MakeStrides(sizes);
