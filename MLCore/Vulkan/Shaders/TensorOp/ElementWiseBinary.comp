@@ -1,0 +1,77 @@
+#version 450 core
+
+#include "DataType.h"
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_shader_explicit_arithmetic_types: require
+
+#if DATA_TYPE_ID == DataTypeBFloat16
+#extension GL_EXT_bfloat16 : require
+#endif
+
+#if DATA_TYPE_ID == DataTypeFloat8E4M3
+#extension GL_EXT_float_e4m3 : require
+#endif
+
+#if DATA_TYPE_ID == DataTypeFloat8E5M2
+#extension GL_EXT_float_e5m2 : require
+#endif
+
+layout(push_constant, std430) uniform PushConstants
+{
+    uint g_inputIndexOffset;
+    uint g_otherIndexOffset;
+    uint g_outputIndexOffset;
+};
+
+layout(set = 0, binding = 0) uniform Uniforms
+{
+    uvec4 g_sizes;
+    uvec4 g_inputStrides;
+    uvec4 g_otherStrides;
+    uvec4 g_outputStrides;
+#if DATA_TYPE_IS_FLOATING_POINT
+    vec4 g_params;
+#endif
+#if DATA_TYPE_IS_INTEGRAL
+    ivec4 g_params;
+#endif
+};
+
+layout(set = 0, binding = 1) readonly buffer InputTensor { DATA_TYPE g_inputTensor[]; };
+layout(set = 0, binding = 2) readonly buffer OtherTensor { DATA_TYPE g_otherTensor[]; };
+layout(set = 0, binding = 3) buffer OutputTensor { DATA_TYPE g_outputTensor[]; };
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+COMPUTE_TYPE Add(COMPUTE_TYPE a, COMPUTE_TYPE b)
+{
+    return a + COMPUTE_TYPE(g_params[0]) * b;
+}
+
+void main()
+{
+    const uint SizeN = g_sizes[0];
+    const uint SizeC = g_sizes[1];
+    const uint SizeH = g_sizes[2];
+    const uint SizeW = g_sizes[3];
+    const uint n = gl_GlobalInvocationID.z;
+    const uint h = gl_GlobalInvocationID.y;
+    const uint w = gl_GlobalInvocationID.x;
+    if ((w >= SizeW) || (h >= SizeH))
+    {
+        return;
+    }
+    for (uint c = 0; c < SizeC; ++c)
+    {
+        uint inputIndex = g_inputIndexOffset + n * g_inputStrides[0] + c * g_inputStrides[1] +
+                            h * g_inputStrides[2] + w * g_inputStrides[3];
+        uint otherIndex = g_otherIndexOffset + n * g_otherStrides[0] + c * g_otherStrides[1] +
+                            h * g_otherStrides[2] + w * g_otherStrides[3];
+        uint outputIndex = g_outputIndexOffset + n * g_outputStrides[0] + c * g_outputStrides[1] +
+                            h * g_outputStrides[2] + w * g_outputStrides[3];
+        COMPUTE_TYPE a = g_inputTensor[inputIndex];
+        COMPUTE_TYPE b = g_otherTensor[otherIndex];
+        g_outputTensor[outputIndex] = DATA_TYPE(OP_NAME(a, b));
+    }
+}

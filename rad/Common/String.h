@@ -56,6 +56,7 @@ std::wstring StrToWide(std::string_view str);
 bool IsDigit(char c);
 bool IsHexDigit(char c);
 bool StrIsDecInteger(std::string_view str);
+bool StrIsUnsignedInteger(std::string_view str);
 bool StrIsHex(std::string_view str);
 bool StrIsBin(std::string_view str);
 // Check whether this string is a valid numeric string (a base 10 real number).

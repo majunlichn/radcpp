@@ -63,8 +63,8 @@ vk::ImageAspectFlags GetDefaultImageAspectFlags(vk::Format format)
 
 spdlog::logger* GetLogger()
 {
-    static std::shared_ptr<spdlog::logger> VulkanLogger = rad::CreateLogger("Vulkan");
-    return VulkanLogger.get();
+    static std::shared_ptr<spdlog::logger> logger = rad::CreateLogger("Vulkan");
+    return logger.get();
 }
 
 void ReportError(vk::Result result, const char* call, std::source_location sourceLoc)

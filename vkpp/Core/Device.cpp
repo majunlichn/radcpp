@@ -18,11 +18,15 @@ namespace vkpp
 {
 
 Device::Device(
-    rad::Ref<Instance> instance, vk::raii::PhysicalDevice physicalDevice,
-    const std::set<std::string>& requiredExtensions) :
+    rad::Ref<Instance> instance, vk::raii::PhysicalDevice physicalDevice, const DeviceConfig& config) :
     m_instance(std::move(instance)),
     m_physicalDevice(physicalDevice)
 {
+    m_config = config;
+
+    const auto& supportedExtensions = m_physicalDevice.enumerateDeviceExtensionProperties();
+    auto& requiredExtensions = m_config.requiredExtensions;
+
     m_properties = m_physicalDevice.getProperties();
     const uint32_t& apiVersion = m_properties.apiVersion;
     if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 1, 0))
@@ -53,17 +57,31 @@ Device::Device(
     if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 1, 0))
     {
         VK_STRUCTURE_CHAIN_BEGIN(m_features2);
-        if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
+        if (m_config.enableVulkan11Features && vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
         {
             VK_STRUCTURE_CHAIN_ADD(m_features2, m_Vulkan11Features);
         }
-        if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
+        if (m_config.enableVulkan12Features && vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
         {
             VK_STRUCTURE_CHAIN_ADD(m_features2, m_Vulkan12Features);
         }
-        if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 3, 0))
+        if (m_config.enableVulkan13Features && vkpp::IsVersionMatchOrGreater(apiVersion, 1, 3, 0))
         {
             VK_STRUCTURE_CHAIN_ADD(m_features2, m_Vulkan13Features);
+        }
+        if (m_config.enableVulkan14Features && vkpp::IsVersionMatchOrGreater(apiVersion, 1, 4, 0))
+        {
+            VK_STRUCTURE_CHAIN_ADD(m_features2, m_Vulkan14Features);
+        }
+        if (m_config.enableBFloat16 && vkpp::HasExtension(supportedExtensions, "VK_KHR_shader_bfloat16"))
+        {
+            VK_STRUCTURE_CHAIN_ADD(m_features2, m_shaderBfloat16Features);
+            requiredExtensions.insert("VK_KHR_shader_bfloat16");
+        }
+        if (m_config.enableFloat8 && vkpp::HasExtension(supportedExtensions, "VK_EXT_shader_float8"))
+        {
+            VK_STRUCTURE_CHAIN_ADD(m_features2, m_shaderFloat8Features);
+            requiredExtensions.insert("VK_EXT_shader_float8");
         }
         VK_STRUCTURE_CHAIN_END(m_features2);
         m_physicalDevice.getDispatcher()->vkGetPhysicalDeviceFeatures2(
@@ -157,14 +175,17 @@ Device::Device(
         }
     }
 
-    const auto& supportedExtensions = m_physicalDevice.enumerateDeviceExtensionProperties();
+    m_enabledExtensions.clear();
     std::vector<const char*> enabledExtensions;
     for (const std::string extension : requiredExtensions)
     {
         if (vkpp::HasExtension(supportedExtensions, extension))
         {
             auto [iter, inserted] = m_enabledExtensions.insert(extension);
-            enabledExtensions.push_back(iter->c_str());
+            if (inserted)
+            {
+                enabledExtensions.push_back(iter->c_str());
+            }
         }
     }
 
@@ -173,8 +194,8 @@ Device::Device(
     createInfo.flags = {};
     createInfo.setQueueCreateInfos(queueCreateInfos);
     createInfo.setPEnabledExtensionNames(enabledExtensions);
-    createInfo.pEnabledFeatures;
-    m_wrapper = m_physicalDevice.createDevice(createInfo);;
+    createInfo.pEnabledFeatures = nullptr;
+    m_wrapper = m_physicalDevice.createDevice(createInfo);
 
     // Vma Initialization
     // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/quick_start.html#quick_start_initialization
@@ -193,6 +214,7 @@ Device::Device(
     }
     VK_CHECK(vmaCreateAllocator(&allocatorCreateInfo, &m_allocator));
 }
+
 
 Device::~Device()
 {

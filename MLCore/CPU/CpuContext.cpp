@@ -1,0 +1,92 @@
+#include <MLCore/CPU/CpuContext.h>
+#include <MLCore/CPU/CpuTensorOp.h>
+
+namespace ML
+{
+
+CpuContext::CpuContext(rad::Ref<CpuDevice> device) :
+    Context(std::move(device))
+{
+}
+
+CpuContext::~CpuContext()
+{
+}
+
+void CpuContext::FillConstant(Tensor* input, float value)
+{
+    assert(IsFloatingPointType(input->m_dataType));
+#define ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(DataType)   \
+    CpuTensorOpForEach<DataType>()(input, [&]() { return DataType(value); })
+    switch (input->m_dataType)
+    {
+    case DataType::Float16:       ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Float16); return;
+    case DataType::Float32:       ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Float32); return;
+    case DataType::Float64:       ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Float64); return;
+    case DataType::BFloat16:      ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::BFloat16); return;
+    case DataType::Float8E4M3:    ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Float8E4M3); return;
+    case DataType::Float8E5M2:    ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Float8E5M2); return;
+    }
+#undef ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::FillConstant(Tensor* input, int value)
+{
+    assert(IsIntegerType(input->m_dataType));
+#define ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(DataType)   \
+    CpuTensorOpForEach<DataType>()(input, [&]() { return DataType(value); })
+    switch (input->m_dataType)
+    {
+    case DataType::Sint8:   ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Sint8); return;
+    case DataType::Sint16:  ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Sint16); return;
+    case DataType::Sint32:  ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Sint32); return;
+    case DataType::Sint64:  ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Sint64); return;
+    case DataType::Uint8:   ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Uint8); return;
+    case DataType::Uint16:  ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Uint16); return;
+    case DataType::Uint32:  ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Uint32); return;
+    case DataType::Uint64:  ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT(rad::Uint64); return;
+    }
+#undef ML_CPUCONTEXT_DISPATCH_FILL_CONSTANT
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::Add(Tensor* input, Tensor* other, float alpha, Tensor* output)
+{
+    assert(IsFloatingPointType(input->m_dataType));
+#define ML_CPUCONTEXT_DISPATCH_ADD(DataType, ComputeType)    \
+    CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return a + ComputeType(alpha) * b; });
+    switch (input->m_dataType)
+    {
+    case DataType::Float16:       ML_CPUCONTEXT_DISPATCH_ADD(rad::Float16, rad::Float32); return;
+    case DataType::Float32:       ML_CPUCONTEXT_DISPATCH_ADD(rad::Float32, rad::Float32); return;
+    case DataType::Float64:       ML_CPUCONTEXT_DISPATCH_ADD(rad::Float64, rad::Float64); return;
+    case DataType::BFloat16:      ML_CPUCONTEXT_DISPATCH_ADD(rad::BFloat16, rad::Float32); return;
+    case DataType::Float8E4M3:    ML_CPUCONTEXT_DISPATCH_ADD(rad::Float8E4M3, rad::Float32); return;
+    case DataType::Float8E5M2:    ML_CPUCONTEXT_DISPATCH_ADD(rad::Float8E5M2, rad::Float32); return;
+    }
+#undef ML_CPUCONTEXT_DISPATCH_ADD
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::Add(Tensor* input, Tensor* other, int alpha, Tensor* output)
+{
+    assert(IsIntegerType(input->m_dataType));
+#define ML_CPUCONTEXT_DISPATCH_ADD(DataType, ComputeType)    \
+    CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return a + ComputeType(alpha) * b; });
+    switch (input->m_dataType)
+    {
+    case DataType::Sint8:         ML_CPUCONTEXT_DISPATCH_ADD(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:        ML_CPUCONTEXT_DISPATCH_ADD(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:        ML_CPUCONTEXT_DISPATCH_ADD(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:        ML_CPUCONTEXT_DISPATCH_ADD(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:         ML_CPUCONTEXT_DISPATCH_ADD(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:        ML_CPUCONTEXT_DISPATCH_ADD(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:        ML_CPUCONTEXT_DISPATCH_ADD(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:        ML_CPUCONTEXT_DISPATCH_ADD(rad::Uint64, rad::Uint64); return;
+    }
+#undef ML_CPUCONTEXT_DISPATCH_ADD
+    RAD_UNREACHABLE();
+}
+
+} // namespace ML

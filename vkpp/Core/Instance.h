@@ -24,17 +24,11 @@ public:
 
     bool Init(std::string_view appName, uint32_t appVersion,
         std::string_view engineName, uint32_t engineVersion,
-        const std::set<std::string>& requiredLayers, const std::set<std::string>& requiredExtensions);
+        const InstanceConfig& config);
     // Init with common instance layers and extensions.
     bool Init(std::string_view appName, uint32_t appVersion,
-        std::string_view engineName, uint32_t engineVersion)
-    {
-        return Init(appName, appVersion, engineName, engineVersion, {}, {});
-    }
-    bool Init(std::string_view appName, uint32_t appVersion)
-    {
-        return Init(appName, appVersion, appName, appVersion);
-    }
+        std::string_view engineName, uint32_t engineVersion);
+    bool Init(std::string_view appName, uint32_t appVersion);
 
     uint32_t GetApiVersion() const { return m_apiVersion; }
 
@@ -52,11 +46,11 @@ public:
     rad::Ref<Device> CreateDevice();
     // Create device with all KHR and EXT extensions available.
     rad::Ref<Device> CreateDevice(vk::raii::PhysicalDevice& physicalDevice);
-    rad::Ref<Device> CreateDevice(
-        vk::raii::PhysicalDevice& physicalDevice, const std::set<std::string>& requiredExtensions);
+    rad::Ref<Device> CreateDevice(vk::raii::PhysicalDevice& physicalDevice, const DeviceConfig& config);
 
     vk::raii::Context m_context = {};
     uint32_t m_apiVersion = 0;
+    InstanceConfig m_config = {};
     std::set<std::string, rad::StringLess> m_enabledLayers;
     std::set<std::string, rad::StringLess> m_enabledExtensions;
     vk::raii::Instance m_wrapper = { nullptr };

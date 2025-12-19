@@ -44,6 +44,24 @@ enum class QueueFamily : uint32_t
     Count
 };
 
+struct InstanceConfig
+{
+    bool enableValidationLayer;
+    std::set<std::string> requiredLayers;
+    std::set<std::string> requiredExtensions;
+}; // struct InstanceConfig
+
+struct DeviceConfig
+{
+    bool enableVulkan11Features;
+    bool enableVulkan12Features;
+    bool enableVulkan13Features;
+    bool enableVulkan14Features;
+    bool enableBFloat16;
+    bool enableFloat8;
+    std::set<std::string> requiredExtensions;
+}; // struct DeviceConfig
+
 struct SubmitWaitInfo
 {
     vk::Semaphore semaphore;

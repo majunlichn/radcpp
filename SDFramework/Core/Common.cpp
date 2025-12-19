@@ -5,8 +5,8 @@ namespace sdf
 
 spdlog::logger* GetLogger()
 {
-    static std::shared_ptr<spdlog::logger> SDLogger = rad::CreateLogger("SDFramework");
-    return SDLogger.get();
+    static std::shared_ptr<spdlog::logger> logger = rad::CreateLogger("SDFramework");
+    return logger.get();
 }
 
 void SetOutOfMemory()

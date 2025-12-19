@@ -10,8 +10,7 @@ namespace vkpp
 class Device : public rad::RefCounted<Device>
 {
 public:
-    Device(rad::Ref<Instance> instance, vk::raii::PhysicalDevice physicalDevice,
-        const std::set<std::string>& requiredExtensions);
+    Device(rad::Ref<Instance> instance, vk::raii::PhysicalDevice physicalDevice, const DeviceConfig& config);
     ~Device();
 
     vk::PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
@@ -118,6 +117,8 @@ public:
 
     rad::Ref<Swapchain> CreateSwapchain(const vk::SwapchainCreateInfoKHR& createInfo);
 
+    DeviceConfig m_config;
+
     vk::PhysicalDeviceProperties m_properties;
     vk::PhysicalDeviceProperties2 m_properties2;
     vk::PhysicalDeviceVulkan11Properties m_vk11Properties;
@@ -132,6 +133,9 @@ public:
     vk::PhysicalDeviceVulkan11Features m_Vulkan11Features;
     vk::PhysicalDeviceVulkan12Features m_Vulkan12Features;
     vk::PhysicalDeviceVulkan13Features m_Vulkan13Features;
+    vk::PhysicalDeviceVulkan14Features m_Vulkan14Features;
+    vk::PhysicalDeviceShaderBfloat16FeaturesKHR m_shaderBfloat16Features;
+    vk::PhysicalDeviceShaderFloat8FeaturesEXT m_shaderFloat8Features;
 
     VmaAllocator m_allocator = nullptr;
 

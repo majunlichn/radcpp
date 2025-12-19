@@ -36,8 +36,10 @@ std::vector<vk::ExtensionProperties> Instance::EnumerateInstanceExtensions(vk::O
 bool Instance::Init(
     std::string_view appName, uint32_t appVersion,
     std::string_view engineName, uint32_t engineVersion,
-    const std::set<std::string>& requiredLayers, const std::set<std::string>& requiredExtensions)
+    const InstanceConfig& config)
 {
+    m_config = config;
+
     vk::ApplicationInfo appInfo(appName.data(), appVersion, engineName.data(), engineVersion, m_apiVersion);
 
     vk::InstanceCreateInfo instanceCreateInfo = {};
@@ -46,6 +48,9 @@ bool Instance::Init(
 
     auto supportedLayers = EnumerateInstanceLayers();
     auto supportedExtensions = EnumerateInstanceExtensions(nullptr);
+
+    const auto& requiredLayers = m_config.requiredLayers;
+    const auto& requiredExtensions = m_config.requiredExtensions;
 
     for (const std::string& requiredLayer : requiredLayers)
     {
@@ -91,11 +96,7 @@ bool Instance::Init(
     }
 #endif
 
-#if defined(_DEBUG)
-    bool enableValidation = true;
-#else
-    bool enableValidation = false;
-#endif
+    bool enableValidation = m_config.enableValidationLayer;
 
     if (const char* envVulkanSDKPath = std::getenv("VULKAN_SDK"))
     {
@@ -201,6 +202,20 @@ bool Instance::Init(
     return !m_physicalDevices.empty();
 }
 
+bool Instance::Init(std::string_view appName, uint32_t appVersion, std::string_view engineName, uint32_t engineVersion)
+{
+    InstanceConfig config = {};
+#if defined(_DEBUG) || defined(DEBUG)
+    config.enableValidationLayer = true;
+#endif
+    return Init(appName, appVersion, engineName, engineVersion, config);
+}
+
+bool Instance::Init(std::string_view appName, uint32_t appVersion)
+{
+    return Init(appName, appVersion, appName, appVersion);
+}
+
 rad::Ref<Device> Instance::CreateDevice()
 {
     if (m_physicalDevices.empty())
@@ -222,8 +237,14 @@ rad::Ref<Device> Instance::CreateDevice()
 
 rad::Ref<Device> Instance::CreateDevice(vk::raii::PhysicalDevice& physicalDevice)
 {
+    DeviceConfig config = {};
+    config.enableVulkan11Features = true;
+    config.enableVulkan12Features = true;
+    config.enableVulkan13Features = true;
+    config.enableVulkan14Features = true;
+
     const auto supportedExtensions = physicalDevice.enumerateDeviceExtensionProperties();
-    std::set<std::string> requiredExtensions;
+    auto& requiredExtensions = config.requiredExtensions;
     for (const auto& extension : supportedExtensions)
     {
         if (std::string_view(extension.extensionName).starts_with("VK_KHR") ||
@@ -267,12 +288,12 @@ rad::Ref<Device> Instance::CreateDevice(vk::raii::PhysicalDevice& physicalDevice
         requiredExtensions.erase("VK_KHR_swapchain_maintenance1");
     }
 
-    return CreateDevice(physicalDevice, requiredExtensions);
+    return CreateDevice(physicalDevice, config);
 }
 
-rad::Ref<Device> Instance::CreateDevice(vk::raii::PhysicalDevice& physicalDevice, const std::set<std::string>& requiredExtensions)
+rad::Ref<Device> Instance::CreateDevice(vk::raii::PhysicalDevice& physicalDevice, const DeviceConfig& config)
 {
-    return RAD_NEW Device(this, physicalDevice, requiredExtensions);
+    return RAD_NEW Device(this, physicalDevice, config);
 }
 
 } // namespace vkpp

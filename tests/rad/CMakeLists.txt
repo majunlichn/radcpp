@@ -11,7 +11,6 @@ list(APPEND rad_tests_SOURCES
     TaskflowTest.cpp
     ExecutionTest.cpp
     GeometryTest.cpp
-    MLTensorTest.cpp
     main.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${rad_tests_SOURCES})

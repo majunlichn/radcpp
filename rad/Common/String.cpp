@@ -212,6 +212,26 @@ bool StrIsDecInteger(std::string_view str)
     return true;
 }
 
+bool StrIsUnsignedInteger(std::string_view str)
+{
+    if (str.empty())
+    {
+        return false;
+    }
+    if (StrIsHex(str))
+    {
+        return true;
+    }
+    for (size_t i = 0; i < str.size(); ++i)
+    {
+        if (!IsDigit(str[i]))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool StrIsHex(std::string_view str)
 {
     if (str.starts_with("0x") || str.starts_with("0X"))

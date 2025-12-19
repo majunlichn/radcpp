@@ -6,7 +6,6 @@ target_include_directories(vkpp_tests
 list(APPEND vkpp_tests_SOURCES
     main.cpp
     SlangTest.cpp
-    TensorTest.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${vkpp_tests_SOURCES})

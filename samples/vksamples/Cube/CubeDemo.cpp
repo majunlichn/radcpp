@@ -102,12 +102,16 @@ bool CubeDemo::Init(int argc, char* argv[])
     ParseCommandLine(argc, argv);
 
     m_instance = RAD_NEW vkpp::Instance();
-    std::set<std::string> instanceLayers = {};
-    std::set<std::string> instanceExtensions = GetRequiredVulkanInstanceExtensions();
+    vkpp::InstanceConfig instanceConfig = {};
+#if defined(_DEBUG) || defined(DEBUG)
+    instanceConfig.enableValidationLayer = true;
+#endif
+    instanceConfig.requiredLayers = {};
+    instanceConfig.requiredExtensions = GetRequiredVulkanInstanceExtensions();
     if (!m_instance->Init(
         APP_NAME, APP_VERSION,
         APP_NAME, APP_VERSION,
-        instanceLayers, instanceExtensions))
+        instanceConfig))
     {
         VKPP_LOG(err, "Failed to init the Vulkan Instance!");
     }

@@ -1,0 +1,65 @@
+#version 450 core
+
+#include "DataType.h"
+
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_shader_explicit_arithmetic_types: require
+
+#if DATA_TYPE_ID == DataTypeBFloat16
+#extension GL_EXT_bfloat16 : require
+#endif
+
+#if DATA_TYPE_ID == DataTypeFloat8E4M3
+#extension GL_EXT_float_e4m3 : require
+#endif
+
+#if DATA_TYPE_ID == DataTypeFloat8E5M2
+#extension GL_EXT_float_e5m2 : require
+#endif
+
+layout(push_constant, std430) uniform PushConstants
+{
+    uint g_inputIndexOffset;
+};
+
+layout(set = 0, binding = 0) uniform Uniforms
+{
+    uvec4 g_sizes;
+    uvec4 g_strides;
+#if DATA_TYPE_IS_FLOATING_POINT
+    vec4 g_params;
+#endif
+#if DATA_TYPE_IS_INTEGRAL
+    ivec4 g_params;
+#endif
+};
+
+layout(set = 0, binding = 1) buffer InputTensor { DATA_TYPE g_inputTensor[]; };
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+DATA_TYPE FillConstant(uint n, uint c, uint h, uint w)
+{
+    return DATA_TYPE(g_params[0]);
+}
+
+void main()
+{
+    const uint SizeN = g_sizes[0];
+    const uint SizeC = g_sizes[1];
+    const uint SizeH = g_sizes[2];
+    const uint SizeW = g_sizes[3];
+    const uint n = gl_GlobalInvocationID.z;
+    const uint h = gl_GlobalInvocationID.y;
+    const uint w = gl_GlobalInvocationID.x;
+    if ((w >= SizeW) || (h >= SizeH))
+    {
+        return;
+    }
+    for (uint c = 0; c < SizeC; ++c)
+    {
+        uint index = g_inputIndexOffset + n * g_strides[0] + c * g_strides[1] +
+                            h * g_strides[2] + w * g_strides[3];
+        g_inputTensor[index] = OP_NAME(n, c, h, w);
+    }
+}
