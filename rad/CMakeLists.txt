@@ -90,6 +90,7 @@ find_package(boost_locale REQUIRED CONFIG)
 find_package(boost_math REQUIRED CONFIG)
 find_package(boost_nowide REQUIRED CONFIG)
 find_package(boost_process REQUIRED CONFIG)
+find_package(boost_asio REQUIRED CONFIG)
 find_package(CpuFeatures CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -103,6 +104,7 @@ target_link_libraries(rad
     PUBLIC Boost::math
     PUBLIC Boost::nowide
     PUBLIC Boost::process
+    PUBLIC Boost::asio
     PUBLIC CpuFeatures::cpu_features
     PUBLIC glm::glm
     PUBLIC spdlog::spdlog

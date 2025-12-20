@@ -1,6 +1,7 @@
 {
   "dependencies": [
     "backward-cpp",
+    "boost-asio",
     "boost-json",
     "boost-locale",
     "boost-math",
@@ -10,7 +11,6 @@
     "glm",
     "gtest",
     "hwloc",
-    "spdlog",
     {
       "name": "libdeflate",
       "features": [
@@ -19,6 +19,13 @@
         "gzip",
         "zlib"
       ]
+    },
+    "spdlog"
+  ],
+  "overrides": [
+    {
+      "name": "boost",
+      "version": "1.89.0"
     }
   ]
 }

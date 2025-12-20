@@ -13,6 +13,6 @@ std::string getlogin();
 
 int getpid();
 
-std::vector<std::string> ExecuteAndReadLines(const std::string& command);
+std::vector<std::string> ExecuteAndReadLines(std::string_view executable, const std::vector<std::string>& args = {});
 
 } // namespace rad

@@ -1,4 +1,6 @@
 #include <rad/System/OS.h>
+#include <rad/IO/File.h>
+#include <rad/IO/Logging.h>
 
 #if defined(RAD_OS_WINDOWS)
 #include <Windows.h>
@@ -10,7 +12,9 @@
 #include <pwd.h>
 #endif
 
+#include <boost/filesystem.hpp>
 #include <boost/process.hpp>
+#include <boost/asio.hpp>
 
 namespace rad
 {
@@ -82,19 +86,55 @@ int getpid()
 #endif
 }
 
-std::vector<std::string> ExecuteAndReadLines(const std::string& command)
+// https://github.com/boostorg/process/blob/develop/example/stdio.cpp
+std::vector<std::string> ExecuteAndReadLines(std::string_view executable, const std::vector<std::string>& args)
 {
-    using namespace boost;
-    process::ipstream stream; // reading pipe-stream
-    process::child child(command, process::std_out > stream);
-
     std::vector<std::string> lines;
-    std::string line;
-    while (child.running() && std::getline(stream, line) && !line.empty())
+    try
     {
-        lines.push_back(line);
+        boost::filesystem::path path(executable);
+        auto env = boost::process::environment::current();
+        if (!boost::filesystem::exists(path))
+        {
+            path = boost::process::environment::find_executable(path, env);
+            RAD_LOG(info, "ExecuteAndReadLines({}): found in environment: {}", executable, path.string());
+        }
+        if (!boost::filesystem::exists(path))
+        {
+            RAD_LOG(err, "ExecuteAndReadLines({}): executable not found!", executable);
+        }
+        boost::asio::io_context io;
+        boost::process::popen proc(io, path, args, boost::process::process_environment(env));
+        std::string buffer;
+        auto bufferAdapter = boost::asio::dynamic_buffer(buffer);
+        boost::system::error_code ec;
+        while (true)
+        {
+            size_t n = boost::asio::read_until(proc, bufferAdapter, '\n', ec);
+            if (n > 0)
+            {
+                lines.push_back(buffer.substr(0, n));
+                buffer.erase(0, n);
+            }
+            if (ec)
+            {
+                if ((ec != boost::asio::error::eof) || (ec != boost::asio::error::broken_pipe))
+                {
+                    RAD_LOG(err, "ExecuteAndReadLines({}): {}", executable, ec.message());
+                }
+                break;
+            }
+        }
     }
-    child.wait();
+    catch (std::exception& e)
+    {
+        RAD_LOG(err, "ExecuteAndReadLines({}) exception: {}", executable, e.what());
+    }
+    catch (...)
+    {
+        RAD_LOG(err, "ExecuteAndReadLines({}): unkown exception!", executable);
+    }
+
     return lines;
 }
 
