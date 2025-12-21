@@ -130,7 +130,7 @@ void Buffer::Read(void* data, vk::DeviceSize offset, vk::DeviceSize dataSize)
 {
     if (IsHostVisible())
     {
-        Read(data, offset, dataSize);
+        ReadHost(data, offset, dataSize);
     }
     else
     {
