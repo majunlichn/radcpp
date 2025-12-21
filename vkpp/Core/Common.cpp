@@ -7,27 +7,27 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 namespace vkpp
 {
 
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-    VkDebugUtilsMessageTypeFlagsEXT type,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData)
+VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugUtilsMessengerCallback(
+    vk::DebugUtilsMessageSeverityFlagBitsEXT        messageSeverity,
+    vk::DebugUtilsMessageTypeFlagsEXT               messageTypes,
+    const vk::DebugUtilsMessengerCallbackDataEXT*   pCallbackData,
+    void*                                           pUserData)
 {
-    switch (severity)
+    switch (messageSeverity)
     {
-    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+    case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose:
         VKPP_LOG(debug, "[{}] {}",
             pCallbackData->pMessageIdName, pCallbackData->pMessage);
         break;
-    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+    case vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo:
         VKPP_LOG(info, "[{}] {}",
             pCallbackData->pMessageIdName, pCallbackData->pMessage);
         break;
-    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+    case vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning:
         VKPP_LOG(warn, "[{}] {}",
             pCallbackData->pMessageIdName, pCallbackData->pMessage);
         break;
-    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+    case vk::DebugUtilsMessageSeverityFlagBitsEXT::eError:
         VKPP_LOG(err, "[{}] {}",
             pCallbackData->pMessageIdName, pCallbackData->pMessage);
 #if defined(_DEBUG)

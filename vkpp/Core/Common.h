@@ -145,11 +145,11 @@ inline bool HasExtension(const std::vector<const char*>& extensions, std::string
     return false;
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-    VkDebugUtilsMessageTypeFlagsEXT type,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-    void* pUserData);
+VKAPI_ATTR vk::Bool32 VKAPI_CALL DebugUtilsMessengerCallback(
+    vk::DebugUtilsMessageSeverityFlagBitsEXT        messageSeverity,
+    vk::DebugUtilsMessageTypeFlagsEXT               messageTypes,
+    const vk::DebugUtilsMessengerCallbackDataEXT*   pCallbackData,
+    void*                                           pUserData);
 
 inline uint32_t GetMaxMipLevel(uint32_t width, uint32_t height)
 {
