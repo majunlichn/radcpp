@@ -3,6 +3,7 @@
 imported/*.zip
 imported/SDL/
 imported/SDL_mixer/
+imported/KTX-Software/
 imported/mysql*
 imported/slang/
 build/

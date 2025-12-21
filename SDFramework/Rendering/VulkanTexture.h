@@ -11,6 +11,8 @@
 #include <vkpp/Core/Descriptor.h>
 #include <vkpp/Core/Pipeline.h>
 
+#include <ktxvulkan.h>
+
 namespace sdf
 {
 

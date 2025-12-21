@@ -60,6 +60,18 @@ def build_SDL_mixer():
                    env=dict(os.environ, SDL3_DIR=sdl3_dir))
     run_shell(f"cmake --build build --target install --config Release")
 
+# https://github.com/KhronosGroup/KTX-Software/blob/main/BUILDING.md
+def build_libktx():
+    if not os.path.exists("KTX-Software"):
+        run_shell("git clone https://github.com/KhronosGroup/KTX-Software.git")
+    chdir("KTX-Software")
+    run_shell("git clean -xdf")
+    run_shell("git fetch --all")
+    run_shell("git checkout 5a07bc6f8eb95b6ea5b636903b335947d4684cef")
+    chdir("lib")
+    run_shell(f"cmake -S . -B build -D CMAKE_INSTALL_PREFIX=build/installed")
+    run_shell(f"cmake --build build --target install --config Release")
+
 def setup_windows(tasks):
     if "mysql" in tasks:
         download_and_extract_zip(url="https://dev.mysql.com/get/Downloads/Connector-C++/mysql-connector-c++-9.1.0-winx64.zip",
@@ -81,6 +93,10 @@ def main() -> int:
         if "SDL_mixer" in tasks:
             chdir(script_root)
             build_SDL_mixer()
+        chdir(script_root)
+        if "libktx" in tasks:
+            chdir(script_root)
+            build_libktx()
         chdir(script_root)
         if platform.system() == "Windows":
             chdir(script_root)
