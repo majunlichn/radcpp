@@ -81,6 +81,12 @@ def setup_windows(tasks):
                                  filename="slang.zip",
                                  extract_path="slang")
 
+def setup_linux(tasks):
+    if "slang" in tasks:
+        download_and_extract_zip(url="https://github.com/shader-slang/slang/releases/download/v2025.24.2/slang-2025.24.2-linux-x86_64-glibc-2.27.zip",
+                                 filename="slang.zip",
+                                 extract_path="slang")
+
 def main() -> int:
     tasks = sys.argv[1:]
     print(f"Tasks: {tasks}")
@@ -101,6 +107,9 @@ def main() -> int:
         if platform.system() == "Windows":
             chdir(script_root)
             setup_windows(tasks)
+        if platform.system() == "Linux":
+            chdir(script_root)
+            setup_linux(tasks)
         chdir(script_root)
 
     except Exception as e:

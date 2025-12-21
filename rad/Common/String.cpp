@@ -1,5 +1,7 @@
 #include <rad/Common/String.h>
 
+#include <cstdarg>
+
 #if defined(RAD_OS_WINDOWS)
 #include <Windows.h>
 #endif

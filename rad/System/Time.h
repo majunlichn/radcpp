@@ -4,6 +4,7 @@
 #include <rad/Common/TypeTraits.h>
 
 #include <cassert>
+#include <cstdint>
 #include <ctime>
 
 #include <chrono>

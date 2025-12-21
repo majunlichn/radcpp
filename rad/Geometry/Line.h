@@ -21,7 +21,7 @@ using Line3D = Line<3, T>;
 template <glm::length_t NumDim, std::floating_point T>
 bool IsDegenerate(const Line<NumDim, T>& line, T epsilon = std::numeric_limits<T>::epsilon() / 2)
 {
-    Vec<NumDim> v = glm::abs(line.p2 - line.p1);
+    Vec<NumDim, T> v = glm::abs(line.p2 - line.p1);
     for (glm::length_t i = 0; i < NumDim; ++i)
     {
         if (v[i] > epsilon)

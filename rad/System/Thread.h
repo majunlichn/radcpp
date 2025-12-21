@@ -1,6 +1,8 @@
 #pragma once
 
 #include <rad/Common/Platform.h>
+
+#include <cstdint>
 #include <string>
 
 namespace rad

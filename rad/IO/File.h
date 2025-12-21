@@ -1,7 +1,10 @@
 #pragma once
 
 #include <rad/Common/Platform.h>
+#include <rad/Common/String.h>
+
 #include <filesystem>
+#include <vector>
 
 namespace rad
 {

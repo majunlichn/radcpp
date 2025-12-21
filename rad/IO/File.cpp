@@ -1,6 +1,7 @@
 #include <rad/IO/File.h>
 #include <cassert>
 #include <cerrno>
+#include <cstdarg>
 #include <ctime>
 
 #ifdef _WIN32

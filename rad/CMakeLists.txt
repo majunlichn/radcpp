@@ -128,6 +128,12 @@ if (WIN32)
     )
 endif()
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(rad
+        PUBLIC ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-linux/lib/libhwloc.a
+    )
+endif()
+
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/rad/Config.h DESTINATION include/rad)
 
 install(

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rad/Common/Platform.h>
+#include <cstdint>
 #include <cstring>
 #include <concepts>
 

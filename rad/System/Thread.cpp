@@ -29,7 +29,7 @@ bool SetThreadName(std::string name)
     HRESULT hr = ::SetThreadDescription(::GetCurrentThread(), nameWide.c_str());
     return SUCCEEDED(hr);
 #elif defined(HAS_PTHREAD_SETNAME_NP)
-    name.resize(std::min<size_t>(name.size(), MAX_THREAD_NAME_LEN);
+    name.resize(std::min<size_t>(name.size(), MAX_THREAD_NAME_LEN));
     int err = pthread_setname_np(pthread_self(), name.c_str());
     return (err == 0);
 #else

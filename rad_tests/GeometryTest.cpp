@@ -11,5 +11,5 @@ TEST(Geometry, Line)
     line.p2 = { 4, 6, 9 };
     rad::Point3D<float> p = { 2, 5, 7 };
     float dist = rad::GetDistance(line, p);
-    EXPECT_TRUE(rad::AlmostEqual(dist, sqrt(65.f / 61.f)));
+    EXPECT_TRUE(rad::AlmostEqual(dist, std::sqrt(65.f / 61.f)));
 }
