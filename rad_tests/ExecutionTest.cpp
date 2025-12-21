@@ -11,52 +11,52 @@
 
 #include <gtest/gtest.h>
 
-using namespace stdexec;
+namespace ex = stdexec;
 
-// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p2300r10.html#example-async-inclusive-scan
+// Example adapted from
+// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2300r5.html#example-async-inclusive-scan
+[[nodiscard]]
 auto async_inclusive_scan(
-    auto& sched,
-    std::span<const double> input,
-    std::span<double> output,
-    double init,
-    std::size_t tile_count)
+    stdexec::scheduler auto sch,                    // 2
+    std::span<const double> input,                  // 1
+    std::span<double> output,                       // 1
+    double init,                                    // 1
+    std::size_t tile_count) -> stdexec::sender auto // 3
 {
-    const std::size_t tile_size = (input.size() + tile_count - 1) / tile_count; // divide and round up
+    using namespace stdexec;
+    std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
 
     std::vector<double> partials(tile_count + 1);
     partials[0] = init;
 
-    return just(std::move(partials))
-        | continues_on(sched)
-        | bulk(tile_count,
-            [=](std::size_t i, std::vector<double>& partials) {
+    return transfer_just(sch, std::move(partials))
+        | bulk(
+            ex::par,
+            tile_count,
+            [=](std::size_t i, std::span<double> partials) {
                 auto start = i * tile_size;
                 auto end = std::min(input.size(), (i + 1) * tile_size);
                 partials[i + 1] = *--std::inclusive_scan(
-                    std::begin(input) + start,
-                    std::begin(input) + end,
-                    std::begin(output) + start);
-            })
-        | then(
-            [](std::vector<double>&& partials) {
-                std::inclusive_scan(
-                    std::begin(partials), std::end(partials),
-                    std::begin(partials));
-                return std::move(partials);
-            })
-        | bulk(tile_count,
-            [=](std::size_t i, std::vector<double>& partials) {
+                    begin(input) + static_cast<long>(start),
+                    begin(input) + static_cast<long>(end),
+                    begin(output) + static_cast<long>(start));
+            }) //
+        | then([](std::vector<double>&& partials) {
+        std::inclusive_scan(begin(partials), end(partials), begin(partials));
+        return std::move(partials);
+            }) //
+        | bulk(
+            ex::par,
+            tile_count,
+            [=](std::size_t i, std::span<const double> partials) {
                 auto start = i * tile_size;
                 auto end = std::min(input.size(), (i + 1) * tile_size);
                 std::for_each(
-                    std::begin(output) + start,
-                    std::begin(output) + end,
+                    begin(output) + static_cast<long>(start),
+                    begin(output) + static_cast<long>(end),
                     [&](double& e) { e = partials[i] + e; });
-            })
-        | then(
-            [=](std::vector<double>&& partials) {
-                return output;
-            });
+            }) //
+        | then([=](std::vector<double>&&) { return output; });
 }
 
 TEST(Execution, async_inclusive_scan)
@@ -76,7 +76,7 @@ TEST(Execution, async_inclusive_scan)
 
     const size_t tile_count = std::thread::hardware_concurrency();
     stopwatch.Start();
-    sync_wait(async_inclusive_scan(sched, input, output, 0.0, tile_count));
+    ex::sync_wait(async_inclusive_scan(sched, input, output, 0.0, tile_count));
     stopwatch.Stop();
     RAD_LOG(info, "async_inclusive_scan: {} ms", stopwatch.GetElapsedMilliseconds());
 

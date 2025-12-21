@@ -68,6 +68,9 @@ message(STATUS "============================================================")
 set(STDEXEC_BUILD_TESTS OFF)
 set(STDEXEC_BUILD_EXAMPLES OFF)
 add_subdirectory(imported/stdexec)
+set_target_properties(stdexec PROPERTIES FOLDER "imported")
+set_target_properties(system_context PROPERTIES FOLDER "imported")
+
 add_subdirectory(rad)
 
 if(BUILD_VKPP)
