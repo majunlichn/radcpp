@@ -2,9 +2,8 @@
 #include <MLCore/Device.h>
 #include <MLCore/Context.h>
 #include <MLCore/Tensor.h>
+#include <MLCore/Logging.h>
 #include <MLCore/Vulkan/VulkanBackend.h>
-
-#include <rad/IO/Logging.h>
 
 #include <gtest/gtest.h>
 
@@ -17,6 +16,8 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
     {
         return;
     }
+
+    ML_LOG(info, "TestTensorOpAdd: {}.{}", backend->m_name, ML::GetDataTypeName(dataType));
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
@@ -43,7 +44,7 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
 
     if constexpr (std::is_same_v<T, rad::BFloat16>)
     {
-        RAD_LOG(info, "{}.TensorOp.Add(2x4x8x8.BFloat16):\n{}", backend->GetName(), c->ToString());
+        RAD_LOG(info, "Output:\n{}", c->ToString());
     }
 }
 

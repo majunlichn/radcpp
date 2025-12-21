@@ -38,6 +38,8 @@ bool IsSignedIntegerType(DataType type);
 bool IsUnsignedIntegerType(DataType type);
 bool IsIntegerType(DataType type);
 
+const char* GetDataTypeName(DataType dataType);
+
 std::string ToStringFixedWidthDec(const void* data, DataType dataType);
 std::string ToStringFixedWidthHex(const void* data, DataType dataType);
 
