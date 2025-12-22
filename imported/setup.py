@@ -67,8 +67,7 @@ def build_libktx():
     chdir("KTX-Software")
     run_shell("git clean -xdf")
     run_shell("git fetch --all")
-    run_shell("git checkout 5a07bc6f8eb95b6ea5b636903b335947d4684cef")
-    chdir("lib")
+    run_shell("git checkout v4.4.2")
     run_shell(f"cmake -S . -B build -D CMAKE_INSTALL_PREFIX=build/installed")
     run_shell(f"cmake --build build --target install --config Release")
 

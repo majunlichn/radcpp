@@ -95,7 +95,7 @@ target_include_directories(vkpp
     PUBLIC ${Compressonator_INSTALL_DIR}/include
 )
 
-find_package(ktx CONFIG REQUIRED PATHS ${RADCPP_ROOT}/imported/KTX-Software/lib/build/installed/lib/cmake/ktx)
+find_package(ktx CONFIG REQUIRED PATHS ${RADCPP_ROOT}/imported/KTX-Software/build/installed/lib/cmake/ktx)
 
 target_link_libraries(SDFramework
     PUBLIC KTX::ktx CMP_Core CMP_Framework Compressonator
