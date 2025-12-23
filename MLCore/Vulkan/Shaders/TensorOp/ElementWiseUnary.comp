@@ -41,6 +41,11 @@ layout(set = 0, binding = 2) buffer OutputTensor { DATA_TYPE g_outputTensor[]; }
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
+COMPUTE_TYPE AddScalar(COMPUTE_TYPE x)
+{
+    return x + COMPUTE_TYPE(g_params[0]);
+}
+
 void main()
 {
     const uint SizeN = g_sizes[0];
@@ -60,7 +65,7 @@ void main()
                             h * g_inputStrides[2] + w * g_inputStrides[3];
         uint outputIndex = g_outputIndexOffset + n * g_outputStrides[0] + c * g_outputStrides[1] +
                             h * g_outputStrides[2] + w * g_outputStrides[3];
-        DATA_TYPE x = g_inputTensor[inputIndex];
-        g_outputTensor[outputIndex] = OP_NAME(x);
+        COMPUTE_TYPE x = g_inputTensor[inputIndex];
+        g_outputTensor[outputIndex] = DATA_TYPE(OP_NAME(x));
     }
 }

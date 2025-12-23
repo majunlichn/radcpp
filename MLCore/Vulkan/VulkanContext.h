@@ -18,6 +18,7 @@ public:
     std::vector<vk::Semaphore> m_submitSignals;
 
     rad::Ref<VulkanTensorOpForEach> m_opFillConstant;
+    rad::Ref<VulkanTensorOpElementWiseUnary> m_opAddScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opAdd;
 
     VulkanContext(rad::Ref<VulkanDevice> device);
@@ -28,6 +29,9 @@ public:
 
     virtual void FillConstant(Tensor* input, float value) override;
     virtual void FillConstant(Tensor* input, int value) override;
+
+    virtual void AddScalar(Tensor* input, float other, Tensor* output = nullptr) override;
+    virtual void AddScalar(Tensor* input, int other, Tensor* output = nullptr) override;
 
     virtual void Add(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) override;
     virtual void Add(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) override;

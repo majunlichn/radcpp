@@ -18,6 +18,10 @@ public:
     virtual void FillConstant(Tensor* input, float value) = 0;
     virtual void FillConstant(Tensor* input, int value) = 0;
 
+    // Add a scalar to the input tensor.
+    virtual void AddScalar(Tensor* input, float other, Tensor* output = nullptr) = 0;
+    virtual void AddScalar(Tensor* input, int other, Tensor* output = nullptr) = 0;
+
     // @param output If nullptr, results are written back to the input (in-place).
     // @param alpha  The multiplier for other.
     virtual void Add(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) = 0;

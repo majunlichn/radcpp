@@ -16,6 +16,9 @@ public:
     virtual void FillConstant(Tensor* input, float value) override;
     virtual void FillConstant(Tensor* input, int value) override;
 
+    virtual void AddScalar(Tensor* input, float other, Tensor* output = nullptr) override;
+    virtual void AddScalar(Tensor* input, int other, Tensor* output = nullptr) override;
+
     virtual void Add(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) override;
     virtual void Add(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) override;
 

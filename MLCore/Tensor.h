@@ -60,9 +60,14 @@ public:
     Tensor* FillConstant(float value);
     Tensor* FillConstant(int value);
 
-    rad::Ref<Tensor> Add(Tensor* other);
-    rad::Ref<Tensor> Add(Tensor* other, float alpha);
-    rad::Ref<Tensor> Add(Tensor* other, int alpha);
+    [[nodiscard]] rad::Ref<Tensor> AddScalar(float other);
+    [[nodiscard]] rad::Ref<Tensor> AddScalar(int other);
+    Tensor* AddScalarInPlace(float other);
+    Tensor* AddScalarInPlace(int other);
+
+    [[nodiscard]] rad::Ref<Tensor> Add(Tensor* other);
+    [[nodiscard]] rad::Ref<Tensor> Add(Tensor* other, float alpha);
+    [[nodiscard]] rad::Ref<Tensor> Add(Tensor* other, int alpha);
     Tensor* AddInPlace(Tensor* other);
     Tensor* AddInPlace(Tensor* other, float alpha);
     Tensor* AddInPlace(Tensor* other, int alpha);

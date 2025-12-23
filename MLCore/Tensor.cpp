@@ -227,6 +227,33 @@ Tensor* Tensor::FillConstant(int value)
     return this;
 }
 
+rad::Ref<Tensor> Tensor::AddScalar(float alpha)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->AddScalar(this, alpha, output.get());
+    return output;
+}
+
+rad::Ref<Tensor> Tensor::AddScalar(int other)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->AddScalar(this, other, output.get());
+    return output;
+}
+
+Tensor* Tensor::AddScalarInPlace(float other)
+{
+    m_context->AddScalar(this, other, nullptr);
+    return this;
+}
+
+Tensor* Tensor::AddScalarInPlace(int other)
+{
+    m_context->AddScalar(this, other, nullptr);
+    return this;
+}
+
+
 rad::Ref<Tensor> Tensor::Add(Tensor* other)
 {
     if (IsFloatingPointType(m_dataType))

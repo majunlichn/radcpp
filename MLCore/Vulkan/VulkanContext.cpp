@@ -9,6 +9,7 @@ VulkanContext::VulkanContext(rad::Ref<VulkanDevice> device) :
     Context(std::move(device))
 {
     m_opFillConstant = RAD_NEW VulkanTensorOpForEach(this, "FillConstant");
+    m_opAddScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "AddScalar");
     m_opAdd = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Add");
 }
 
@@ -40,6 +41,24 @@ void VulkanContext::FillConstant(Tensor* input, int value)
     m_opFillConstant->SetTensor(1, static_cast<VulkanTensor*>(input));
     m_opFillConstant->SetParameters(glm::ivec4(value));
     m_opFillConstant->Execute();
+}
+
+void VulkanContext::AddScalar(Tensor* input, float other, Tensor* output)
+{
+    assert(IsFloatingPointType(input->m_dataType));
+    m_opAddScalar->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opAddScalar->SetTensor(2, static_cast<VulkanTensor*>(output ? output : input));
+    m_opAddScalar->SetParameters(glm::vec4(other));
+    m_opAddScalar->Execute();
+}
+
+void VulkanContext::AddScalar(Tensor* input, int other, Tensor* output)
+{
+    assert(IsIntegerType(input->m_dataType));
+    m_opAddScalar->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opAddScalar->SetTensor(2, static_cast<VulkanTensor*>(output ? output : input));
+    m_opAddScalar->SetParameters(glm::ivec4(other));
+    m_opAddScalar->Execute();
 }
 
 void VulkanContext::Add(Tensor* input, Tensor* other, float alpha, Tensor* output)

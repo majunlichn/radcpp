@@ -29,6 +29,8 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
     b->FillConstant(ComputeType(1));
     auto c = a->Add(b.get(), ComputeType(2));
 
+    c->AddScalarInPlace(ComputeType(1));
+
     const T* results = static_cast<const T*>(c->GetData());
     std::vector<uint8_t> dataBuffer;
     if (results == nullptr)
@@ -39,10 +41,10 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
     }
     for (size_t i = 0; i < c->GetElementCount(); ++i)
     {
-        EXPECT_EQ(results[i], 3);
+        EXPECT_EQ(results[i], 4);
     }
 
-    if constexpr (std::is_same_v<T, rad::BFloat16>)
+    if constexpr (std::is_same_v<T, rad::BFloat16> || std::is_same_v<T, rad::Float8E4M3>)
     {
         RAD_LOG(info, "Output:\n{}", c->ToString());
     }
