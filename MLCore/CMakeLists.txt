@@ -11,6 +11,8 @@ set(MLCORE_SOURCE_FILES
     Context.cpp
     Tensor.h
     Tensor.cpp
+    TensorView.h
+    TensorView.cpp
     TensorIterator.h
     Logging.h
     Logging.cpp

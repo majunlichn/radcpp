@@ -43,18 +43,23 @@ std::vector<size_t> Tensor::MakeStrides(rad::ArrayRef<size_t> sizes, rad::ArrayR
     return strides;
 }
 
-size_t Tensor::GetElementCount() const
+size_t Tensor::GetElementCount(rad::ArrayRef<size_t> sizes)
 {
-    if (m_sizes.empty())
+    if (sizes.empty())
     {
         return 0;
     }
-    size_t count = m_sizes[0];
-    for (size_t i = 1; i < m_sizes.size(); ++i)
+    size_t count = sizes[0];
+    for (size_t i = 1; i < sizes.size(); ++i)
     {
-        count *= m_sizes[i];
+        count *= sizes[i];
     }
     return count;
+}
+
+size_t Tensor::GetElementCount() const
+{
+    return GetElementCount(m_sizes);
 }
 
 std::vector<size_t> Tensor::GetMemoryOrder() const
@@ -80,19 +85,29 @@ std::vector<size_t> Tensor::GetMemoryOrder() const
     return order;
 }
 
-size_t Tensor::GetDataSizeInElement() const
+size_t Tensor::GetDataSizeInElement(rad::ArrayRef<size_t> size, rad::ArrayRef<size_t> strides)
 {
     size_t indexOfTheLastElement = 0;
-    for (size_t i = 0; i < m_sizes.size(); ++i)
+    for (size_t i = 0; i < size.size(); ++i)
     {
-        indexOfTheLastElement += (m_sizes[i] - 1) * m_strides[i];
+        indexOfTheLastElement += (size[i] - 1) * strides[i];
     }
     return (indexOfTheLastElement + 1);
+}
+
+size_t Tensor::GetDataSizeInElement() const
+{
+    return GetDataSizeInElement(m_sizes, m_strides);
 }
 
 size_t Tensor::GetDataSize() const
 {
     return GetDataSizeInElement() * GetElementSize(m_dataType);
+}
+
+bool Tensor::IsContiguous() const
+{
+    return (GetElementCount() == GetDataSizeInElement());
 }
 
 size_t Tensor::CoordToBufferIndex(rad::ArrayRef<size_t> coord) const

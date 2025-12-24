@@ -29,12 +29,16 @@ public:
 
     static std::vector<size_t> MakeStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder = {});
 
-    size_t GetRank() const { return m_sizes.size(); }
+    size_t GetDimensionCount() const { return m_sizes.size(); }
+    static size_t GetElementCount(rad::ArrayRef<size_t> sizes);
     size_t GetElementCount() const;
     std::vector<size_t> GetMemoryOrder() const;
 
+    static size_t GetDataSizeInElement(rad::ArrayRef<size_t> size, rad::ArrayRef<size_t> strides);
     virtual size_t GetDataSizeInElement() const;
     virtual size_t GetDataSize() const;
+
+    bool IsContiguous() const;
 
     size_t CoordToBufferIndex(rad::ArrayRef<size_t> coord) const;
     size_t CoordToBufferOffset(rad::ArrayRef<size_t> coord) const;
