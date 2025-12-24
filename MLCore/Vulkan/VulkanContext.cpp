@@ -11,6 +11,8 @@ VulkanContext::VulkanContext(rad::Ref<VulkanDevice> device) :
     m_opFillConstant = RAD_NEW VulkanTensorOpForEach(this, "FillConstant");
     m_opAddScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "AddScalar");
     m_opAdd = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Add");
+    m_opSubtractScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "SubtractScalar");
+    m_opSubtract = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Subtract");
 }
 
 VulkanContext::~VulkanContext()
@@ -79,6 +81,44 @@ void VulkanContext::Add(Tensor* input, Tensor* other, int alpha, Tensor* output)
     m_opAdd->SetTensor(3, static_cast<VulkanTensor*>(output ? output : input));
     m_opAdd->SetParameters(glm::ivec4(alpha));
     m_opAdd->Execute();
+}
+
+void VulkanContext::SubtractScalar(Tensor* input, float other, Tensor* output)
+{
+    assert(IsFloatingPointType(input->m_dataType));
+    m_opSubtractScalar->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opSubtractScalar->SetTensor(2, static_cast<VulkanTensor*>(output ? output : input));
+    m_opSubtractScalar->SetParameters(glm::vec4(other));
+    m_opSubtractScalar->Execute();
+}
+
+void VulkanContext::SubtractScalar(Tensor* input, int other, Tensor* output)
+{
+    assert(IsIntegerType(input->m_dataType));
+    m_opSubtractScalar->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opSubtractScalar->SetTensor(2, static_cast<VulkanTensor*>(output ? output : input));
+    m_opSubtractScalar->SetParameters(glm::ivec4(other));
+    m_opSubtractScalar->Execute();
+}
+
+void VulkanContext::Subtract(Tensor* input, Tensor* other, float alpha, Tensor* output)
+{
+    assert(IsFloatingPointType(input->m_dataType));
+    m_opSubtract->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opSubtract->SetTensor(2, static_cast<VulkanTensor*>(other));
+    m_opSubtract->SetTensor(3, static_cast<VulkanTensor*>(output ? output : input));
+    m_opSubtract->SetParameters(glm::vec4(alpha));
+    m_opSubtract->Execute();
+}
+
+void VulkanContext::Subtract(Tensor* input, Tensor* other, int alpha, Tensor* output)
+{
+    assert(IsIntegerType(input->m_dataType));
+    m_opSubtract->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opSubtract->SetTensor(2, static_cast<VulkanTensor*>(other));
+    m_opSubtract->SetTensor(3, static_cast<VulkanTensor*>(output ? output : input));
+    m_opSubtract->SetParameters(glm::ivec4(alpha));
+    m_opSubtract->Execute();
 }
 
 } // namespace ML

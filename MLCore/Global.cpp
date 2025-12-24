@@ -15,22 +15,13 @@ static std::map<std::string, rad::Ref<Backend>, rad::StringLess> g_backends;
 thread_local rad::Ref<Device> g_currentDevice;
 thread_local rad::Ref<Context> g_currentContext;
 
-rad::Ref<ContextPool> g_contextPool = RAD_NEW ContextPool();
+rad::Ref<ContextPool> g_contextPool;
 
 bool Initialize()
 {
-    if (g_backends.empty())
+    if (!g_contextPool)
     {
-        // Register the CPU backend as the default option.
-        InitCpuBackend();
-    }
-    if (!g_currentDevice)
-    {
-        g_currentDevice = GetBackend("CPU")->GetDevice(0);
-    }
-    if (!g_currentContext)
-    {
-        g_currentContext = g_contextPool->GetContext(g_currentDevice.get());
+        g_contextPool = RAD_NEW ContextPool();
     }
     return true;
 }

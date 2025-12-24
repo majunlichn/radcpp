@@ -72,6 +72,18 @@ public:
     Tensor* AddInPlace(Tensor* other, float alpha);
     Tensor* AddInPlace(Tensor* other, int alpha);
 
+    [[nodiscard]] rad::Ref<Tensor> SubtractScalar(float other);
+    [[nodiscard]] rad::Ref<Tensor> SubtractScalar(int other);
+    Tensor* SubtractScalarInPlace(float other);
+    Tensor* SubtractScalarInPlace(int other);
+
+    [[nodiscard]] rad::Ref<Tensor> Subtract(Tensor* other);
+    [[nodiscard]] rad::Ref<Tensor> Subtract(Tensor* other, float alpha);
+    [[nodiscard]] rad::Ref<Tensor> Subtract(Tensor* other, int alpha);
+    Tensor* SubtractInPlace(Tensor* other);
+    Tensor* SubtractInPlace(Tensor* other, float alpha);
+    Tensor* SubtractInPlace(Tensor* other, int alpha);
+
 }; // class Tensor
 
 } // namespace ML

@@ -46,6 +46,11 @@ COMPUTE_TYPE AddScalar(COMPUTE_TYPE x)
     return x + COMPUTE_TYPE(g_params[0]);
 }
 
+COMPUTE_TYPE SubtractScalar(COMPUTE_TYPE x)
+{
+    return x - COMPUTE_TYPE(g_params[0]);
+}
+
 void main()
 {
     const uint SizeN = g_sizes[0];

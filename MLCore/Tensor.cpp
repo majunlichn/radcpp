@@ -227,10 +227,10 @@ Tensor* Tensor::FillConstant(int value)
     return this;
 }
 
-rad::Ref<Tensor> Tensor::AddScalar(float alpha)
+rad::Ref<Tensor> Tensor::AddScalar(float other)
 {
     rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
-    m_context->AddScalar(this, alpha, output.get());
+    m_context->AddScalar(this, other, output.get());
     return output;
 }
 
@@ -243,13 +243,13 @@ rad::Ref<Tensor> Tensor::AddScalar(int other)
 
 Tensor* Tensor::AddScalarInPlace(float other)
 {
-    m_context->AddScalar(this, other, nullptr);
+    m_context->AddScalar(this, other);
     return this;
 }
 
 Tensor* Tensor::AddScalarInPlace(int other)
 {
-    m_context->AddScalar(this, other, nullptr);
+    m_context->AddScalar(this, other);
     return this;
 }
 
@@ -294,13 +294,89 @@ Tensor* Tensor::AddInPlace(Tensor* other)
 
 Tensor* Tensor::AddInPlace(Tensor* other, float alpha)
 {
-    m_context->Add(this, other, alpha, nullptr);
+    m_context->Add(this, other, alpha);
     return this;
 }
 
 Tensor* Tensor::AddInPlace(Tensor* other, int alpha)
 {
-    m_context->Add(this, other, alpha, nullptr);
+    m_context->Add(this, other, alpha);
+    return this;
+}
+
+rad::Ref<Tensor> Tensor::SubtractScalar(float other)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->SubtractScalar(this, other, output.get());
+    return output;
+}
+
+rad::Ref<Tensor> Tensor::SubtractScalar(int other)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->SubtractScalar(this, other, output.get());
+    return output;
+}
+
+Tensor* Tensor::SubtractScalarInPlace(float other)
+{
+    m_context->SubtractScalar(this, other);
+    return this;
+}
+
+Tensor* Tensor::SubtractScalarInPlace(int other)
+{
+    m_context->SubtractScalar(this, other);
+    return this;
+}
+
+rad::Ref<Tensor> Tensor::Subtract(Tensor* other)
+{
+    if (IsFloatingPointType(m_dataType))
+    {
+        return Subtract(other, 1.0f);
+    }
+    else
+    {
+        return Subtract(other, 1);
+    }
+}
+
+rad::Ref<Tensor> Tensor::Subtract(Tensor* other, float alpha)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->Subtract(this, other, alpha, output.get());
+    return output;
+}
+
+rad::Ref<Tensor> Tensor::Subtract(Tensor* other, int alpha)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->Subtract(this, other, alpha, output.get());
+    return output;
+}
+
+Tensor* Tensor::SubtractInPlace(Tensor* other)
+{
+    if (IsFloatingPointType(m_dataType))
+    {
+        return SubtractInPlace(other, 1.0f);
+    }
+    else
+    {
+        return SubtractInPlace(other, 1);
+    }
+}
+
+Tensor* Tensor::SubtractInPlace(Tensor* other, float alpha)
+{
+    m_context->Subtract(this, other, alpha);
+    return this;
+}
+
+Tensor* Tensor::SubtractInPlace(Tensor* other, int alpha)
+{
+    m_context->Subtract(this, other, alpha);
     return this;
 }
 

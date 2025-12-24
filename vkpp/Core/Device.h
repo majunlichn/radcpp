@@ -121,6 +121,7 @@ public:
 
     vk::PhysicalDeviceProperties m_properties;
     vk::PhysicalDeviceProperties2 m_properties2;
+    vk::PhysicalDeviceDriverProperties m_driverProperties;
     vk::PhysicalDeviceVulkan11Properties m_vk11Properties;
     vk::PhysicalDeviceVulkan12Properties m_vk12Properties;
     vk::PhysicalDeviceVulkan13Properties m_vk13Properties;

@@ -22,6 +22,12 @@ public:
     virtual void Add(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) override;
     virtual void Add(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) override;
 
+    virtual void SubtractScalar(Tensor* input, float other, Tensor* output = nullptr) override;
+    virtual void SubtractScalar(Tensor* input, int other, Tensor* output = nullptr) override;
+
+    virtual void Subtract(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) override;
+    virtual void Subtract(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) override;
+
 }; // class CpuContext
 
 } // namespace ML

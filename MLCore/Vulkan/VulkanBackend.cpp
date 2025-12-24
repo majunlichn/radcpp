@@ -61,7 +61,7 @@ Device* VulkanBackend::GetDevice(size_t index)
     }
 }
 
-bool InitVulkanBackend(std::string_view name)
+Backend* InitVulkanBackend(std::string_view name)
 {
     rad::Ref<VulkanBackend> vulkanBackend = RAD_NEW VulkanBackend();
     if (vulkanBackend->Init())
@@ -70,10 +70,15 @@ bool InitVulkanBackend(std::string_view name)
         {
             g_contextPool->CreateContextsForBackend(vulkanBackend.get());
             ML_LOG(info, "Vulkan backend initialized.");
-            return true;
+            for (size_t i =0;i < vulkanBackend->GetDeviceCount();++i)
+            {
+                Device* device = vulkanBackend->GetDevice(i);
+                ML_LOG(info, "Vulkan.Device#{}: {} (Driver {})", i, device->m_name, device->m_driverVersion);
+            }
+            return vulkanBackend.get();
         }
     }
-    return false;
+    return nullptr;
 }
 
 } // namespace ML

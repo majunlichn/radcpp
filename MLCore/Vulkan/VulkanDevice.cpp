@@ -9,6 +9,8 @@ namespace ML
 VulkanDevice::VulkanDevice(rad::Ref<vkpp::Device> impl) :
     m_impl(std::move(impl))
 {
+    m_name = m_impl->GetName();
+    m_driverVersion = m_impl->m_driverProperties.driverInfo.data();
 }
 
 VulkanDevice::~VulkanDevice()

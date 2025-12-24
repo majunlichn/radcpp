@@ -49,6 +49,11 @@ COMPUTE_TYPE Add(COMPUTE_TYPE a, COMPUTE_TYPE b)
     return a + COMPUTE_TYPE(g_params[0]) * b;
 }
 
+COMPUTE_TYPE Subtract(COMPUTE_TYPE a, COMPUTE_TYPE b)
+{
+    return a - COMPUTE_TYPE(g_params[0]) * b;
+}
+
 void main()
 {
     const uint SizeN = g_sizes[0];

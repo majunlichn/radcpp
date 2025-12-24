@@ -195,25 +195,24 @@ void VulkanTensorOpForEach::Execute()
 
     VulkanTensor* input = GetInputTensor();
 
-    size_t dimCount = input->m_sizes.size();
     DataType dataType = input->m_dataType;
 
     std::vector<size_t> dispatchSizes = ExpandTensorSizeND(input->m_sizes, DispatchDimCount);
     std::vector<size_t> dispatchStrides = ExpandTensorStrideND(input->m_strides, DispatchDimCount);
 
     glm::uvec3 m_threadGroupCount;
-    m_threadGroupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[dimCount - 1]), 16u);  // W
-    m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[dimCount - 2]), 16u);  // H
-    m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[dimCount - DispatchDimCount]);
+    m_threadGroupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]), 16u);  // W
+    m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]), 16u);  // H
+    m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
 
-    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[dimCount - 4]);
-    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[dimCount - 3]);
-    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[dimCount - 2]);
-    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[dimCount - 1]);
-    m_uniformData.strides[0] = static_cast<uint32_t>(dispatchStrides[dimCount - 4]);
-    m_uniformData.strides[1] = static_cast<uint32_t>(dispatchStrides[dimCount - 3]);
-    m_uniformData.strides[2] = static_cast<uint32_t>(dispatchStrides[dimCount - 2]);
-    m_uniformData.strides[3] = static_cast<uint32_t>(dispatchStrides[dimCount - 1]);
+    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
+    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
+    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
+    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
+    m_uniformData.strides[0] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 4]);
+    m_uniformData.strides[1] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 3]);
+    m_uniformData.strides[2] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 2]);
+    m_uniformData.strides[3] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 1]);
     SetUniforms(m_uniformData);
 
     rad::Ref<vkpp::CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
@@ -323,7 +322,6 @@ void VulkanTensorOpElementWiseUnary::Execute()
     assert(output->m_sizes == input->m_sizes);
     assert(output->m_dataType == input->m_dataType);
 
-    size_t dimCount = input->m_sizes.size();
     DataType dataType = input->m_dataType;
 
     std::vector<size_t> dispatchSizes = ExpandTensorSizeND(input->m_sizes, DispatchDimCount);
@@ -331,22 +329,22 @@ void VulkanTensorOpElementWiseUnary::Execute()
     std::vector<size_t> dispatchOutputStrides = ExpandTensorStrideND(output->m_strides, DispatchDimCount);
 
     glm::uvec3 m_threadGroupCount;
-    m_threadGroupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[dimCount - 1]), 16u);  // W
-    m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[dimCount - 2]), 16u);  // H
-    m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[dimCount - DispatchDimCount]);
+    m_threadGroupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]), 16u);  // W
+    m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]), 16u);  // H
+    m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - DispatchDimCount]);
 
-    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[dimCount - 4]);
-    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[dimCount - 3]);
-    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[dimCount - 2]);
-    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[dimCount - 1]);
-    m_uniformData.inputStrides[0] = static_cast<uint32_t>(dispatchInputStrides[dimCount - 4]);
-    m_uniformData.inputStrides[1] = static_cast<uint32_t>(dispatchInputStrides[dimCount - 3]);
-    m_uniformData.inputStrides[2] = static_cast<uint32_t>(dispatchInputStrides[dimCount - 2]);
-    m_uniformData.inputStrides[3] = static_cast<uint32_t>(dispatchInputStrides[dimCount - 1]);
-    m_uniformData.outputStrides[0] = static_cast<uint32_t>(dispatchOutputStrides[dimCount - 4]);
-    m_uniformData.outputStrides[1] = static_cast<uint32_t>(dispatchOutputStrides[dimCount - 3]);
-    m_uniformData.outputStrides[2] = static_cast<uint32_t>(dispatchOutputStrides[dimCount - 2]);
-    m_uniformData.outputStrides[3] = static_cast<uint32_t>(dispatchOutputStrides[dimCount - 1]);
+    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
+    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
+    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
+    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
+    m_uniformData.inputStrides[0] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 4]);
+    m_uniformData.inputStrides[1] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 3]);
+    m_uniformData.inputStrides[2] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 2]);
+    m_uniformData.inputStrides[3] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 1]);
+    m_uniformData.outputStrides[0] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 4]);
+    m_uniformData.outputStrides[1] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 3]);
+    m_uniformData.outputStrides[2] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 2]);
+    m_uniformData.outputStrides[3] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 1]);
     SetUniforms(m_uniformData);
 
     rad::Ref<vkpp::CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
@@ -459,7 +457,6 @@ void VulkanTensorOpElementWiseBinary::Execute()
     assert(output->m_sizes == input->m_sizes);
     assert(output->m_dataType == input->m_dataType);
 
-    size_t dimCount = input->m_sizes.size();
     DataType dataType = input->m_dataType;
 
     std::vector<size_t> dispatchSizes = ExpandTensorSizeND(input->m_sizes, DispatchDimCount);
@@ -468,26 +465,26 @@ void VulkanTensorOpElementWiseBinary::Execute()
     std::vector<size_t> dispatchOutputStrides = ExpandTensorStrideND(output->m_strides, DispatchDimCount);
 
     glm::uvec3 m_threadGroupCount;
-    m_threadGroupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[dimCount - 1]), 16u);  // W
-    m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[dimCount - 2]), 16u);  // H
-    m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[dimCount - DispatchDimCount]);
+    m_threadGroupCount.x = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]), 16u);  // W
+    m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]), 16u);  // H
+    m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - DispatchDimCount]);
 
-    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[dimCount - 4]);
-    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[dimCount - 3]);
-    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[dimCount - 2]);
-    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[dimCount - 1]);
-    m_uniformData.inputStrides[0] = static_cast<uint32_t>(dispatchInputStrides[dimCount - 4]);
-    m_uniformData.inputStrides[1] = static_cast<uint32_t>(dispatchInputStrides[dimCount - 3]);
-    m_uniformData.inputStrides[2] = static_cast<uint32_t>(dispatchInputStrides[dimCount - 2]);
-    m_uniformData.inputStrides[3] = static_cast<uint32_t>(dispatchInputStrides[dimCount - 1]);
-    m_uniformData.otherStrides[0] = static_cast<uint32_t>(dispatchOtherStrides[dimCount - 4]);
-    m_uniformData.otherStrides[1] = static_cast<uint32_t>(dispatchOtherStrides[dimCount - 3]);
-    m_uniformData.otherStrides[2] = static_cast<uint32_t>(dispatchOtherStrides[dimCount - 2]);
-    m_uniformData.otherStrides[3] = static_cast<uint32_t>(dispatchOtherStrides[dimCount - 1]);
-    m_uniformData.outputStrides[0] = static_cast<uint32_t>(dispatchOutputStrides[dimCount - 4]);
-    m_uniformData.outputStrides[1] = static_cast<uint32_t>(dispatchOutputStrides[dimCount - 3]);
-    m_uniformData.outputStrides[2] = static_cast<uint32_t>(dispatchOutputStrides[dimCount - 2]);
-    m_uniformData.outputStrides[3] = static_cast<uint32_t>(dispatchOutputStrides[dimCount - 1]);
+    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
+    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
+    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
+    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
+    m_uniformData.inputStrides[0] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 4]);
+    m_uniformData.inputStrides[1] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 3]);
+    m_uniformData.inputStrides[2] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 2]);
+    m_uniformData.inputStrides[3] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 1]);
+    m_uniformData.otherStrides[0] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 4]);
+    m_uniformData.otherStrides[1] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 3]);
+    m_uniformData.otherStrides[2] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 2]);
+    m_uniformData.otherStrides[3] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 1]);
+    m_uniformData.outputStrides[0] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 4]);
+    m_uniformData.outputStrides[1] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 3]);
+    m_uniformData.outputStrides[2] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 2]);
+    m_uniformData.outputStrides[3] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 1]);
     SetUniforms(m_uniformData);
 
     rad::Ref<vkpp::CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();

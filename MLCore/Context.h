@@ -18,14 +18,27 @@ public:
     virtual void FillConstant(Tensor* input, float value) = 0;
     virtual void FillConstant(Tensor* input, int value) = 0;
 
-    // Add a scalar to the input tensor.
+    // Add a scalar.
+    // @param output If nullptr, results are written back to the input.
     virtual void AddScalar(Tensor* input, float other, Tensor* output = nullptr) = 0;
     virtual void AddScalar(Tensor* input, int other, Tensor* output = nullptr) = 0;
 
-    // @param output If nullptr, results are written back to the input (in-place).
+    // Add a tensor.
+    // @param output If nullptr, results are written back to the input.
     // @param alpha  The multiplier for other.
     virtual void Add(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) = 0;
     virtual void Add(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) = 0;
+
+    // Subtract a scalar.
+    // @param output If nullptr, results are written back to the input.
+    virtual void SubtractScalar(Tensor* input, float other, Tensor* output = nullptr) = 0;
+    virtual void SubtractScalar(Tensor* input, int other, Tensor* output = nullptr) = 0;
+
+    // Subtract a tensor.
+    // @param output If nullptr, results are written back to the input.
+    // @param alpha  The multiplier for other.
+    virtual void Subtract(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) = 0;
+    virtual void Subtract(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) = 0;
 
 }; // class Context
 

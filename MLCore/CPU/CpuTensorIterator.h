@@ -142,7 +142,7 @@ public:
     }
 
     // @param granularityND: the number of dimensions processed by each thread (must <dimCount).
-    void ForEachParallel(const ElementOp& op, size_t granularityND)
+    void ForEachParallelND(const ElementOp& op, size_t granularityND)
     {
         if (granularityND >= m_tensor->m_sizes.size())
         {
@@ -177,24 +177,12 @@ public:
             ForEach(op);
             return;
         }
-        const auto& sizes = m_tensor->m_sizes;
-        size_t threadCount = 1;
-        size_t coreCount = rad::GetNumberOfPhysicalCores();
-        size_t granularityND = sizes.size();
-        for (size_t i = 0; i < sizes.size() - 1; ++i)
-        {
-            threadCount *= sizes[i];
-            if (threadCount >= coreCount)
-            {
-                granularityND = sizes.size() - i - 1;
-                break;
-            }
-        }
-        ForEachParallel(op, granularityND);
+        // TODO: better parallel partitioning
+        ForEachParallelND(op, 2);
     }
 
     // @param granularityND: the number of dimensions processed by each thread (must <dimCount).
-    void ForEachParallelPermuted(const ElementOp& op, size_t granularityND)
+    void ForEachParallelPermutedND(const ElementOp& op, size_t granularityND)
     {
         size_t dimCount = m_tensor->m_sizes.size();
         assert(m_order.size() == dimCount);
@@ -231,20 +219,8 @@ public:
             ForEachPermuted(op);
             return;
         }
-        const auto& sizes = m_tensor->m_sizes;
-        size_t threadCount = 1;
-        size_t coreCount = rad::GetNumberOfPhysicalCores();
-        size_t granularityND = sizes.size();
-        for (size_t i = sizes.size() - 1; i > 0; --i)
-        {
-            threadCount *= sizes[m_order[i]];
-            if (threadCount >= coreCount)
-            {
-                granularityND = i;
-                break;
-            }
-        }
-        ForEachParallelPermuted(op, granularityND);
+        // TODO: better parallel partitioning
+        ForEachParallelPermutedND(op, 2);
     }
 
 }; // class CpuTensorIterator

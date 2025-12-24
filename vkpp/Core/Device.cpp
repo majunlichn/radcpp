@@ -34,10 +34,8 @@ Device::Device(
         VK_STRUCTURE_CHAIN_BEGIN(m_properties2);
         if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
         {
+            VK_STRUCTURE_CHAIN_ADD(m_properties2, m_driverProperties);
             VK_STRUCTURE_CHAIN_ADD(m_properties2, m_vk11Properties);
-        }
-        if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 2, 0))
-        {
             VK_STRUCTURE_CHAIN_ADD(m_properties2, m_vk12Properties);
         }
         if (vkpp::IsVersionMatchOrGreater(apiVersion, 1, 3, 0))
