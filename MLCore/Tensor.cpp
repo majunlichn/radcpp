@@ -57,9 +57,30 @@ size_t Tensor::GetElementCount(rad::ArrayRef<size_t> sizes)
     return count;
 }
 
+size_t Tensor::GetElementCountND(rad::ArrayRef<size_t> sizes, size_t ndim)
+{
+    if (sizes.empty())
+    {
+        return 0;
+    }
+    size_t dimIndex = (sizes.size() > ndim) ? (sizes.size() - ndim) : 0;
+    size_t count = sizes[dimIndex];
+    ++dimIndex;
+    for (; dimIndex < sizes.size(); ++dimIndex)
+    {
+        count *= sizes[dimIndex];
+    }
+    return count;
+}
+
 size_t Tensor::GetElementCount() const
 {
     return GetElementCount(m_sizes);
+}
+
+size_t Tensor::GetElementCountND(size_t ndim) const
+{
+    return GetElementCountND(m_sizes, ndim);
 }
 
 std::vector<size_t> Tensor::GetMemoryOrder() const

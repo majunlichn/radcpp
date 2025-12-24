@@ -105,6 +105,11 @@ size_t TensorView::GetElementCount() const
     return Tensor::GetElementCount(m_sizes);
 }
 
+size_t TensorView::GetElementCountND(size_t ndim) const
+{
+    return Tensor::GetElementCountND(m_sizes, ndim);
+}
+
 size_t TensorView::GetDataSizeInElement() const
 {
     return Tensor::GetDataSizeInElement(m_sizes, m_strides);

@@ -23,6 +23,7 @@ public:
     bool IsValid() const;
 
     size_t GetElementCount() const;
+    size_t GetElementCountND(size_t ndim) const;
     size_t GetDataSizeInElement() const;
 
     bool IsContiguous() const;
