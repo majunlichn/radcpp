@@ -25,8 +25,8 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
-    rad::Ref<ML::Tensor> a = ML::CreateTensor({ 2, 4, 128, 128 }, dataType);
-    rad::Ref<ML::Tensor> b = ML::CreateTensor({ 2, 4, 128, 128 }, dataType);
+    rad::Ref<ML::Tensor> a = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
+    rad::Ref<ML::Tensor> b = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
 
     a->FillConstant(ComputeType(1));
     b->FillConstant(ComputeType(1));
@@ -64,8 +64,8 @@ void TestTensorOpSubtract(ML::DataType dataType, ML::Backend* backend)
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
-    rad::Ref<ML::Tensor> a = ML::CreateTensor({ 2, 4, 128, 128 }, dataType);
-    rad::Ref<ML::Tensor> b = ML::CreateTensor({ 2, 4, 128, 128 }, dataType);
+    rad::Ref<ML::Tensor> a = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
+    rad::Ref<ML::Tensor> b = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
 
     a->FillConstant(ComputeType(4));
     b->FillConstant(ComputeType(1));

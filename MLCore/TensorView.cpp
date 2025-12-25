@@ -9,40 +9,41 @@ TensorView::TensorView(rad::Ref<Tensor> tensor,
     rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides) :
     m_tensor(std::move(tensor))
 {
-    if (!offsets.empty())
-    {
-        assert(offsets.size() == m_tensor->m_sizes.size());
-        m_offsets = offsets;
-    }
-    else
+    if (offsets.empty())
     {
         m_offsets.resize(m_tensor->m_sizes.size(), 0);
     }
-
-    if (!sizes.empty())
+    else
     {
-        assert(sizes.size() == m_tensor->m_sizes.size());
-        m_sizes = sizes;
+        assert(offsets.size() == m_tensor->GetDimCount());
+        m_offsets = offsets;
+    }
+
+    if (sizes.empty())
+    {
+        m_sizes.resize(m_tensor->GetDimCount());
+        for (size_t i = 0; i < m_tensor->GetDimCount(); ++i)
+        {
+            m_sizes[i] = m_tensor->m_sizes[i] - m_offsets[i];
+        }
     }
     else
     {
-        m_sizes = m_tensor->m_sizes;
+        assert(sizes.size() == m_tensor->GetDimCount());
+        m_sizes = sizes;
     }
 
-    if (!strides.empty())
+    if (strides.empty())
+    {
+        m_strides = m_tensor->m_strides;
+    }
+    else
     {
         assert(strides.size() == m_tensor->m_sizes.size());
         m_strides = strides;
     }
-    else
-    {
-        m_strides = m_tensor->m_strides;
-    }
 
-    for (size_t i = 0; i < m_sizes.size(); ++i)
-    {
-        assert((m_offsets[i] + m_sizes[i]) <= m_tensor->m_sizes[i]);
-    }
+    assert(IsValid());
 }
 
 TensorView::~TensorView()
@@ -51,41 +52,20 @@ TensorView::~TensorView()
 
 void TensorView::SetOffsets(rad::ArrayRef<size_t> offsets)
 {
-    if (!offsets.empty())
-    {
-        assert(offsets.size() == m_tensor->m_sizes.size());
-        m_offsets = offsets;
-    }
-    else
-    {
-        m_offsets.resize(m_tensor->m_sizes.size(), 0);
-    }
+    assert(offsets.size() == m_tensor->m_sizes.size());
+    m_offsets = offsets;
 }
 
 void TensorView::SetSizes(rad::ArrayRef<size_t> sizes)
 {
-    if (!sizes.empty())
-    {
-        assert(sizes.size() == m_tensor->m_sizes.size());
-        m_sizes = sizes;
-    }
-    else
-    {
-        m_sizes = m_tensor->m_sizes;
-    }
+    assert(sizes.size() == m_tensor->m_sizes.size());
+    m_sizes = sizes;
 }
 
 void TensorView::SetStrides(rad::ArrayRef<size_t> strides)
 {
-    if (!strides.empty())
-    {
-        assert(strides.size() == m_tensor->m_sizes.size());
-        m_strides = strides;
-    }
-    else
-    {
-        m_strides = m_tensor->m_strides;
-    }
+    assert(strides.size() == m_tensor->m_sizes.size());
+    m_strides = strides;
 }
 
 bool TensorView::IsValid() const

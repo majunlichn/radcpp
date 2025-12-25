@@ -1,6 +1,8 @@
 #pragma once
 
-#include <MLCore/Common.h>
+#include <MLCore/Device.h>
+#include <MLCore/Context.h>
+#include <MLCore/Global.h>
 
 namespace ML
 {

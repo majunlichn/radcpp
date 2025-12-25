@@ -11,16 +11,56 @@ class TensorIterator
 {
 public:
     Tensor* m_tensor;
+    std::vector<size_t> m_offsets;
+    std::vector<size_t> m_sizes;
     std::vector<size_t> m_order;
     std::vector<size_t> m_coord;
 
-    TensorIterator(Tensor* tensor) :
+    TensorIterator(Tensor* tensor, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {}) :
         m_tensor(tensor)
     {
+        if (offsets.empty())
+        {
+            m_offsets.resize(m_tensor->GetDimCount(), 0);
+        }
+        else
+        {
+            assert(offsets.size() == m_tensor->GetDimCount());
+            m_offsets = offsets;
+        }
+
+        if (sizes.empty())
+        {
+            m_sizes.resize(m_tensor->GetDimCount());
+            for (size_t i = 0; i < m_tensor->GetDimCount(); ++i)
+            {
+                m_sizes[i] = m_tensor->m_sizes[i] - m_offsets[i];
+            }
+        }
+        else
+        {
+            assert(sizes.size() == m_tensor->GetDimCount());
+            m_sizes = sizes;
+        }
+
+        assert(IsValid());
+
         Reset();
     }
 
     ~TensorIterator() = default;
+
+    bool IsValid() const
+    {
+        for (size_t i = 0; i < m_tensor->GetDimCount(); ++i)
+        {
+            if (m_offsets[i] + m_sizes[i] > m_sizes[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 
     size_t CoordToBufferIndex(rad::ArrayRef<size_t> coord)
     {
@@ -45,12 +85,12 @@ public:
     void Reset()
     {
         m_coord.clear();
-        m_coord.resize(m_tensor->m_sizes.size(), 0);
+        m_coord.resize(m_sizes.size(), 0);
     }
 
     void ResetND(size_t n)
     {
-        size_t dimCount = m_tensor->m_sizes.size();
+        size_t dimCount = m_sizes.size();
         assert(dimCount >= n);
         std::fill_n(m_coord.end() - n, n, 0);
     }
@@ -60,23 +100,12 @@ public:
     void Reset3D() { ResetND(3); }
     void Reset4D() { ResetND(4); }
 
-    void ResetNDPermuted(size_t n)
-    {
-        size_t dimCount = m_tensor->m_sizes.size();
-        assert(dimCount >= n);
-        for (size_t i = 0; i < n; ++i)
-        {
-            size_t dimIndex = m_order[i];
-            m_coord[dimIndex] = 0;
-        }
-    }
-
     bool NextND(size_t n)
     {
-        size_t dimCount = m_tensor->m_sizes.size();
+        size_t dimCount = m_tensor->GetDimCount();
         for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - n - 1); dimIndex >= 0; --dimIndex)
         {
-            if (m_coord[dimIndex] < m_tensor->m_sizes[dimIndex] - 1)
+            if (m_coord[dimIndex] < m_sizes[dimIndex] - 1)
             {
                 ++m_coord[dimIndex];
                 return true;
@@ -91,10 +120,10 @@ public:
 
     bool NextNDSubrangeND(size_t n, size_t subrangeND)
     {
-        size_t dimCount = m_tensor->m_sizes.size();
+        size_t dimCount = m_sizes.size();
         for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - n - 1); dimIndex >= ptrdiff_t(dimCount - subrangeND); --dimIndex)
         {
-            if (m_coord[dimIndex] < m_tensor->m_sizes[dimIndex] - 1)
+            if (m_coord[dimIndex] < m_sizes[dimIndex] - 1)
             {
                 ++m_coord[dimIndex];
                 return true;
@@ -111,49 +140,6 @@ public:
     bool Next2D() { return NextND(2); }
     bool Next3D() { return NextND(3); }
     bool Next4D() { return NextND(4); }
-
-    bool NextNDPermuted(size_t n)
-    {
-        size_t dimCount = m_tensor->m_sizes.size();
-        assert(dimCount > n);
-        for (size_t i = n; i < dimCount; ++i)
-        {
-            size_t dimIndex = m_order[i];
-            if (m_coord[dimIndex] < m_tensor->m_sizes[dimIndex] - 1)
-            {
-                ++m_coord[dimIndex];
-                return true;
-            }
-            else
-            {
-                m_coord[dimIndex] = 0;
-            }
-        }
-        return false;
-    }
-
-    bool Next1DPermuted() { return NextNDPermuted(1); }
-    bool Next2DPermuted() { return NextNDPermuted(2); }
-    bool Next3DPermuted() { return NextNDPermuted(3); }
-    bool Next4DPermuted() { return NextNDPermuted(4); }
-
-    bool NextNDPermutedSubrangeND(size_t n, size_t subrangeND)
-    {
-        for (size_t i = n; i < subrangeND; ++i)
-        {
-            size_t dimIndex = m_order[i];
-            if (m_coord[dimIndex] < m_tensor->m_sizes[dimIndex] - 1)
-            {
-                ++m_coord[dimIndex];
-                return true;
-            }
-            else
-            {
-                m_coord[dimIndex] = 0;
-            }
-        }
-        return false;
-    }
 
 }; // class TensorIterator
 

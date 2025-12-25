@@ -29,7 +29,7 @@ public:
 
     static std::vector<size_t> MakeStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder = {});
 
-    size_t GetDimensionCount() const { return m_sizes.size(); }
+    size_t GetDimCount() const { return m_sizes.size(); }
     static size_t GetElementCount(rad::ArrayRef<size_t> sizes);
     static size_t GetElementCountND(rad::ArrayRef<size_t> sizes, size_t ndim);
     size_t GetElementCount() const;

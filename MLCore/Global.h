@@ -1,7 +1,6 @@
 #pragma once
 
 #include <MLCore/Common.h>
-#include <MLCore/Global.h>
 #include <map>
 
 namespace ML

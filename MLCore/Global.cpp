@@ -1,11 +1,6 @@
 #include <MLCore/Global.h>
-#include <MLCore/Device.h>
-#include <MLCore/Context.h>
+#include <MLCore/Backend.h>
 #include <MLCore/Logging.h>
-
-#include <MLCore/CPU/CpuBackend.h>
-#include<map>
-
 
 namespace ML
 {

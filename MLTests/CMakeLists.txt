@@ -5,7 +5,8 @@ target_include_directories(MLTests
 )
 
 list(APPEND MLTests_SOURCES
-    TensorOpElementWise.cpp
+    TensorOpElementWiseTest.cpp
+    TensorIteratorTest.cpp
     main.cpp
 )
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${MLTests_SOURCES})
