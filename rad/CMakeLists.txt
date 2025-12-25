@@ -11,6 +11,7 @@ list(APPEND RAD_HEADERS
     Common/Algorithm.h
     Common/Flags.h
     Common/Float.h
+    Common/Ignore.h
     Common/Integer.h
     Common/Literals.h
     Common/Math.h
