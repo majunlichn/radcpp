@@ -131,6 +131,11 @@ bool Tensor::IsContiguous() const
     return (GetElementCount() == GetDataSizeInElement());
 }
 
+bool Tensor::HasSameLayout(const Tensor* other) const
+{
+    return HaveSameLayout(this, other);
+}
+
 size_t Tensor::CoordToBufferIndex(rad::ArrayRef<size_t> coord) const
 {
     assert(coord.size() == m_strides.size());

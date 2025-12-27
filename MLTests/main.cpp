@@ -22,9 +22,17 @@ int main(int argc, char* argv[])
     {
         g_backends.push_back(backend);
     }
-    if (ML::Backend* backend = ML::InitVulkanBackend("Vulkan"))
+
+    for (const auto& arg : app.GetArgv())
     {
-        g_backends.push_back(backend);
+        if (rad::StrCaseEqual(arg, "--enable-vulkan-backend"))
+        {
+            if (ML::Backend* backend = ML::InitVulkanBackend("Vulkan"))
+            {
+                g_backends.push_back(backend);
+            }
+            break;
+        }
     }
 
     testing::InitGoogleTest(&argc, argv);

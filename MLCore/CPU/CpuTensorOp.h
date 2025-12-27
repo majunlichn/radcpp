@@ -5,6 +5,8 @@
 #include <MLCore/CPU/CpuContext.h>
 #include <MLCore/CPU/CpuTensorIterator.h>
 
+#include <execution>
+
 namespace ML
 {
 
@@ -14,12 +16,20 @@ struct CpuTensorOpForEach
     void operator()(Tensor* input, const std::function<T()>& op)
     {
         CpuTensor* cpuInput = static_cast<CpuTensor*>(input);
-
-        CpuTensorIterator inputIter(input);
         T* inputData = (T*)cpuInput->m_buffer.data();
-        inputIter.ForEachParallel([&](rad::ArrayRef<size_t> coord) {
-            inputData[inputIter.CoordToBufferIndex(coord)] = op();
-            });
+
+        if (cpuInput->IsContiguous())
+        {
+            auto& buffer = cpuInput->m_buffer;
+            std::generate_n(std::execution::par_unseq, inputData, input->GetElementCount(), [&]() { return op(); });
+        }
+        else
+        {
+            CpuTensorIterator inputIter(input);
+            inputIter.ForEachParallelND([&](rad::ArrayRef<size_t> coord) {
+                inputData[inputIter.CoordToBufferIndex(coord)] = op();
+                }, 2);
+        }
     }
 
 }; // struct CpuTensorOpForEach
@@ -38,16 +48,26 @@ struct CpuTensorOpElementWiseUnary
         assert(cpuInput->m_sizes == cpuOutput->m_sizes);
         assert(cpuInput->m_dataType == cpuOutput->m_dataType);
 
-        CpuTensorIterator inputIter(input);
-        CpuTensorIterator outputIter(output);
-
         const T* inputData = (const T*)cpuInput->m_buffer.data();
         T* outputData = (T*)cpuOutput->m_buffer.data();
 
-        inputIter.ForEachParallel([&](rad::ArrayRef<size_t> coord) {
-            ComputeType x = inputData[inputIter.CoordToBufferIndex(coord)];
-            outputData[outputIter.CoordToBufferIndex(coord)] = op(x);
-            });
+        if (input->IsContiguous() && HaveSameLayout(input, output))
+        {
+            std::transform(std::execution::par_unseq,
+                inputData, inputData + input->GetElementCount(), outputData,
+                [&](T x) {
+                    return static_cast<T>(op(static_cast<ComputeType>(x)));
+                });
+        }
+        else
+        {
+            CpuTensorIterator inputIter(input);
+            CpuTensorIterator outputIter(output);
+            inputIter.ForEachParallelND([&](rad::ArrayRef<size_t> coord) {
+                ComputeType x = static_cast<ComputeType>(inputData[inputIter.CoordToBufferIndex(coord)]);
+                outputData[outputIter.CoordToBufferIndex(coord)] = static_cast<T>(op(x));
+                }, 2);
+        }
     }
 
 }; // struct CpuTensorOpElementWiseUnary
@@ -70,19 +90,29 @@ struct CpuTensorOpElementWiseBinary
         assert(cpuInput->m_dataType == cpuOther->m_dataType);
         assert(cpuInput->m_dataType == cpuOutput->m_dataType);
 
-        CpuTensorIterator inputIter(input);
-        CpuTensorIterator otherIter(other);
-        CpuTensorIterator outputIter(output);
-
         const T* inputData = (const T*)cpuInput->m_buffer.data();
         const T* otherData = (const T*)cpuOther->m_buffer.data();
         T* outputData = (T*)cpuOutput->m_buffer.data();
 
-        inputIter.ForEachParallel([&](rad::ArrayRef<size_t> coord) {
-            ComputeType a = inputData[inputIter.CoordToBufferIndex(coord)];
-            ComputeType b = otherData[otherIter.CoordToBufferIndex(coord)];
-            outputData[outputIter.CoordToBufferIndex(coord)] = op(a, b);
-            });
+        if (input->IsContiguous() && HaveSameLayout(input, other) && HaveSameLayout(input, output))
+        {
+            std::transform(std::execution::par_unseq,
+                inputData, inputData + input->GetElementCount(), otherData, outputData,
+                [&](T a, T b) {
+                    return static_cast<T>(op(static_cast<ComputeType>(a), static_cast<ComputeType>(b)));
+                });
+        }
+        else
+        {
+            CpuTensorIterator inputIter(input);
+            CpuTensorIterator otherIter(other);
+            CpuTensorIterator outputIter(output);
+            inputIter.ForEachParallelND([&](rad::ArrayRef<size_t> coord) {
+                ComputeType a = inputData[inputIter.CoordToBufferIndex(coord)];
+                ComputeType b = otherData[otherIter.CoordToBufferIndex(coord)];
+                outputData[outputIter.CoordToBufferIndex(coord)] = op(a, b);
+                }, 2);
+        }
     }
 
 }; // struct CpuTensorOpElementWiseBinary

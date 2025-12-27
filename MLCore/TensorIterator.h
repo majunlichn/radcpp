@@ -84,15 +84,14 @@ public:
 
     void Reset()
     {
-        m_coord.clear();
-        m_coord.resize(m_sizes.size(), 0);
+        m_coord = m_offsets;
     }
 
-    void ResetND(size_t n)
+    void ResetND(size_t nd)
     {
         size_t dimCount = m_sizes.size();
-        assert(dimCount >= n);
-        std::fill_n(m_coord.end() - n, n, 0);
+        assert(nd <= dimCount);
+        std::copy_n(m_offsets.end() - nd, nd, m_coord.end() - nd);
     }
 
     void Reset1D() { ResetND(1); }
@@ -100,10 +99,10 @@ public:
     void Reset3D() { ResetND(3); }
     void Reset4D() { ResetND(4); }
 
-    bool NextND(size_t n)
+    bool NextND(size_t nd)
     {
         size_t dimCount = m_tensor->GetDimCount();
-        for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - n - 1); dimIndex >= 0; --dimIndex)
+        for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - nd - 1); dimIndex >= 0; --dimIndex)
         {
             if (m_coord[dimIndex] < m_sizes[dimIndex] - 1)
             {
@@ -112,16 +111,16 @@ public:
             }
             else
             {
-                m_coord[dimIndex] = 0;
+                m_coord[dimIndex] = m_offsets[dimIndex];
             }
         }
         return false;
     }
 
-    bool NextNDSubrangeND(size_t n, size_t subrangeND)
+    bool NextNDSubrangeND(size_t nd, size_t subrangeND)
     {
         size_t dimCount = m_sizes.size();
-        for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - n - 1); dimIndex >= ptrdiff_t(dimCount - subrangeND); --dimIndex)
+        for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - nd - 1); dimIndex >= ptrdiff_t(dimCount - subrangeND); --dimIndex)
         {
             if (m_coord[dimIndex] < m_sizes[dimIndex] - 1)
             {
@@ -140,6 +139,65 @@ public:
     bool Next2D() { return NextND(2); }
     bool Next3D() { return NextND(3); }
     bool Next4D() { return NextND(4); }
+
+    using ElementOp = std::function<void(rad::ArrayRef<size_t> coord)>;
+
+    void ForEach(const ElementOp& op)
+    {
+        Reset();
+        do
+        {
+            // Iterate the last dimension:
+            size_t lastDimIndex = m_sizes.size() - 1;
+            for (size_t i = 0; i < m_sizes[lastDimIndex]; ++i)
+            {
+                m_coord[lastDimIndex] = m_offsets[lastDimIndex] + i;
+                op(m_coord);
+            }
+        } while (Next1D());
+    }
+
+    void ForEachSubrangeND(const ElementOp& op, size_t subrangeND)
+    {
+        ResetND(subrangeND);
+        do
+        {
+            // Iterate the last dimension:
+            size_t lastDimIndex = m_sizes.size() - 1;
+            for (size_t i = 0; i < m_sizes[lastDimIndex]; ++i)
+            {
+                m_coord[lastDimIndex] = m_offsets[lastDimIndex] + i;
+                op(m_coord);
+            }
+        } while (NextNDSubrangeND(1, subrangeND));
+    }
+
+    void ForEachRecursively(const ElementOp& op)
+    {
+        Reset();
+        ForEachRecursively(op, 0);
+    }
+
+    void ForEachRecursively(const ElementOp& op, size_t dimIndex)
+    {
+        if (dimIndex == m_sizes.size() - 1)
+        {
+            // Iterate the last dimension:
+            for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
+            {
+                m_coord[dimIndex] = m_offsets[dimIndex] + i;
+                op(m_coord);
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
+            {
+                m_coord[dimIndex] = i;
+                ForEachRecursively(op, dimIndex + 1);
+            }
+        }
+    }
 
 }; // class TensorIterator
 

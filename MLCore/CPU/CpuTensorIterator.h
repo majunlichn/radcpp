@@ -21,64 +21,6 @@ public:
 
     ~CpuTensorIterator() = default;
 
-    using ElementOp = std::function<void(rad::ArrayRef<size_t> coord)>;
-
-    void ForEach(const ElementOp& op)
-    {
-        Reset();
-        size_t dimCount = m_sizes.size();
-        do
-        {
-            // Iterate the last dimension:
-            for (size_t i = 0; i < m_sizes[dimCount - 1]; ++i)
-            {
-                m_coord[dimCount - 1] = i;
-                op(m_coord);
-            }
-        } while (Next1D());
-    }
-
-    void ForEachSubrangeND(const ElementOp& op, size_t subrangeND)
-    {
-        ResetND(subrangeND);
-        do
-        {
-            // Iterate the last dimension:
-            for (size_t i = 0; i < m_sizes[m_sizes.size() - 1]; ++i)
-            {
-                m_coord[m_sizes.size() - 1] = i;
-                op(m_coord);
-            }
-        } while (NextNDSubrangeND(1, subrangeND));
-    }
-
-    void ForEachRecursively(const ElementOp& op, size_t dimIndex)
-    {
-        if (dimIndex == m_sizes.size() - 1)
-        {
-            // Iterate the last dimension:
-            for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
-            {
-                m_coord[dimIndex] = i;
-                op(m_coord);
-            }
-        }
-        else
-        {
-            for (size_t i = 0; i < m_sizes[dimIndex]; ++i)
-            {
-                m_coord[dimIndex] = i;
-                ForEachRecursively(op, dimIndex + 1);
-            }
-        }
-    }
-
-    void ForEachRecursively(const ElementOp& op)
-    {
-        Reset();
-        ForEachRecursively(op, 0);
-    }
-
     // @param granularityND: the number of dimensions processed by each thread (must <dimCount).
     void ForEachParallelND(const ElementOp& op, size_t granularityND)
     {
@@ -106,17 +48,6 @@ public:
             executor.wait_for_all();
             threadCount = 0;
         }
-    }
-
-    void ForEachParallel(const ElementOp& op)
-    {
-        if (m_tensor->GetElementCount() < 1024)
-        {
-            ForEach(op);
-            return;
-        }
-        // TODO: better parallel partitioning
-        ForEachParallelND(op, 2);
     }
 
 }; // class CpuTensorIterator

@@ -41,6 +41,7 @@ public:
     virtual size_t GetDataSize() const;
 
     bool IsContiguous() const;
+    bool HasSameLayout(const Tensor* other) const;
 
     size_t CoordToBufferIndex(rad::ArrayRef<size_t> coord) const;
     size_t CoordToBufferOffset(rad::ArrayRef<size_t> coord) const;
@@ -91,5 +92,10 @@ public:
     Tensor* SubtractInPlace(Tensor* other, int alpha);
 
 }; // class Tensor
+
+inline bool HaveSameLayout(const Tensor* a, const Tensor* b)
+{
+    return ((a->m_sizes == b->m_sizes) && (a->m_strides == b->m_strides));
+}
 
 } // namespace ML
