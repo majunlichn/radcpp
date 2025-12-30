@@ -223,7 +223,7 @@ std::string Tensor::ToString(TextFormat format)
         for (size_t w = 0; w < m_sizes[0]; ++w)
         {
             iter.m_coord[0] = w;
-            ss << ToStringFixedWidthDec(data + iter.CoordToBufferOffset(), m_dataType);
+            ss << ToStringFixedWidthDec(data + w * GetElementSize(m_dataType), m_dataType);
         }
         ss << std::endl;
     }
@@ -234,19 +234,22 @@ std::string Tensor::ToString(TextFormat format)
             size_t sizeH = m_sizes[dimCount - 2];
             size_t sizeW = m_sizes[dimCount - 1];
             ss << std::format("Indices = [{}]\n", rad::ToString(iter.m_coord, ", "));
+            size_t bufferIndex = iter.m_bufferIndex;
             for (size_t h = 0; h < sizeH; ++h)
             {
                 iter.m_coord[dimCount - 2] = h;
+                bufferIndex += h * m_strides[dimCount - 2];
                 for (size_t w = 0; w < sizeW; ++w)
                 {
                     iter.m_coord[dimCount - 1] = w;
+                    bufferIndex += w * m_strides[dimCount - 1];
                     if (format == TextFormat::Dec)
                     {
-                        ss << ToStringFixedWidthDec(data + iter.CoordToBufferOffset(), m_dataType) + ", ";
+                        ss << ToStringFixedWidthDec(data + bufferIndex * GetElementSize(m_dataType), m_dataType) + ", ";
                     }
                     else // if (format == TextFormat::Hex)
                     {
-                        ss << ToStringFixedWidthHex(data + iter.CoordToBufferOffset(), m_dataType) + ", ";
+                        ss << ToStringFixedWidthHex(data + bufferIndex * GetElementSize(m_dataType), m_dataType) + ", ";
                     }
                 }
                 ss << std::endl;

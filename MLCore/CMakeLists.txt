@@ -14,6 +14,7 @@ set(MLCORE_SOURCE_FILES
     TensorView.h
     TensorView.cpp
     TensorIterator.h
+    TensorIterator.cpp
     Logging.h
     Logging.cpp
     CPU/CpuBackend.h
@@ -26,7 +27,6 @@ set(MLCORE_SOURCE_FILES
     CPU/CpuTensor.cpp
     CPU/CpuTensorOp.h
     CPU/CpuTensorOp.cpp
-    CPU/CpuTensorIterator.h
     Vulkan/VulkanBackend.h
     Vulkan/VulkanBackend.cpp
     Vulkan/VulkanDevice.h

@@ -3,12 +3,14 @@
 #include <MLCore/CPU/CpuDevice.h>
 #include <MLCore/CPU/CpuTensor.h>
 #include <MLCore/CPU/CpuContext.h>
-#include <MLCore/CPU/CpuTensorIterator.h>
+#include <MLCore/TensorIterator.h>
 
 #include <execution>
 
 namespace ML
 {
+
+void ForEachParallelND(TensorIterator& iter, const std::function<void(size_t bufferIndex)>& op, size_t granularityND);
 
 template <typename T>
 struct CpuTensorOpForEach
@@ -25,9 +27,9 @@ struct CpuTensorOpForEach
         }
         else
         {
-            CpuTensorIterator inputIter(input);
-            inputIter.ForEachParallelND([&](rad::ArrayRef<size_t> coord) {
-                inputData[inputIter.CoordToBufferIndex(coord)] = op();
+            TensorIterator inputIter(input);
+            ForEachParallelND(inputIter, [&](size_t bufferIndex) {
+                inputData[bufferIndex] = op();
                 }, 2);
         }
     }
@@ -61,12 +63,12 @@ struct CpuTensorOpElementWiseUnary
         }
         else
         {
-            CpuTensorIterator inputIter(input);
-            CpuTensorIterator outputIter(output);
-            inputIter.ForEachParallelND([&](rad::ArrayRef<size_t> coord) {
-                ComputeType x = static_cast<ComputeType>(inputData[inputIter.CoordToBufferIndex(coord)]);
-                outputData[outputIter.CoordToBufferIndex(coord)] = static_cast<T>(op(x));
-                }, 2);
+            TensorIterator inputIter(input);
+            TensorIterator outputIter(output);
+            ForEach(inputIter, outputIter, [&](size_t inputIndex, size_t outputIndex) {
+                ComputeType x = static_cast<ComputeType>(inputData[inputIndex]);
+                outputData[outputIndex] = static_cast<T>(op(x));
+                });
         }
     }
 
@@ -104,14 +106,14 @@ struct CpuTensorOpElementWiseBinary
         }
         else
         {
-            CpuTensorIterator inputIter(input);
-            CpuTensorIterator otherIter(other);
-            CpuTensorIterator outputIter(output);
-            inputIter.ForEachParallelND([&](rad::ArrayRef<size_t> coord) {
-                ComputeType a = inputData[inputIter.CoordToBufferIndex(coord)];
-                ComputeType b = otherData[otherIter.CoordToBufferIndex(coord)];
-                outputData[outputIter.CoordToBufferIndex(coord)] = op(a, b);
-                }, 2);
+            TensorIterator inputIter(input);
+            TensorIterator otherIter(other);
+            TensorIterator outputIter(output);
+            ForEach(inputIter, otherIter, outputIter, [&](size_t inputIndex, size_t otherIndex, size_t outputIndex) {
+                ComputeType a = static_cast<ComputeType>(inputData[inputIndex]);
+                ComputeType b = static_cast<ComputeType>(otherData[otherIndex]);
+                outputData[outputIndex] = static_cast<T>(op(a, b));
+                });
         }
     }
 
