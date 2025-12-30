@@ -10,7 +10,6 @@ namespace ML
 class TensorIterator
 {
 public:
-    Tensor* m_tensor;
     std::vector<size_t> m_offsets;
     std::vector<size_t> m_sizes;
     std::vector<size_t> m_strides;
@@ -18,58 +17,48 @@ public:
     std::vector<size_t> m_coord;
     size_t m_bufferIndex = 0;
 
-    TensorIterator(Tensor* tensor, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {}) :
-        m_tensor(tensor)
+    TensorIterator(Tensor* tensor, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {})
     {
         if (offsets.empty())
         {
-            m_offsets.resize(m_tensor->GetDimCount(), 0);
+            m_offsets.resize(tensor->GetDimCount(), 0);
         }
         else
         {
-            assert(offsets.size() == m_tensor->GetDimCount());
+            assert(offsets.size() == tensor->GetDimCount());
             m_offsets = offsets;
         }
 
         if (sizes.empty())
         {
-            m_sizes.resize(m_tensor->GetDimCount());
-            for (size_t i = 0; i < m_tensor->GetDimCount(); ++i)
+            m_sizes.resize(tensor->GetDimCount());
+            for (size_t i = 0; i < tensor->GetDimCount(); ++i)
             {
-                m_sizes[i] = m_tensor->m_sizes[i] - m_offsets[i];
+                m_sizes[i] = tensor->m_sizes[i] - m_offsets[i];
             }
         }
         else
         {
-            assert(sizes.size() == m_tensor->GetDimCount());
+            assert(sizes.size() == tensor->GetDimCount());
             m_sizes = sizes;
         }
 
-        m_strides = m_tensor->m_strides;
+        m_strides = tensor->m_strides;
 
-        assert(IsValid());
+        for (size_t i = 0; i < m_sizes.size(); ++i)
+        {
+            assert(m_offsets[i] + m_sizes[i] <= tensor->m_sizes[i]);
+        }
 
         Reset();
     }
 
     ~TensorIterator() = default;
 
-    bool IsValid() const
-    {
-        for (size_t i = 0; i < m_tensor->GetDimCount(); ++i)
-        {
-            if (m_offsets[i] + m_sizes[i] > m_sizes[i])
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
     void Reset()
     {
         m_coord = m_offsets;
-        m_bufferIndex = 0;
+        m_bufferIndex = std::inner_product(m_coord.begin(), m_coord.end(), m_strides.begin(), size_t(0));
     }
 
     void ResetND(size_t nd)
@@ -86,10 +75,10 @@ public:
 
     bool NextND(size_t nd)
     {
-        size_t dimCount = m_tensor->GetDimCount();
+        size_t dimCount = m_sizes.size();
         for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - nd - 1); dimIndex >= 0; --dimIndex)
         {
-            if (m_coord[dimIndex] < m_sizes[dimIndex] - 1)
+            if (m_coord[dimIndex] < m_offsets[dimIndex] + m_sizes[dimIndex] - 1)
             {
                 ++m_coord[dimIndex];
                 m_bufferIndex += m_strides[dimIndex];
@@ -109,7 +98,7 @@ public:
         size_t dimCount = m_sizes.size();
         for (ptrdiff_t dimIndex = ptrdiff_t(dimCount - nd - 1); dimIndex >= ptrdiff_t(dimCount - subrangeND); --dimIndex)
         {
-            if (m_coord[dimIndex] < m_sizes[dimIndex] - 1)
+            if (m_coord[dimIndex] < m_offsets[dimIndex] + m_sizes[dimIndex] - 1)
             {
                 ++m_coord[dimIndex];
                 m_bufferIndex += m_strides[dimIndex];
