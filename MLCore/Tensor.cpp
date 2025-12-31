@@ -57,13 +57,13 @@ size_t Tensor::GetElementCount(rad::ArrayRef<size_t> sizes)
     return count;
 }
 
-size_t Tensor::GetElementCountND(rad::ArrayRef<size_t> sizes, size_t ndim)
+size_t Tensor::GetElementCountND(rad::ArrayRef<size_t> sizes, size_t nd)
 {
     if (sizes.empty())
     {
         return 0;
     }
-    size_t dimIndex = (sizes.size() > ndim) ? (sizes.size() - ndim) : 0;
+    size_t dimIndex = (sizes.size() > nd) ? (sizes.size() - nd) : 0;
     size_t count = sizes[dimIndex];
     ++dimIndex;
     for (; dimIndex < sizes.size(); ++dimIndex)
@@ -78,9 +78,9 @@ size_t Tensor::GetElementCount() const
     return GetElementCount(m_sizes);
 }
 
-size_t Tensor::GetElementCountND(size_t ndim) const
+size_t Tensor::GetElementCountND(size_t nd) const
 {
-    return GetElementCountND(m_sizes, ndim);
+    return GetElementCountND(m_sizes, nd);
 }
 
 std::vector<size_t> Tensor::GetMemoryOrder() const
@@ -201,7 +201,7 @@ bool Tensor::IsNDHWC() const
     return false;
 }
 
-std::string Tensor::ToString(TextFormat format)
+std::string Tensor::ToString(TextFormat format, rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t> sizes)
 {
     if (m_sizes.empty())
     {
@@ -216,7 +216,7 @@ std::string Tensor::ToString(TextFormat format)
         Read(dataBuffer.data(), 0, dataBuffer.size());
         data = dataBuffer.data();
     }
-    TensorIterator iter(this);
+    TensorIterator iter(this, offsets, sizes);
     size_t dimCount = m_sizes.size();
     if (dimCount == 1)
     {

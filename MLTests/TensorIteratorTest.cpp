@@ -118,8 +118,10 @@ TEST(TensorIterator, ForEachNHWC)
     options.m_strides = ML::Tensor::MakeStrides(sizes, { 1, 3, 2, 0 });
     auto tensor = device->CreateTensor(sizes, ML::DataType::Float16, options);
     ML::TensorIterator iter(tensor.get(), { 1, 0, 4, 4 });
-    iter.SetDimOrder({ 1, 3, 2, 0 }); // NHWC
     iter.Reset();
+    ML_LOG(info, "Offsets=[{}]; Sizes=[{}]; Strides=[{}]; Permutation=[{}]",
+        rad::ToString(iter.m_offsets), rad::ToString(iter.m_sizes), rad::ToString(iter.m_strides), rad::ToString(iter.m_permutation));
+    iter.SetDimOrder({ 1, 3, 2, 0 }); // NHWC
     ML_LOG(info, "Offsets=[{}]; Sizes=[{}]; Strides=[{}]; Permutation=[{}]",
         rad::ToString(iter.m_offsets), rad::ToString(iter.m_sizes), rad::ToString(iter.m_strides), rad::ToString(iter.m_permutation));
     ForEach(iter, [&](size_t bufferIndex) {

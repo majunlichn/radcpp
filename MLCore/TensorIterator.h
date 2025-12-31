@@ -18,6 +18,20 @@ public:
     std::vector<size_t> m_permutation;
     std::vector<size_t> m_coordUnpermuted;
 
+    TensorIterator(rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> strides)
+    {
+        assert(offsets.size() == sizes.size());
+        assert(strides.size() == sizes.size());
+
+        size_t dimCount = sizes.size();
+
+        m_offsets = offsets;
+        m_sizes = sizes;
+        m_strides = strides;
+
+        Reset();
+    }
+
     TensorIterator(Tensor* tensor, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {})
     {
         if (offsets.empty())

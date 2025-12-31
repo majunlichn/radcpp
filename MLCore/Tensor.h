@@ -31,9 +31,9 @@ public:
 
     size_t GetDimCount() const { return m_sizes.size(); }
     static size_t GetElementCount(rad::ArrayRef<size_t> sizes);
-    static size_t GetElementCountND(rad::ArrayRef<size_t> sizes, size_t ndim);
+    static size_t GetElementCountND(rad::ArrayRef<size_t> sizes, size_t nd);
     size_t GetElementCount() const;
-    size_t GetElementCountND(size_t ndim) const;
+    size_t GetElementCountND(size_t nd) const;
     std::vector<size_t> GetMemoryOrder() const;
 
     static size_t GetDataSizeInElement(rad::ArrayRef<size_t> size, rad::ArrayRef<size_t> strides);
@@ -62,7 +62,7 @@ public:
         Dec,
         Hex,
     };
-    std::string ToString(TextFormat format = TextFormat::Dec);
+    std::string ToString(TextFormat format = TextFormat::Dec, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {});
 
     Tensor* FillConstant(float value);
     Tensor* FillConstant(int value);
