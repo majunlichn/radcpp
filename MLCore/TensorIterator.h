@@ -5,17 +5,18 @@
 namespace ML
 {
 
-// A helper class to calculate coordinates to iterate over tensor elements, support different iteration orders (permutations).
-// For example, for a 4D tensor, order={ 1, 3, 2, 0 } means to iterate in the order of C, W, H, N.
+// A helper class to calculate coordinates to iterate over tensor elements in different dimension orders (permutations).
 class TensorIterator
 {
 public:
     std::vector<size_t> m_offsets;
     std::vector<size_t> m_sizes;
     std::vector<size_t> m_strides;
-    std::vector<size_t> m_permutation;
     std::vector<size_t> m_coord;
     size_t m_bufferIndex = 0;
+
+    std::vector<size_t> m_permutation;
+    std::vector<size_t> m_coordUnpermuted;
 
     TensorIterator(Tensor* tensor, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {})
     {
@@ -55,7 +56,21 @@ public:
 
     ~TensorIterator() = default;
 
-    std::vector<size_t>& GetCoord() { return m_coord; }
+    std::vector<size_t>& GetCoordUnpermuted()
+    {
+        if (m_permutation.empty())
+        {
+            return m_coord;
+        }
+        else
+        {
+            for (size_t i = 0; i < m_coord.size(); ++i)
+            {
+                m_coordUnpermuted[m_permutation[i]] = m_coord[i];
+            }
+            return m_coordUnpermuted;
+        }
+    }
 
     size_t CoordToBufferIndex() const
     {
@@ -80,6 +95,44 @@ public:
     void Reset2D() { ResetND(2); }
     void Reset3D() { ResetND(3); }
     void Reset4D() { ResetND(4); }
+
+    // NCHW permutation: [0, 1, 2, 3]; NHWC permutation: [0, 2, 3, 1];
+    void PermuteDims(rad::ArrayRef<size_t> permutation)
+    {
+        assert(permutation.size() == m_sizes.size());
+        m_permutation = permutation;
+        size_t dimCount = m_sizes.size();
+        std::vector<size_t> offsets = m_offsets;
+        std::vector<size_t> sizes = m_sizes;
+        std::vector<size_t> strides = m_strides;
+        std::vector<size_t> coord = m_coord;
+        for (size_t i = 0; i < m_sizes.size(); ++i)
+        {
+            assert(permutation[i] < m_sizes.size());
+            offsets[i] = m_offsets[m_permutation[i]];
+            sizes[i] = m_sizes[m_permutation[i]];
+            strides[i] = m_strides[m_permutation[i]];
+            coord[i] = m_coord[m_permutation[i]];
+        }
+        m_offsets = std::move(offsets);
+        m_sizes = std::move(sizes);
+        m_strides = std::move(strides);
+        m_coordUnpermuted = m_coord;
+        m_coord = std::move(coord);
+    }
+
+    // NCHW order: [3, 2, 1, 0]; NHWC order: [1, 3, 2, 0];
+    void SetDimOrder(rad::ArrayRef<size_t> order)
+    {
+        assert(order.size() == m_sizes.size());
+        std::vector<size_t> permutation(m_sizes.size());
+        size_t dimCount = m_sizes.size();
+        for (size_t i = 0; i < m_sizes.size(); ++i)
+        {
+            permutation[i] = order[dimCount - i - 1];
+        }
+        PermuteDims(permutation);
+    }
 
     bool NextND(size_t nd)
     {
