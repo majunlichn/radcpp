@@ -55,10 +55,18 @@ public:
 
     ~TensorIterator() = default;
 
+    std::vector<size_t>& GetCoord() { return m_coord; }
+
+    size_t CoordToBufferIndex() const
+    {
+        assert(m_sizes.size() == m_strides.size());
+        return std::inner_product(m_coord.begin(), m_coord.end(), m_strides.begin(), size_t(0));
+    }
+
     void Reset()
     {
         m_coord = m_offsets;
-        m_bufferIndex = std::inner_product(m_coord.begin(), m_coord.end(), m_strides.begin(), size_t(0));
+        m_bufferIndex = CoordToBufferIndex();
     }
 
     void ResetND(size_t nd)
@@ -86,7 +94,8 @@ public:
             }
             else
             {
-                m_bufferIndex -= m_coord[dimIndex] * m_strides[dimIndex];
+                assert(m_coord[dimIndex] >= m_offsets[dimIndex]);
+                m_bufferIndex -= (m_coord[dimIndex] - m_offsets[dimIndex]) * m_strides[dimIndex];
                 m_coord[dimIndex] = m_offsets[dimIndex];
             }
         }
@@ -106,8 +115,9 @@ public:
             }
             else
             {
+                assert(m_coord[dimIndex] >= m_offsets[dimIndex]);
+                m_bufferIndex -= (m_coord[dimIndex] - m_offsets[dimIndex]) * m_strides[dimIndex];
                 m_coord[dimIndex] = m_offsets[dimIndex];
-                m_bufferIndex = m_coord[dimIndex] * m_strides[dimIndex];
             }
         }
         return false;

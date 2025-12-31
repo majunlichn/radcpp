@@ -16,7 +16,7 @@ void ForEach(TensorIterator& iter, const std::function<void(size_t bufferIndex)>
         for (size_t i = 0; i < iter.m_sizes[lastDimIndex]; ++i)
         {
             iter.m_coord[lastDimIndex] = iter.m_offsets[lastDimIndex] + i;
-            op(iter.m_bufferIndex + iter.m_coord[lastDimIndex] * iter.m_strides[lastDimIndex]);
+            op(iter.m_bufferIndex + i * iter.m_strides[lastDimIndex]);
         }
     } while (iter.Next1D());
 }
@@ -34,9 +34,9 @@ void ForEachRecursively(TensorIterator& iter, const std::function<void(size_t bu
     }
     else
     {
-        for (size_t i = iter.m_offsets[dimIndex]; i < iter.m_sizes[dimIndex]; ++i)
+        for (size_t i = 0; i < iter.m_sizes[dimIndex]; ++i)
         {
-            iter.m_coord[dimIndex] = i;
+            iter.m_coord[dimIndex] = iter.m_offsets[dimIndex] + i;
             ForEachRecursively(iter, op, dimIndex + 1, bufferIndex + iter.m_coord[dimIndex] * iter.m_strides[dimIndex]);
         }
     }
@@ -58,7 +58,7 @@ void ForEachSubrangeND(TensorIterator& iter, const std::function<void(size_t buf
         for (size_t i = 0; i < iter.m_sizes[lastDimIndex]; ++i)
         {
             iter.m_coord[lastDimIndex] = iter.m_offsets[lastDimIndex] + i;
-            op(iter.m_bufferIndex + iter.m_coord[lastDimIndex] * iter.m_strides[lastDimIndex]);
+            op(iter.m_bufferIndex + i * iter.m_strides[lastDimIndex]);
         }
     } while (iter.NextNDSubrangeND(1, subrangeND));
 }
@@ -106,7 +106,7 @@ void ForEach(TensorIterator& input, TensorIterator& other, TensorIterator& outpu
             size_t outputIndex = output.m_bufferIndex + output.m_coord[lastDimIndex] * output.m_strides[lastDimIndex];
             op(inputIndex, otherIndex, outputIndex);
         }
-    } while (input.Next1D() && output.Next1D());
+    } while (input.Next1D() && other.Next1D() && output.Next1D());
 }
 
 } // namespace ML
