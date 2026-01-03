@@ -71,14 +71,14 @@ void VulkanTensorOp::SetTensor(uint32_t binding, VulkanTensor* tensor)
     m_bindings[binding] = tensor;
 }
 
-std::vector<size_t> VulkanTensorOp::ExpandTensorSizeND(rad::ArrayRef<size_t> sizes, size_t n)
+std::vector<size_t> VulkanTensorOp::ExpandTensorSizeND(rad::ArrayRef<size_t> sizes, size_t nd)
 {
-    if (n > sizes.size())
+    if (nd > sizes.size())
     {
-        std::vector<size_t> sizesExpanded(n, 1);
+        std::vector<size_t> sizesExpanded(nd, 1);
         for (size_t i = 0; i < sizes.size(); ++i)
         {
-            sizesExpanded[i + n - sizes.size()] = sizes[i];
+            sizesExpanded[i + nd - sizes.size()] = sizes[i];
         }
         return sizesExpanded;
     }
@@ -88,15 +88,15 @@ std::vector<size_t> VulkanTensorOp::ExpandTensorSizeND(rad::ArrayRef<size_t> siz
     }
 }
 
-std::vector<size_t> VulkanTensorOp::ExpandTensorStrideND(rad::ArrayRef<size_t> strides, size_t n)
+std::vector<size_t> VulkanTensorOp::ExpandTensorStrideND(rad::ArrayRef<size_t> strides, size_t nd)
 {
-    if (n > strides.size())
+    if (nd > strides.size())
     {
         size_t maxStride = *std::max_element(strides.begin(), strides.end());
-        std::vector<size_t> stridesExpanded(n, maxStride);
+        std::vector<size_t> stridesExpanded(nd, maxStride);
         for (size_t i = 0; i < strides.size(); ++i)
         {
-            stridesExpanded[i + n - strides.size()] = strides[i];
+            stridesExpanded[i + nd - strides.size()] = strides[i];
         }
         return stridesExpanded;
     }
@@ -104,29 +104,6 @@ std::vector<size_t> VulkanTensorOp::ExpandTensorStrideND(rad::ArrayRef<size_t> s
     {
         return strides;
     }
-}
-
-const char* VulkanTensorOp::GetDataTypeShaderString(DataType dataType)
-{
-    switch (dataType)
-    {
-    case DataType::Float16: return "float16_t";
-    case DataType::Float32: return "float32_t";
-    case DataType::Float64: return "float64_t";
-    case DataType::Sint8: return "int8_t";
-    case DataType::Sint16: return "int16_t";
-    case DataType::Sint32: return "int32_t";
-    case DataType::Sint64: return "int64_t";
-    case DataType::Uint8: return "uint8_t";
-    case DataType::Uint16: return "uint16_t";
-    case DataType::Uint32: return "uint32_t";
-    case DataType::Uint64: return "uint64_t";
-    case DataType::BFloat16: return "bfloat16_t";     // GL_EXT_bfloat16: https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_bfloat16.txt
-    case DataType::Float8E4M3: return "floate4m3_t";  // GL_EXT_float_e4m3: https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_float8_e5m2_e4m3.txt
-    case DataType::Float8E5M2: return "floate5m2_t";  // GL_EXT_float_e5m2: https://github.com/KhronosGroup/GLSL/blob/main/extensions/ext/GL_EXT_float8_e5m2_e4m3.txt
-    }
-    RAD_UNREACHABLE();
-    return nullptr;
 }
 
 VulkanTensorOpForEach::VulkanTensorOpForEach(VulkanContext* context, std::string_view opName) :
@@ -138,41 +115,13 @@ VulkanTensorOpForEach::VulkanTensorOpForEach(VulkanContext* context, std::string
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
         DataType dataType = static_cast<DataType>(i);
-        DataType computeType = dataType;
-        if (dataType == DataType::BFloat16)
-        {
-            computeType = DataType::Float32;
-        }
-        else if ((dataType == DataType::Float8E4M3) || (dataType == DataType::Float8E5M2))
-        {
-            computeType = DataType::Float32;
-        }
-
         if (!m_context->GetDevice()->IsDataTypeSupported(static_cast<DataType>(i)))
         {
             continue;
         }
-
-        std::string sourceRoot = "./Shaders/";
-        const char* env = std::getenv("MLCORE_VULKAN_SHADER_SOURCE_DIR");
-        if (env && rad::Exists(rad::MakeFilePath(env)))
-        {
-            sourceRoot = env;
-        }
-        std::string sourceName = sourceRoot + "/TensorOp/ForEach.comp";
-        std::string source = rad::File::ReadAll(sourceName);
-
-        std::vector<vkpp::ShaderMacro> macros =
-        {
-            vkpp::ShaderMacro{ "DATA_TYPE_ID", std::to_string(rad::ToUnderlying(dataType)) },
-            vkpp::ShaderMacro{ "DATA_TYPE", GetDataTypeShaderString(dataType) },
-            vkpp::ShaderMacro{ "COMPUTE_TYPE_ID", std::to_string(rad::ToUnderlying(computeType)) },
-            vkpp::ShaderMacro{ "COMPUTE_TYPE", GetDataTypeShaderString(computeType) },
-            vkpp::ShaderMacro{ "OP_NAME", m_opName },
-        };
-        rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromGLSL(
-            device, vk::ShaderStageFlagBits::eCompute, sourceName,
-            source, "main", macros
+        std::string shaderBinary = std::string("Shaders/TensorOp/") + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
+        rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromCompiledBinaryFile(
+            device, vk::ShaderStageFlagBits::eCompute, shaderBinary
         );
 
         vk::PushConstantRange pushConstantRange = {};
@@ -262,41 +211,13 @@ VulkanTensorOpElementWiseUnary::VulkanTensorOpElementWiseUnary(VulkanContext* co
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
         DataType dataType = static_cast<DataType>(i);
-        DataType computeType = dataType;
-        if (dataType == DataType::BFloat16)
-        {
-            computeType = DataType::Float32;
-        }
-        else if ((dataType == DataType::Float8E4M3) || (dataType == DataType::Float8E5M2))
-        {
-            computeType = DataType::Float32;
-        }
-
         if (!m_context->GetDevice()->IsDataTypeSupported(static_cast<DataType>(i)))
         {
             continue;
         }
-
-        std::string sourceRoot = "./Shaders/";
-        const char* env = std::getenv("MLCORE_VULKAN_SHADER_SOURCE_DIR");
-        if (env && rad::Exists(rad::MakeFilePath(env)))
-        {
-            sourceRoot = env;
-        }
-        std::string sourceName = sourceRoot + "/TensorOp/ElementWiseUnary.comp";
-        std::string source = rad::File::ReadAll(sourceName);
-
-        std::vector<vkpp::ShaderMacro> macros =
-        {
-            vkpp::ShaderMacro{ "DATA_TYPE_ID", std::to_string(rad::ToUnderlying(dataType)) },
-            vkpp::ShaderMacro{ "DATA_TYPE", GetDataTypeShaderString(dataType) },
-            vkpp::ShaderMacro{ "COMPUTE_TYPE_ID", std::to_string(rad::ToUnderlying(computeType)) },
-            vkpp::ShaderMacro{ "COMPUTE_TYPE", GetDataTypeShaderString(computeType) },
-            vkpp::ShaderMacro{ "OP_NAME", m_opName },
-        };
-        rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromGLSL(
-            device, vk::ShaderStageFlagBits::eCompute, sourceName,
-            source, "main", macros
+        std::string shaderBinary = std::string("Shaders/TensorOp/") + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
+        rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromCompiledBinaryFile(
+            device, vk::ShaderStageFlagBits::eCompute, shaderBinary
         );
 
         vk::PushConstantRange pushConstantRange = {};
@@ -394,41 +315,13 @@ VulkanTensorOpElementWiseBinary::VulkanTensorOpElementWiseBinary(VulkanContext* 
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
         DataType dataType = static_cast<DataType>(i);
-        DataType computeType = dataType;
-        if (dataType == DataType::BFloat16)
-        {
-            computeType = DataType::Float32;
-        }
-        else if ((dataType == DataType::Float8E4M3) || (dataType == DataType::Float8E5M2))
-        {
-            computeType = DataType::Float32;
-        }
-
         if (!m_context->GetDevice()->IsDataTypeSupported(static_cast<DataType>(i)))
         {
             continue;
         }
-
-        std::string sourceRoot = "./Shaders/";
-        const char* env = std::getenv("MLCORE_VULKAN_SHADER_SOURCE_DIR");
-        if (env && rad::Exists(rad::MakeFilePath(env)))
-        {
-            sourceRoot = env;
-        }
-        std::string sourceName = sourceRoot + "/TensorOp/ElementWiseBinary.comp";
-        std::string source = rad::File::ReadAll(sourceName);
-
-        std::vector<vkpp::ShaderMacro> macros =
-        {
-            vkpp::ShaderMacro{ "DATA_TYPE_ID", std::to_string(rad::ToUnderlying(dataType)) },
-            vkpp::ShaderMacro{ "DATA_TYPE", GetDataTypeShaderString(dataType) },
-            vkpp::ShaderMacro{ "COMPUTE_TYPE_ID", std::to_string(rad::ToUnderlying(computeType)) },
-            vkpp::ShaderMacro{ "COMPUTE_TYPE", GetDataTypeShaderString(computeType) },
-            vkpp::ShaderMacro{ "OP_NAME", m_opName },
-        };
-        rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromGLSL(
-            device, vk::ShaderStageFlagBits::eCompute, sourceName,
-            source, "main", macros
+        std::string shaderBinary = std::string("Shaders/TensorOp/") + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
+        rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromCompiledBinaryFile(
+            device, vk::ShaderStageFlagBits::eCompute, shaderBinary
         );
 
         vk::PushConstantRange pushConstantRange = {};

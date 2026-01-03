@@ -44,12 +44,9 @@ public:
     virtual void Execute() = 0;
 
     // Expand size dimensions (same element count and memory layout).
-    static std::vector<size_t> ExpandTensorSizeND(rad::ArrayRef<size_t> sizes, size_t n);
+    static std::vector<size_t> ExpandTensorSizeND(rad::ArrayRef<size_t> sizes, size_t nd);
     // Expand stride dimensions (same element count and memory layout).
-    static std::vector<size_t> ExpandTensorStrideND(rad::ArrayRef<size_t> strides, size_t n);
-
-    static const char* GetDataTypeShaderString(DataType dataType);
-
+    static std::vector<size_t> ExpandTensorStrideND(rad::ArrayRef<size_t> strides, size_t nd);
 
 }; // class VulkanTensorOp
 

@@ -20,22 +20,48 @@ rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromGLSL(
     const std::string& fileName, const std::string& source,
     const std::string& entryPoint, rad::Span<ShaderMacro> macros)
 {
-    rad::Ref<ShaderStageInfo> shaderStage;
     ShaderCompiler compiler;
     std::vector<uint32_t> code = compiler.CompileGLSL(stage, fileName, source, entryPoint, macros);
     if (!code.empty())
     {
-        shaderStage = RAD_NEW ShaderStageInfo();
+        rad::Ref<ShaderStageInfo> shaderStage = RAD_NEW ShaderStageInfo();
         shaderStage->m_stage = stage;
         shaderStage->m_module = device->CreateShaderModule(code);
         shaderStage->m_entryPoint = "main";
+        return shaderStage;
     }
     else
     {
         VKPP_LOG(err, "Failed to compile {}:\n{}", fileName, compiler.GetLog());
         return nullptr;
     }
+}
+
+rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromCompiledBinary(rad::Ref<Device> device, vk::ShaderStageFlagBits stage, rad::ArrayRef<uint32_t> code)
+{
+    rad::Ref<ShaderStageInfo> shaderStage = RAD_NEW ShaderStageInfo();
+    shaderStage->m_stage = stage;
+    shaderStage->m_module = device->CreateShaderModule(code);
+    shaderStage->m_entryPoint = "main";
     return shaderStage;
+}
+
+rad::Ref<ShaderStageInfo> ShaderStageInfo::CreateFromCompiledBinaryFile(rad::Ref<Device> device, vk::ShaderStageFlagBits stage, const std::string& fileName)
+{
+    rad::File file;
+    if (file.Open(fileName, "rb"))
+    {
+        size_t fileSize = static_cast<size_t>(file.GetSize());
+        assert((fileSize % 4) == 0);
+        std::vector<uint32_t> code(fileSize / sizeof(uint32_t));
+        file.Read(code.data(), fileSize);
+        return CreateFromCompiledBinary(std::move(device), stage, code);
+    }
+    else
+    {
+        VKPP_LOG(err, "Cannot open file: {}", fileName);
+        return nullptr;
+    }
 }
 
 PipelineLayout::PipelineLayout(rad::Ref<Device> device, const vk::PipelineLayoutCreateInfo& createInfo) :

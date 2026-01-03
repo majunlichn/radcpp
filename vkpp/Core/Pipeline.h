@@ -29,6 +29,10 @@ public:
     static rad::Ref<ShaderStageInfo> CreateFromGLSL(rad::Ref<Device> device,
         vk::ShaderStageFlagBits stage, const std::string& fileName, const std::string& source,
         const std::string& entryPoint = "main", rad::Span<ShaderMacro> macros = {});
+    static rad::Ref<ShaderStageInfo> CreateFromCompiledBinary(rad::Ref<Device> device,
+        vk::ShaderStageFlagBits stage, rad::ArrayRef<uint32_t> code);
+    static rad::Ref<ShaderStageInfo> CreateFromCompiledBinaryFile(rad::Ref<Device> device,
+        vk::ShaderStageFlagBits stage, const std::string& fileName);
 
     template<typename T>
     void AddSpecData(uint32_t constantID, const T& value)

@@ -1,21 +1,8 @@
 #version 450 core
 
-#include "DataType.h"
-
 #extension GL_GOOGLE_include_directive : require
-#extension GL_EXT_shader_explicit_arithmetic_types: require
 
-#if DATA_TYPE_ID == DataTypeBFloat16
-#extension GL_EXT_bfloat16 : require
-#endif
-
-#if DATA_TYPE_ID == DataTypeFloat8E4M3
-#extension GL_EXT_float_e4m3 : require
-#endif
-
-#if DATA_TYPE_ID == DataTypeFloat8E5M2
-#extension GL_EXT_float_e5m2 : require
-#endif
+#include "Common/DataType.h"
 
 layout(push_constant, std430) uniform PushConstants
 {
@@ -44,15 +31,19 @@ layout(set = 0, binding = 3) buffer OutputTensor { DATA_TYPE g_outputTensor[]; }
 
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
+#if defined(Add)
 COMPUTE_TYPE Add(COMPUTE_TYPE a, COMPUTE_TYPE b)
 {
     return a + COMPUTE_TYPE(g_params[0]) * b;
 }
+#endif
 
+#if defined(Subtract)
 COMPUTE_TYPE Subtract(COMPUTE_TYPE a, COMPUTE_TYPE b)
 {
     return a - COMPUTE_TYPE(g_params[0]) * b;
 }
+#endif
 
 void main()
 {
@@ -77,6 +68,6 @@ void main()
                             h * g_outputStrides[2] + w * g_outputStrides[3];
         COMPUTE_TYPE a = g_inputTensor[inputIndex];
         COMPUTE_TYPE b = g_otherTensor[otherIndex];
-        g_outputTensor[outputIndex] = DATA_TYPE(OP_NAME(a, b));
+        g_outputTensor[outputIndex] = DATA_TYPE(Operation(a, b));
     }
 }
