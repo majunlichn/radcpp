@@ -45,6 +45,12 @@ class DataType(Enum):
     Float8E4M3      = 13
     Float8E5M2      = 14
 
+def make_abspath(path:str):
+    return os.path.normpath(os.path.abspath(path))
+
+def make_normpath(path:str):
+    return os.path.normpath(path)
+
 def chdir(path: str):
     os.chdir(path)
     print("Working dir:", os.getcwd())
@@ -59,59 +65,59 @@ def remove_dir(dir : str):
         shutil.rmtree(dir)
 
 def compile_tensor_op_fill_constant():
-    source = os.path.abspath(source_root + "/TensorOp/ForEach.comp")
+    source = make_abspath(source_root + "/TensorOp/ForEach.comp")
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for data_type in DataType:
-        output = output_dir + f"/FillConstant-{data_type.name}.spv"
+        output = make_normpath(output_dir + f"/FillConstant-{data_type.name}.spv")
         run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFillConstant=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
-            run(f'spirv-opt {output} -o {output} -O')
+            run(f'spirv-opt "{output}" -o "{output}" -O')
 
 def compile_tensor_op_add_scalar():
-    source = os.path.abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
+    source = make_abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for data_type in DataType:
-        output = output_dir + f"/AddScalar-{data_type.name}.spv"
+        output = make_normpath(output_dir + f"/AddScalar-{data_type.name}.spv")
         run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAddScalar=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
-            run(f'spirv-opt {output} -o {output} -O')
+            run(f'spirv-opt "{output}" -o "{output}" -O')
 
 def compile_tensor_op_subtract_scalar():
-    source = os.path.abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
+    source = make_abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for data_type in DataType:
-        output = output_dir + f"/SubtractScalar-{data_type.name}.spv"
+        output = make_normpath(output_dir + f"/SubtractScalar-{data_type.name}.spv")
         run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtractScalar=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
-            run(f'spirv-opt {output} -o {output} -O')
+            run(f'spirv-opt "{output}" -o "{output}" -O')
 
 def compile_tensor_op_add():
-    source = os.path.abspath(source_root + "/TensorOp/ElementWiseBinary.comp")
+    source = make_abspath(source_root + "/TensorOp/ElementWiseBinary.comp")
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for data_type in DataType:
-        output = output_dir + f"/Add-{data_type.name}.spv"
+        output = make_normpath(output_dir + f"/Add-{data_type.name}.spv")
         run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAdd=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
-            run(f'spirv-opt {output} -o {output} -O')
+            run(f'spirv-opt "{output}" -o "{output}" -O')
 
 def compile_tensor_op_subtract():
-    source = os.path.abspath(source_root + "/TensorOp/ElementWiseBinary.comp")
+    source = make_abspath(os.path.abspath(source_root + "/TensorOp/ElementWiseBinary.comp"))
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for data_type in DataType:
-        output = output_dir + f"/Subtract-{data_type.name}.spv"
+        output = make_normpath(output_dir + f"/Subtract-{data_type.name}.spv")
         run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtract=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
-            run(f'spirv-opt {output} -o {output} -O')
+            run(f'spirv-opt "{output}" -o "{output}" -O')
 
 def main() -> int:
     err = 0
