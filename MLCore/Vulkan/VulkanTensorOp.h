@@ -48,6 +48,8 @@ public:
     // Expand stride dimensions (same element count and memory layout).
     static std::vector<size_t> ExpandTensorStrideND(rad::ArrayRef<size_t> strides, size_t nd);
 
+    std::string GetShaderBinaryDir() const;
+
 }; // class VulkanTensorOp
 
 class VulkanTensorOpForEach : public VulkanTensorOp

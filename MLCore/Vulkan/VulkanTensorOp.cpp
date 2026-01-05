@@ -2,6 +2,7 @@
 #include <MLCore/Vulkan/VulkanDevice.h>
 #include <MLCore/Vulkan/VulkanContext.h>
 #include <MLCore/TensorIterator.h>
+#include <MLCore/Logging.h>
 #include <vkpp/Core/Device.h>
 #include <vkpp/Core/Command.h>
 #include <vkpp/Core/Fence.h>
@@ -106,6 +107,25 @@ std::vector<size_t> VulkanTensorOp::ExpandTensorStrideND(rad::ArrayRef<size_t> s
     }
 }
 
+std::string VulkanTensorOp::GetShaderBinaryDir() const
+{
+    std::string shaderBinaryDir = "Shaders/";
+    const char* shaderBinaryEnv = std::getenv("MLCORE_VULKAN_SHADERS");
+    if (shaderBinaryEnv)
+    {
+        auto path = rad::MakeFilePath(shaderBinaryEnv);
+        if (rad::Exists(path))
+        {
+            shaderBinaryDir = (const char*)rad::MakeAbsolute(path).u8string().c_str();
+        }
+        else
+        {
+            ML_LOG(info, "MLCORE_VULKAN_SHADERS={}: the path doesn't exist!", shaderBinaryEnv);
+        }
+    }
+    return shaderBinaryDir;
+}
+
 VulkanTensorOpForEach::VulkanTensorOpForEach(VulkanContext* context, std::string_view opName) :
     VulkanTensorOp(context),
     m_opName(opName)
@@ -119,9 +139,9 @@ VulkanTensorOpForEach::VulkanTensorOpForEach(VulkanContext* context, std::string
         {
             continue;
         }
-        std::string shaderBinary = std::string("Shaders/TensorOp/") + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
+        std::string shaderBinaryPath = GetShaderBinaryDir() + "/TensorOp/" + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
         rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromCompiledBinaryFile(
-            device, vk::ShaderStageFlagBits::eCompute, shaderBinary
+            device, vk::ShaderStageFlagBits::eCompute, shaderBinaryPath
         );
 
         vk::PushConstantRange pushConstantRange = {};
@@ -215,9 +235,9 @@ VulkanTensorOpElementWiseUnary::VulkanTensorOpElementWiseUnary(VulkanContext* co
         {
             continue;
         }
-        std::string shaderBinary = std::string("Shaders/TensorOp/") + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
+        std::string shaderBinaryPath = GetShaderBinaryDir() + "/TensorOp/" + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
         rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromCompiledBinaryFile(
-            device, vk::ShaderStageFlagBits::eCompute, shaderBinary
+            device, vk::ShaderStageFlagBits::eCompute, shaderBinaryPath
         );
 
         vk::PushConstantRange pushConstantRange = {};
@@ -319,9 +339,9 @@ VulkanTensorOpElementWiseBinary::VulkanTensorOpElementWiseBinary(VulkanContext* 
         {
             continue;
         }
-        std::string shaderBinary = std::string("Shaders/TensorOp/") + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
+        std::string shaderBinaryPath = GetShaderBinaryDir() + "/TensorOp/" + std::string(opName) + "-" + GetDataTypeName(dataType) + ".spv";
         rad::Ref<vkpp::ShaderStageInfo> shaderStage = vkpp::ShaderStageInfo::CreateFromCompiledBinaryFile(
-            device, vk::ShaderStageFlagBits::eCompute, shaderBinary
+            device, vk::ShaderStageFlagBits::eCompute, shaderBinaryPath
         );
 
         vk::PushConstantRange pushConstantRange = {};
