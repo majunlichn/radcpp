@@ -49,6 +49,6 @@ void main()
     {
         uint bufferIndex = g_inputIndexOffset + n * g_strides[0] + c * g_strides[1] +
                             h * g_strides[2] + w * g_strides[3];
-        g_inputTensor[bufferIndex] = Operation(bufferIndex, n, c, h, w);
+        g_inputTensor[bufferIndex] = OpEntry(bufferIndex, n, c, h, w);
     }
 }

@@ -68,6 +68,6 @@ void main()
                             h * g_outputStrides[2] + w * g_outputStrides[3];
         COMPUTE_TYPE a = g_inputTensor[inputIndex];
         COMPUTE_TYPE b = g_otherTensor[otherIndex];
-        g_outputTensor[outputIndex] = DATA_TYPE(Operation(a, b));
+        g_outputTensor[outputIndex] = DATA_TYPE(OpEntry(a, b));
     }
 }

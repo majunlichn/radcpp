@@ -71,7 +71,7 @@ def compile_tensor_op_fill_constant():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/FillConstant-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFillConstant=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFillConstant=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -82,7 +82,7 @@ def compile_tensor_op_add_scalar():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/AddScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAddScalar=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAddScalar=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -93,7 +93,7 @@ def compile_tensor_op_subtract_scalar():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/SubtractScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtractScalar=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtractScalar=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -104,7 +104,7 @@ def compile_tensor_op_add():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/Add-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAdd=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAdd=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -115,7 +115,7 @@ def compile_tensor_op_subtract():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/Subtract-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtract=Operation -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtract=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
