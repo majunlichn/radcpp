@@ -13,6 +13,8 @@ VulkanContext::VulkanContext(rad::Ref<VulkanDevice> device) :
     m_opAdd = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Add");
     m_opSubtractScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "SubtractScalar");
     m_opSubtract = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Subtract");
+    m_opMultiplyScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "MultiplyScalar");
+    m_opMultiply = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Multiply");
 }
 
 VulkanContext::~VulkanContext()
@@ -119,6 +121,32 @@ void VulkanContext::Subtract(Tensor* input, Tensor* other, int alpha, Tensor* ou
     m_opSubtract->SetTensor(3, static_cast<VulkanTensor*>(output ? output : input));
     m_opSubtract->SetParameters(glm::ivec4(alpha));
     m_opSubtract->Execute();
+}
+
+void VulkanContext::MultiplyScalar(Tensor* input, float other, Tensor* output)
+{
+    assert(IsFloatingPointType(input->m_dataType));
+    m_opMultiplyScalar->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opMultiplyScalar->SetTensor(2, static_cast<VulkanTensor*>(output ? output : input));
+    m_opMultiplyScalar->SetParameters(glm::vec4(other));
+    m_opMultiplyScalar->Execute();
+}
+
+void VulkanContext::MultiplyScalar(Tensor* input, int other, Tensor* output)
+{
+    assert(IsIntegerType(input->m_dataType));
+    m_opMultiplyScalar->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opMultiplyScalar->SetTensor(2, static_cast<VulkanTensor*>(output ? output : input));
+    m_opMultiplyScalar->SetParameters(glm::ivec4(other));
+    m_opMultiplyScalar->Execute();
+}
+
+void VulkanContext::Multiply(Tensor* input, Tensor* other, Tensor* output)
+{
+    m_opMultiply->SetTensor(1, static_cast<VulkanTensor*>(input));
+    m_opMultiply->SetTensor(2, static_cast<VulkanTensor*>(other));
+    m_opMultiply->SetTensor(3, static_cast<VulkanTensor*>(output ? output : input));
+    m_opMultiply->Execute();
 }
 
 } // namespace ML

@@ -87,6 +87,45 @@ void TestTensorOpSubtract(ML::DataType dataType, ML::Backend* backend)
     }
 }
 
+template <typename T>
+void TestTensorOpMultiply(ML::DataType dataType, ML::Backend* backend)
+{
+    ML::Device* device = backend->GetDevice(0);
+    ML::SetCurrentDevice(device);
+    if (!device || !device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "{}.Multiply({}): not supported!", backend->m_name, ML::GetDataTypeName(dataType));
+        return;
+    }
+
+    ML_LOG(info, "{}.Multiply({}): start", backend->m_name, ML::GetDataTypeName(dataType));
+
+    static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
+    using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
+
+    rad::Ref<ML::Tensor> a = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
+    rad::Ref<ML::Tensor> b = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
+
+    a->FillConstant(ComputeType(2));
+    b->FillConstant(ComputeType(2));
+    auto c = a->Multiply(b.get());
+
+    c->MultiplyScalarInPlace(ComputeType(2));
+
+    const T* results = static_cast<const T*>(c->GetData());
+    std::vector<uint8_t> dataBuffer;
+    if (results == nullptr)
+    {
+        dataBuffer.resize(c->GetDataSize());
+        c->Read(dataBuffer.data(), 0, dataBuffer.size());
+        results = reinterpret_cast<const T*>(dataBuffer.data());
+    }
+    for (size_t i = 0; i < c->GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], 8);
+    }
+}
+
 TEST(TensorOp, Add)
 {
     for (auto backend : g_backends)
@@ -124,5 +163,25 @@ TEST(TensorOp, Subtract)
         TestTensorOpSubtract<rad::Uint16>(ML::DataType::Uint16, backend);
         TestTensorOpSubtract<rad::Uint32>(ML::DataType::Uint32, backend);
         TestTensorOpSubtract<rad::Uint64>(ML::DataType::Uint64, backend);
+    }
+}
+
+TEST(TensorOp, Multiply)
+{
+    for (auto backend : g_backends)
+    {
+        TestTensorOpMultiply<rad::Float32>(ML::DataType::Float32, backend);
+        TestTensorOpMultiply<rad::Float16>(ML::DataType::Float16, backend);
+        TestTensorOpMultiply<rad::BFloat16>(ML::DataType::BFloat16, backend);
+        TestTensorOpMultiply<rad::Float8E4M3>(ML::DataType::Float8E4M3, backend);
+        TestTensorOpMultiply<rad::Float8E5M2>(ML::DataType::Float8E5M2, backend);
+        TestTensorOpMultiply<rad::Sint8>(ML::DataType::Sint8, backend);
+        TestTensorOpMultiply<rad::Sint16>(ML::DataType::Sint16, backend);
+        TestTensorOpMultiply<rad::Sint32>(ML::DataType::Sint32, backend);
+        TestTensorOpMultiply<rad::Sint64>(ML::DataType::Sint64, backend);
+        TestTensorOpMultiply<rad::Uint8>(ML::DataType::Uint8, backend);
+        TestTensorOpMultiply<rad::Uint16>(ML::DataType::Uint16, backend);
+        TestTensorOpMultiply<rad::Uint32>(ML::DataType::Uint32, backend);
+        TestTensorOpMultiply<rad::Uint64>(ML::DataType::Uint64, backend);
     }
 }

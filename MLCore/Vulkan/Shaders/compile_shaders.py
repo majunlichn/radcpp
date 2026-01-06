@@ -71,7 +71,7 @@ def compile_tensor_op_fill_constant():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/FillConstant-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFillConstant=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFillConstant=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -82,7 +82,7 @@ def compile_tensor_op_add_scalar():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/AddScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAddScalar=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAddScalar=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -93,7 +93,18 @@ def compile_tensor_op_subtract_scalar():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/SubtractScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtractScalar=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtractScalar=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        if cmd_args.enable_optimization:
+            run(f'spirv-opt "{output}" -o "{output}" -O')
+
+def compile_tensor_op_multiply_scalar():
+    source = make_abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
+    output_dir = cmd_args.output_dir + "/TensorOp/"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    for data_type in DataType:
+        output = make_normpath(output_dir + f"/MultiplyScalar-{data_type.name}.spv")
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DMultiplyScalar=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -104,7 +115,7 @@ def compile_tensor_op_add():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/Add-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAdd=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAdd=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -115,7 +126,18 @@ def compile_tensor_op_subtract():
         os.makedirs(output_dir)
     for data_type in DataType:
         output = make_normpath(output_dir + f"/Subtract-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtract=OpEntry -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtract=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        if cmd_args.enable_optimization:
+            run(f'spirv-opt "{output}" -o "{output}" -O')
+
+def compile_tensor_op_multiply():
+    source = make_abspath(os.path.abspath(source_root + "/TensorOp/ElementWiseBinary.comp"))
+    output_dir = cmd_args.output_dir + "/TensorOp/"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    for data_type in DataType:
+        output = make_normpath(output_dir + f"/Multiply-{data_type.name}.spv")
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DMultiply=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -132,10 +154,14 @@ def main() -> int:
             compile_tensor_op_add_scalar()
         if compile_all or any(name in ['SubtractScalar'] for name in cmd_args.targets):
             compile_tensor_op_subtract_scalar()
+        if compile_all or any(name in ['MultiplyScalar'] for name in cmd_args.targets):
+            compile_tensor_op_multiply_scalar()
         if compile_all or any(name in ['Add'] for name in cmd_args.targets):
             compile_tensor_op_add()
         if compile_all or any(name in ['Subtract'] for name in cmd_args.targets):
             compile_tensor_op_subtract()
+        if compile_all or any(name in ['Multiply'] for name in cmd_args.targets):
+            compile_tensor_op_multiply()
     except Exception as e:
         print(e)
         err = -1

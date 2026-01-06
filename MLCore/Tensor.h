@@ -91,6 +91,13 @@ public:
     Tensor* SubtractInPlace(Tensor* other, float alpha);
     Tensor* SubtractInPlace(Tensor* other, int alpha);
 
+    [[nodiscard]] rad::Ref<Tensor> MultiplyScalar(float other);
+    [[nodiscard]] rad::Ref<Tensor> MultiplyScalar(int other);
+    Tensor* MultiplyScalarInPlace(float other);
+    Tensor* MultiplyScalarInPlace(int other);
+    [[nodiscard]] rad::Ref<Tensor> Multiply(Tensor* other);
+    Tensor* MultiplyInPlace(Tensor* other);
+
 }; // class Tensor
 
 inline bool HaveSameLayout(const Tensor* a, const Tensor* b)

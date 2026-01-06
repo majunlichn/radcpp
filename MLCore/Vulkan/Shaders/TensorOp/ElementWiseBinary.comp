@@ -45,6 +45,13 @@ COMPUTE_TYPE Subtract(COMPUTE_TYPE a, COMPUTE_TYPE b)
 }
 #endif
 
+#if defined(Multiply)
+COMPUTE_TYPE Multiply(COMPUTE_TYPE a, COMPUTE_TYPE b)
+{
+    return a * b;
+}
+#endif
+
 void main()
 {
     const uint SizeN = g_sizes[0];
@@ -68,6 +75,6 @@ void main()
                             h * g_outputStrides[2] + w * g_outputStrides[3];
         COMPUTE_TYPE a = g_inputTensor[inputIndex];
         COMPUTE_TYPE b = g_otherTensor[otherIndex];
-        g_outputTensor[outputIndex] = DATA_TYPE(OpEntry(a, b));
+        g_outputTensor[outputIndex] = DATA_TYPE(ElementOp(a, b));
     }
 }

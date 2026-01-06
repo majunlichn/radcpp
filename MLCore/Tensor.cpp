@@ -424,4 +424,43 @@ Tensor* Tensor::SubtractInPlace(Tensor* other, int alpha)
     return this;
 }
 
+rad::Ref<Tensor> Tensor::MultiplyScalar(float other)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->MultiplyScalar(this, other, output.get());
+    return output;
+}
+
+rad::Ref<Tensor> Tensor::MultiplyScalar(int other)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->MultiplyScalar(this, other, output.get());
+    return output;
+}
+
+Tensor* Tensor::MultiplyScalarInPlace(float other)
+{
+    m_context->MultiplyScalar(this, other, this);
+    return this;
+}
+
+Tensor* Tensor::MultiplyScalarInPlace(int other)
+{
+    m_context->MultiplyScalar(this, other, this);
+    return this;
+}
+
+rad::Ref<Tensor> Tensor::Multiply(Tensor* other)
+{
+    rad::Ref<Tensor> output = m_device->CreateTensorLike(this);
+    m_context->Multiply(this, other, output.get());
+    return output;
+}
+
+Tensor* Tensor::MultiplyInPlace(Tensor* other)
+{
+    m_context->Multiply(this, other, this);
+    return this;
+}
+
 } // namespace ML

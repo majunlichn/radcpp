@@ -28,6 +28,11 @@ public:
     virtual void Subtract(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) override;
     virtual void Subtract(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) override;
 
+    virtual void MultiplyScalar(Tensor* input, float other, Tensor* output = nullptr) override;
+    virtual void MultiplyScalar(Tensor* input, int other, Tensor* output = nullptr) override;
+
+    virtual void Multiply(Tensor* input, Tensor* other, Tensor* output = nullptr) override;
+
 }; // class CpuContext
 
 } // namespace ML

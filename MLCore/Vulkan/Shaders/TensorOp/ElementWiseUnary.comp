@@ -42,6 +42,13 @@ COMPUTE_TYPE SubtractScalar(COMPUTE_TYPE x)
 }
 #endif
 
+#if defined(MultiplyScalar)
+COMPUTE_TYPE MultiplyScalar(COMPUTE_TYPE x)
+{
+    return x * COMPUTE_TYPE(g_params[0]);
+}
+#endif
+
 void main()
 {
     const uint SizeN = g_sizes[0];
@@ -62,6 +69,6 @@ void main()
         uint outputIndex = g_outputIndexOffset + n * g_outputStrides[0] + c * g_outputStrides[1] +
                             h * g_outputStrides[2] + w * g_outputStrides[3];
         COMPUTE_TYPE x = g_inputTensor[inputIndex];
-        g_outputTensor[outputIndex] = DATA_TYPE(OpEntry(x));
+        g_outputTensor[outputIndex] = DATA_TYPE(ElementOp(x));
     }
 }
