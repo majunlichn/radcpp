@@ -25,24 +25,20 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
-    rad::Ref<ML::Tensor> a = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
-    rad::Ref<ML::Tensor> b = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a->FillConstant(ComputeType(1));
-    b->FillConstant(ComputeType(1));
-    auto c = a->Add(b.get(), ComputeType(2));
+    a.FillConstant(ComputeType(1));
+    b.FillConstant(ComputeType(1));
+    ML::Tensor c = a.Add(b, ComputeType(2));
 
-    c->AddScalarInPlace(ComputeType(1));
+    c.AddScalarInPlace(ComputeType(1));
 
-    const T* results = static_cast<const T*>(c->GetData());
     std::vector<uint8_t> dataBuffer;
-    if (results == nullptr)
-    {
-        dataBuffer.resize(c->GetDataSize());
-        c->Read(dataBuffer.data(), 0 , dataBuffer.size());
-        results = reinterpret_cast<const T*>(dataBuffer.data());
-    }
-    for (size_t i = 0; i < c->GetElementCount(); ++i)
+    dataBuffer.resize(c.GetDataSize());
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    const T* results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
     {
         ASSERT_EQ(results[i], 4);
     }
@@ -64,24 +60,20 @@ void TestTensorOpSubtract(ML::DataType dataType, ML::Backend* backend)
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
-    rad::Ref<ML::Tensor> a = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
-    rad::Ref<ML::Tensor> b = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a->FillConstant(ComputeType(4));
-    b->FillConstant(ComputeType(1));
-    auto c = a->Subtract(b.get(), ComputeType(2));
+    a.FillConstant(ComputeType(4));
+    b.FillConstant(ComputeType(1));
+    ML::Tensor c = a.Subtract(b, ComputeType(2));
 
-    c->SubtractScalarInPlace(ComputeType(1));
+    c.SubtractScalarInPlace(ComputeType(1));
 
-    const T* results = static_cast<const T*>(c->GetData());
     std::vector<uint8_t> dataBuffer;
-    if (results == nullptr)
-    {
-        dataBuffer.resize(c->GetDataSize());
-        c->Read(dataBuffer.data(), 0, dataBuffer.size());
-        results = reinterpret_cast<const T*>(dataBuffer.data());
-    }
-    for (size_t i = 0; i < c->GetElementCount(); ++i)
+    dataBuffer.resize(c.GetDataSize());
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    const T* results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
     {
         ASSERT_EQ(results[i], 1);
     }
@@ -103,24 +95,20 @@ void TestTensorOpMultiply(ML::DataType dataType, ML::Backend* backend)
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
-    rad::Ref<ML::Tensor> a = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
-    rad::Ref<ML::Tensor> b = ML::CreateTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a->FillConstant(ComputeType(2));
-    b->FillConstant(ComputeType(2));
-    auto c = a->Multiply(b.get());
+    a.FillConstant(ComputeType(2));
+    b.FillConstant(ComputeType(2));
+    ML::Tensor c = a.Multiply(b);
 
-    c->MultiplyScalarInPlace(ComputeType(2));
+    c.MultiplyScalarInPlace(ComputeType(2));
 
-    const T* results = static_cast<const T*>(c->GetData());
     std::vector<uint8_t> dataBuffer;
-    if (results == nullptr)
-    {
-        dataBuffer.resize(c->GetDataSize());
-        c->Read(dataBuffer.data(), 0, dataBuffer.size());
-        results = reinterpret_cast<const T*>(dataBuffer.data());
-    }
-    for (size_t i = 0; i < c->GetElementCount(); ++i)
+    dataBuffer.resize(c.GetDataSize());
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    const T* results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
     {
         ASSERT_EQ(results[i], 8);
     }

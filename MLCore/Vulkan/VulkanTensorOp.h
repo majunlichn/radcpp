@@ -23,7 +23,7 @@ public:
     rad::Ref<vkpp::DescriptorPool> m_descPool;
     rad::Ref<vkpp::DescriptorSet> m_descSet;
 
-    std::map<uint32_t, VulkanTensor*> m_bindings;
+    std::map<uint32_t, Tensor*> m_bindings;
 
     VulkanTensorOp(VulkanContext* context);
     virtual ~VulkanTensorOp();
@@ -40,7 +40,7 @@ public:
         SetUniforms(&uniforms, sizeof(uniforms));
     }
 
-    virtual void SetTensor(uint32_t binding, VulkanTensor* tensor);
+    virtual void SetTensor(uint32_t binding, Tensor* tensor);
     virtual void Execute() = 0;
 
     // Expand size dimensions (same element count and memory layout).
@@ -74,7 +74,7 @@ public:
         uint32_t inputIndexOffset;
     };
 
-    VulkanTensor* GetInputTensor() { return m_bindings[1]; }
+    Tensor* GetInputTensor() { return m_bindings[1]; }
 
     void SetParameters(glm::vec4 params)
     {
@@ -114,8 +114,8 @@ public:
         uint32_t outputIndexOffset;
     };
 
-    VulkanTensor* GetInputTensor() { return m_bindings[1]; }
-    VulkanTensor* GetOutputTensor() { return m_bindings[2]; }
+    Tensor* GetInputTensor() { return m_bindings[1]; }
+    Tensor* GetOutputTensor() { return m_bindings[2]; }
 
     void SetParameters(glm::vec4 params)
     {
@@ -166,9 +166,9 @@ public:
         uint32_t outputIndexOffset;
     };
 
-    VulkanTensor* GetInputTensor() { return m_bindings[1]; }
-    VulkanTensor* GetOtherTensor() { return m_bindings[2]; }
-    VulkanTensor* GetOutputTensor() { return m_bindings[3]; }
+    Tensor* GetInputTensor() { return m_bindings[1]; }
+    Tensor* GetOtherTensor() { return m_bindings[2]; }
+    Tensor* GetOutputTensor() { return m_bindings[3]; }
 
     virtual void Execute() override;
 

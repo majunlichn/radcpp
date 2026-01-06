@@ -22,13 +22,13 @@ rad::Ref<Context> VulkanDevice::CreateContext()
     return RAD_NEW VulkanContext(this);
 }
 
-rad::Ref<Tensor> VulkanDevice::CreateTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options)
+rad::Ref<TensorStorage> VulkanDevice::CreateTensorStorage(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options)
 {
     if (dataType == DataType::Unknown)
     {
         dataType = DataType::Float32;
     }
-    rad::Ref<VulkanTensor> tensor = RAD_NEW VulkanTensor(this);
+    rad::Ref<VulkanTensorStorage> tensor = RAD_NEW VulkanTensorStorage(this);
     if (tensor->Init(sizes, dataType, options))
     {
         return tensor;

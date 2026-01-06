@@ -15,7 +15,7 @@ enum class DeviceType
 };
 
 class Context;
-class Tensor;
+class TensorStorage;
 
 class Device : public rad::RefCounted<Device>
 {
@@ -26,9 +26,7 @@ public:
     DeviceType GetType() const { return m_type; }
 
     virtual rad::Ref<Context> CreateContext() = 0;
-    virtual rad::Ref<Tensor> CreateTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options = {}) = 0;
-    // Create a tensor that has the same data type, sizes and strides.
-    rad::Ref<Tensor> CreateTensorLike(Tensor* input);
+    virtual rad::Ref<TensorStorage> CreateTensorStorage(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options = {}) = 0;
 
     virtual bool IsDataTypeSupported(DataType dataType) const = 0;
     virtual bool IsDataTypeComputable(DataType dataType) const = 0;
@@ -38,7 +36,5 @@ public:
     std::string m_driverVersion;
 
 }; // class Device
-
-rad::Ref<Tensor> CreateTensor(rad::ArrayRef<size_t> sizes, DataType dataType, Device* device = GetCurrentDevice(), const TensorOptions& options = {});
 
 } // namespace ML

@@ -7,9 +7,9 @@
 TEST(TensorIterator, NextND)
 {
     ML::Backend* backend = ML::GetBackend("CPU");
-    ML::Device* device = backend->GetDevice(0);
-    auto tensor = device->CreateTensor({ 2, 4, 8, 8 }, ML::DataType::Float16);
-    ML::TensorIterator iter(tensor.get());
+    ML::SetCurrentDevice(backend->GetDevice(0));
+    auto tensor = ML::MakeTensor({ 2, 4, 8, 8 }, ML::DataType::Float16);
+    ML::TensorIterator iter(&tensor);
     iter.Reset();
     bool hasNextND = iter.Next();
     std::vector<size_t> coordRef = { 0, 0, 0, 1 };
@@ -48,10 +48,10 @@ TEST(TensorIterator, NextND)
 TEST(TensorIterator, Next)
 {
     ML::Backend* backend = ML::GetBackend("CPU");
-    ML::Device* device = backend->GetDevice(0);
+    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
-    auto tensor = device->CreateTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
-    ML::TensorIterator iter(tensor.get(), { 0, 0, 2, 2 });
+    auto tensor = ML::MakeTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
+    ML::TensorIterator iter(&tensor, { 0, 0, 2, 2 });
     iter.Reset();
     ML_LOG(info, "Offsets=[{}]; Sizes=[{}]; Strides=[{}]",
         rad::ToString(iter.m_offsets), rad::ToString(iter.m_sizes), rad::ToString(iter.m_strides));
@@ -64,10 +64,10 @@ TEST(TensorIterator, Next)
 TEST(TensorIterator, ForEach)
 {
     ML::Backend* backend = ML::GetBackend("CPU");
-    ML::Device* device = backend->GetDevice(0);
+    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
-    auto tensor = device->CreateTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
-    ML::TensorIterator iter(tensor.get(), { 0, 0, 2, 2 });
+    auto tensor = ML::MakeTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
+    ML::TensorIterator iter(&tensor, { 0, 0, 2, 2 });
     iter.Reset();
     ML_LOG(info, "Offsets=[{}]; Sizes=[{}]; Strides=[{}]",
         rad::ToString(iter.m_offsets), rad::ToString(iter.m_sizes), rad::ToString(iter.m_strides));
@@ -80,10 +80,10 @@ TEST(TensorIterator, ForEach)
 TEST(TensorIterator, ForEachRecursively)
 {
     ML::Backend* backend = ML::GetBackend("CPU");
-    ML::Device* device = backend->GetDevice(0);
+    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
-    auto tensor = device->CreateTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
-    ML::TensorIterator iter(tensor.get(), { 0, 0, 2, 2 });
+    auto tensor = ML::MakeTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
+    ML::TensorIterator iter(&tensor, { 0, 0, 2, 2 });
     iter.Reset();
     ML_LOG(info, "Offsets=[{}]; Sizes=[{}]; Strides=[{}]",
         rad::ToString(iter.m_offsets), rad::ToString(iter.m_sizes), rad::ToString(iter.m_strides));
@@ -96,10 +96,10 @@ TEST(TensorIterator, ForEachRecursively)
 TEST(TensorIterator, ForEachSubrangeND)
 {
     ML::Backend* backend = ML::GetBackend("CPU");
-    ML::Device* device = backend->GetDevice(0);
+    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
-    auto tensor = device->CreateTensor({ 2, 4, 8, 8 }, ML::DataType::Float16, options);
-    ML::TensorIterator iter(tensor.get(), { 1, 2, 4, 4 });
+    auto tensor = ML::MakeTensor({ 2, 4, 8, 8 }, ML::DataType::Float16, options);
+    ML::TensorIterator iter(&tensor, { 1, 2, 4, 4 });
     iter.Reset();
     ML_LOG(info, "Offsets=[{}]; Sizes=[{}]; Strides=[{}]",
         rad::ToString(iter.m_offsets), rad::ToString(iter.m_sizes), rad::ToString(iter.m_strides));
@@ -112,12 +112,12 @@ TEST(TensorIterator, ForEachSubrangeND)
 TEST(TensorIterator, ForEachNHWC)
 {
     ML::Backend* backend = ML::GetBackend("CPU");
-    ML::Device* device = backend->GetDevice(0);
+    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
     std::array<size_t, 4> sizes = { 2, 4, 8, 8 };
-    options.m_strides = ML::Tensor::MakeStrides(sizes, { 1, 3, 2, 0 });
-    auto tensor = device->CreateTensor(sizes, ML::DataType::Float16, options);
-    ML::TensorIterator iter(tensor.get(), { 1, 0, 4, 4 });
+    options.m_strides = ML::MakeTensorStrides(sizes, { 1, 3, 2, 0 });
+    auto tensor = ML::MakeTensor(sizes, ML::DataType::Float16, options);
+    ML::TensorIterator iter(&tensor, { 1, 0, 4, 4 });
     iter.Reset();
     ML_LOG(info, "Offsets=[{}]; Sizes=[{}]; Strides=[{}]; Permutation=[{}]",
         rad::ToString(iter.m_offsets), rad::ToString(iter.m_sizes), rad::ToString(iter.m_strides), rad::ToString(iter.m_permutation));

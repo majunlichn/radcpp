@@ -62,12 +62,13 @@ void VulkanTensorOp::SetUniforms(const void* data, size_t dataSize)
     m_uniformBuffer->Write(data, 0, dataSize);
 }
 
-void VulkanTensorOp::SetTensor(uint32_t binding, VulkanTensor* tensor)
+void VulkanTensorOp::SetTensor(uint32_t binding, Tensor* tensor)
 {
+    VulkanTensorStorage* tensorStorage = static_cast<VulkanTensorStorage*>(tensor->m_storage.get());
     vk::DescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = tensor->m_buffer->GetHandle();
-    bufferInfo.offset = tensor->m_bufferOffset;
-    bufferInfo.range = tensor->m_bufferSize;
+    bufferInfo.buffer = tensorStorage->m_buffer->GetHandle();
+    bufferInfo.offset = tensorStorage->m_bufferOffset;
+    bufferInfo.range = tensorStorage->m_bufferSize;
     m_descSet->UpdateBuffers(binding, 0, vk::DescriptorType::eStorageBuffer, bufferInfo);
     m_bindings[binding] = tensor;
 }
@@ -162,7 +163,7 @@ void VulkanTensorOpForEach::Execute()
 {
     vkpp::Device* device = m_context->GetDeviceImpl();
 
-    VulkanTensor* input = GetInputTensor();
+    Tensor* input = GetInputTensor();
 
     DataType dataType = input->m_dataType;
 
@@ -258,8 +259,8 @@ void VulkanTensorOpElementWiseUnary::Execute()
 {
     vkpp::Device* device = m_context->GetDeviceImpl();
 
-    VulkanTensor* input = GetInputTensor();
-    VulkanTensor* output = GetOutputTensor();
+    Tensor* input = GetInputTensor();
+    Tensor* output = GetOutputTensor();
     assert(output->m_sizes == input->m_sizes);
     assert(output->m_dataType == input->m_dataType);
 
@@ -362,9 +363,9 @@ void VulkanTensorOpElementWiseBinary::Execute()
 {
     vkpp::Device* device = m_context->GetDeviceImpl();
 
-    VulkanTensor* input = GetInputTensor();
-    VulkanTensor* other = GetInputTensor();
-    VulkanTensor* output = GetOutputTensor();
+    Tensor* input = GetInputTensor();
+    Tensor* other = GetInputTensor();
+    Tensor* output = GetOutputTensor();
     assert(other->m_sizes == input->m_sizes);
     assert(other->m_dataType == input->m_dataType);
     assert(output->m_sizes == input->m_sizes);

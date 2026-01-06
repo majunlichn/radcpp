@@ -34,16 +34,16 @@ rad::Ref<Context> CpuDevice::CreateContext()
     return RAD_NEW CpuContext(this);
 }
 
-rad::Ref<Tensor> CpuDevice::CreateTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options)
+rad::Ref<TensorStorage> CpuDevice::CreateTensorStorage(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options)
 {
     if (dataType == DataType::Unknown)
     {
         dataType = DataType::Float32;
     }
-    rad::Ref<CpuTensor> tensor = RAD_NEW CpuTensor(this);
-    if (tensor->Init(sizes, dataType, options))
+    rad::Ref<CpuTensorStorage> storage = RAD_NEW CpuTensorStorage(this);
+    if (storage->Init(sizes, dataType, options))
     {
-        return tensor;
+        return storage;
     }
     else
     {
@@ -75,13 +75,6 @@ bool CpuDevice::IsDataTypeComputable(DataType dataType) const
     {
         return false;
     }
-}
-
-rad::Ref<Tensor> Device::CreateTensorLike(Tensor* input)
-{
-    TensorOptions options;
-    options.m_strides = input->m_strides;
-    return CreateTensor(input->m_sizes, input->m_dataType, options);
 }
 
 } // namespace ML

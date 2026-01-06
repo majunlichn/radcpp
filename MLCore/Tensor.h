@@ -8,40 +8,57 @@ namespace ML
 class Device;
 class Context;
 
-class Tensor : public rad::RefCounted<Tensor>
+size_t GetTensorElementCount(rad::ArrayRef<size_t> sizes);
+std::vector<size_t> MakeTensorStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder = {});
+size_t GetTensorDataSizeInElement(rad::ArrayRef<size_t> size, rad::ArrayRef<size_t> strides);
+
+class TensorStorage : public rad::RefCounted<TensorStorage>
 {
 public:
+    TensorStorage(rad::Ref<Device> device);
+    virtual ~TensorStorage();
+
+    virtual void Read(void* data, size_t offset, size_t dataSize) = 0;
+    virtual void Write(const void* data, size_t offset, size_t dataSize) = 0;
+
     rad::Ref<Device> m_device;
-    rad::Ref<Context> m_context;
     std::vector<size_t> m_sizes;
     std::vector<size_t> m_strides;
     DataType m_dataType = DataType::Unknown;
 
-    Tensor();
-    Tensor(rad::Ref<Device> device);
+}; // class TensorStorage
 
-    virtual ~Tensor() = default;
+class Tensor : public rad::RefCounted<Tensor>
+{
+public:
+    rad::Ref<Device> m_device;
+    rad::Ref<TensorStorage> m_storage;
+    rad::Ref<Context> m_context;
+
+    size_t m_bufferOffset = 0;
+    std::vector<size_t> m_offsets;
+    std::vector<size_t> m_sizes;
+    std::vector<size_t> m_strides;
+    DataType m_dataType = DataType::Unknown;
+
+    Tensor(rad::Ref<TensorStorage> storage, rad::Ref<Context> context);
+    virtual ~Tensor();
 
     void SetContext(rad::Ref<Context> context) { m_context = std::move(context); }
 
-    Device* GetDevice() { return m_device.get(); }
-    Context* GetContext() { return m_context.get(); }
-
-    static std::vector<size_t> MakeStrides(rad::ArrayRef<size_t> sizes, rad::ArrayRef<size_t> memoryOrder = {});
-
     size_t GetDimCount() const { return m_sizes.size(); }
-    static size_t GetElementCount(rad::ArrayRef<size_t> sizes);
-    static size_t GetElementCountND(rad::ArrayRef<size_t> sizes, size_t nd);
+
     size_t GetElementCount() const;
-    size_t GetElementCountND(size_t nd) const;
     std::vector<size_t> GetMemoryOrder() const;
 
-    static size_t GetDataSizeInElement(rad::ArrayRef<size_t> size, rad::ArrayRef<size_t> strides);
     virtual size_t GetDataSizeInElement() const;
     virtual size_t GetDataSize() const;
 
     bool IsContiguous() const;
     bool HasSameLayout(const Tensor* other) const;
+
+    void Read(void* data, size_t offset, size_t dataSize);
+    void Write(const void* data, size_t offset, size_t dataSize);
 
     size_t CoordToBufferIndex(rad::ArrayRef<size_t> coord) const;
     size_t CoordToBufferOffset(rad::ArrayRef<size_t> coord) const;
@@ -51,12 +68,6 @@ public:
     bool IsNCDHW() const;
     bool IsNDHWC() const;
 
-    // CPU backend only, nullptr if not available.
-    virtual void* GetData() = 0;
-
-    virtual void Read(void* data, size_t offset, size_t dataSize) = 0;
-    virtual void Write(const void* data, size_t offset, size_t dataSize) = 0;
-
     enum class TextFormat
     {
         Dec,
@@ -64,41 +75,45 @@ public:
     };
     std::string ToString(TextFormat format = TextFormat::Dec, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {});
 
-    Tensor* FillConstant(float value);
-    Tensor* FillConstant(int value);
+    Tensor& FillConstant(float value);
+    Tensor& FillConstant(int value);
 
-    [[nodiscard]] rad::Ref<Tensor> AddScalar(float other);
-    [[nodiscard]] rad::Ref<Tensor> AddScalar(int other);
-    Tensor* AddScalarInPlace(float other);
-    Tensor* AddScalarInPlace(int other);
+    [[nodiscard]] Tensor AddScalar(float other);
+    [[nodiscard]] Tensor AddScalar(int other);
+    Tensor& AddScalarInPlace(float other);
+    Tensor& AddScalarInPlace(int other);
 
-    [[nodiscard]] rad::Ref<Tensor> Add(Tensor* other);
-    [[nodiscard]] rad::Ref<Tensor> Add(Tensor* other, float alpha);
-    [[nodiscard]] rad::Ref<Tensor> Add(Tensor* other, int alpha);
-    Tensor* AddInPlace(Tensor* other);
-    Tensor* AddInPlace(Tensor* other, float alpha);
-    Tensor* AddInPlace(Tensor* other, int alpha);
+    [[nodiscard]] Tensor Add(Tensor& other);
+    [[nodiscard]] Tensor Add(Tensor& other, float alpha);
+    [[nodiscard]] Tensor Add(Tensor& other, int alpha);
+    Tensor& AddInPlace(Tensor& other);
+    Tensor& AddInPlace(Tensor& other, float alpha);
+    Tensor& AddInPlace(Tensor& other, int alpha);
 
-    [[nodiscard]] rad::Ref<Tensor> SubtractScalar(float other);
-    [[nodiscard]] rad::Ref<Tensor> SubtractScalar(int other);
-    Tensor* SubtractScalarInPlace(float other);
-    Tensor* SubtractScalarInPlace(int other);
+    [[nodiscard]] Tensor SubtractScalar(float other);
+    [[nodiscard]] Tensor SubtractScalar(int other);
+    Tensor& SubtractScalarInPlace(float other);
+    Tensor& SubtractScalarInPlace(int other);
 
-    [[nodiscard]] rad::Ref<Tensor> Subtract(Tensor* other);
-    [[nodiscard]] rad::Ref<Tensor> Subtract(Tensor* other, float alpha);
-    [[nodiscard]] rad::Ref<Tensor> Subtract(Tensor* other, int alpha);
-    Tensor* SubtractInPlace(Tensor* other);
-    Tensor* SubtractInPlace(Tensor* other, float alpha);
-    Tensor* SubtractInPlace(Tensor* other, int alpha);
+    [[nodiscard]] Tensor Subtract(Tensor& other);
+    [[nodiscard]] Tensor Subtract(Tensor& other, float alpha);
+    [[nodiscard]] Tensor Subtract(Tensor& other, int alpha);
+    Tensor& SubtractInPlace(Tensor& other);
+    Tensor& SubtractInPlace(Tensor& other, float alpha);
+    Tensor& SubtractInPlace(Tensor& other, int alpha);
 
-    [[nodiscard]] rad::Ref<Tensor> MultiplyScalar(float other);
-    [[nodiscard]] rad::Ref<Tensor> MultiplyScalar(int other);
-    Tensor* MultiplyScalarInPlace(float other);
-    Tensor* MultiplyScalarInPlace(int other);
-    [[nodiscard]] rad::Ref<Tensor> Multiply(Tensor* other);
-    Tensor* MultiplyInPlace(Tensor* other);
+    [[nodiscard]] Tensor MultiplyScalar(float other);
+    [[nodiscard]] Tensor MultiplyScalar(int other);
+    Tensor& MultiplyScalarInPlace(float other);
+    Tensor& MultiplyScalarInPlace(int other);
+    [[nodiscard]] Tensor Multiply(Tensor& other);
+    Tensor& MultiplyInPlace(Tensor& other);
 
 }; // class Tensor
+
+Tensor MakeTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options = {});
+Tensor MakeTensorLike(Tensor& ref);
+Tensor MakeTensorLike(Tensor* ref);
 
 inline bool HaveSameLayout(const Tensor* a, const Tensor* b)
 {

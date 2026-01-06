@@ -17,12 +17,12 @@ struct CpuTensorOpForEach
 {
     void operator()(Tensor* input, const std::function<T()>& op)
     {
-        CpuTensor* cpuInput = static_cast<CpuTensor*>(input);
-        T* inputData = (T*)cpuInput->m_buffer.data();
+        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input->m_storage.get());
+        T* inputData = (T*)inputStorage->m_buffer.data();
 
-        if (cpuInput->IsContiguous())
+        if (input->IsContiguous())
         {
-            auto& buffer = cpuInput->m_buffer;
+            auto& buffer = inputStorage->m_buffer;
             std::generate_n(std::execution::par_unseq, inputData, input->GetElementCount(), [&]() { return op(); });
         }
         else
@@ -45,13 +45,13 @@ struct CpuTensorOpElementWiseUnary
         {
             output = input;
         }
-        CpuTensor* cpuInput = static_cast<CpuTensor*>(input);
-        CpuTensor* cpuOutput = static_cast<CpuTensor*>(input);
-        assert(cpuInput->m_sizes == cpuOutput->m_sizes);
-        assert(cpuInput->m_dataType == cpuOutput->m_dataType);
+        assert(input->m_sizes == output->m_sizes);
+        assert(input->m_dataType == output->m_dataType);
 
-        const T* inputData = (const T*)cpuInput->m_buffer.data();
-        T* outputData = (T*)cpuOutput->m_buffer.data();
+        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input->m_storage.get());
+        CpuTensorStorage* outputStorage = static_cast<CpuTensorStorage*>(output->m_storage.get());
+        const T* inputData = (const T*)inputStorage->m_buffer.data();
+        T* outputData = (T*)outputStorage->m_buffer.data();
 
         if (input->IsContiguous() && HaveSameLayout(input, output))
         {
@@ -84,17 +84,17 @@ struct CpuTensorOpElementWiseBinary
         {
             output = input;
         }
-        CpuTensor* cpuInput = static_cast<CpuTensor*>(input);
-        CpuTensor* cpuOther = static_cast<CpuTensor*>(other);
-        CpuTensor* cpuOutput = static_cast<CpuTensor*>(output);
-        assert(cpuInput->m_sizes == cpuOther->m_sizes);
-        assert(cpuInput->m_sizes == cpuOutput->m_sizes);
-        assert(cpuInput->m_dataType == cpuOther->m_dataType);
-        assert(cpuInput->m_dataType == cpuOutput->m_dataType);
+        assert(input->m_sizes == other->m_sizes);
+        assert(input->m_sizes == output->m_sizes);
+        assert(input->m_dataType == other->m_dataType);
+        assert(input->m_dataType == output->m_dataType);
 
-        const T* inputData = (const T*)cpuInput->m_buffer.data();
-        const T* otherData = (const T*)cpuOther->m_buffer.data();
-        T* outputData = (T*)cpuOutput->m_buffer.data();
+        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input->m_storage.get());
+        CpuTensorStorage* otherStorage = static_cast<CpuTensorStorage*>(other->m_storage.get());
+        CpuTensorStorage* outputStorage = static_cast<CpuTensorStorage*>(output->m_storage.get());
+        const T* inputData = (const T*)inputStorage->m_buffer.data();
+        const T* otherData = (const T*)otherStorage->m_buffer.data();
+        T* outputData = (T*)outputStorage->m_buffer.data();
 
         if (input->IsContiguous() && HaveSameLayout(input, other) && HaveSameLayout(input, output))
         {

@@ -19,7 +19,7 @@ public:
     uint32_t GetLogicalCoreCount() const;
 
     virtual rad::Ref<Context> CreateContext() override;
-    virtual rad::Ref<Tensor> CreateTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options = {}) override;
+    virtual rad::Ref<TensorStorage> CreateTensorStorage(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options = {}) override;
 
     virtual bool IsDataTypeSupported(DataType dataType) const override;
     virtual bool IsDataTypeComputable(DataType dataType) const override;
