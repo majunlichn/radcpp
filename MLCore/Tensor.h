@@ -41,7 +41,12 @@ public:
     std::vector<size_t> m_strides;
     DataType m_dataType = DataType::Unknown;
 
+    Tensor();
     Tensor(rad::Ref<TensorStorage> storage, rad::Ref<Context> context);
+    Tensor(const Tensor& other) = default;
+    Tensor(Tensor&& other) noexcept = default;
+    Tensor& operator=(const Tensor& other) = default;
+    Tensor& operator=(Tensor&& other) noexcept = default;
     virtual ~Tensor();
 
     void SetContext(rad::Ref<Context> context) { m_context = std::move(context); }
@@ -115,6 +120,76 @@ public:
     Tensor& DivideScalarInPlace(int other);
     [[nodiscard]] Tensor Divide(Tensor& other);
     Tensor& DivideInPlace(Tensor& other);
+
+    Tensor& operator+=(float other) { return AddScalarInPlace(other); }
+    Tensor& operator+=(int other) { return AddScalarInPlace(other); }
+    Tensor& operator-=(float other) { return SubtractScalarInPlace(other); }
+    Tensor& operator-=(int other) { return SubtractScalarInPlace(other); }
+    Tensor& operator*=(float other) { return MultiplyScalarInPlace(other); }
+    Tensor& operator*=(int other) { return MultiplyScalarInPlace(other); }
+    Tensor& operator/=(float other) { return DivideScalarInPlace(other); }
+    Tensor& operator/=(int other) { return DivideScalarInPlace(other); }
+
+    Tensor& operator+=(Tensor& other) { return AddInPlace(other); }
+    Tensor& operator-=(Tensor& other) { return SubtractInPlace(other); }
+    Tensor& operator*=(Tensor& other) { return MultiplyInPlace(other); }
+    Tensor& operator/=(Tensor& other) { return DivideInPlace(other); }
+
+    friend Tensor operator+(Tensor lhs, float rhs)
+    {
+        return lhs += rhs;
+    }
+    friend Tensor operator+(Tensor lhs, int rhs)
+    {
+        return lhs += rhs;
+    }
+
+    friend Tensor operator-(Tensor lhs, float rhs)
+    {
+        return lhs -= rhs;
+    }
+    friend Tensor operator-(Tensor lhs, int rhs)
+    {
+        return lhs -= rhs;
+    }
+
+    friend Tensor operator*(Tensor lhs, float rhs)
+    {
+        return lhs *= rhs;
+    }
+    friend Tensor operator*(Tensor lhs, int rhs)
+    {
+        return lhs *= rhs;
+    }
+
+    friend Tensor operator/(Tensor lhs, float rhs)
+    {
+        return lhs /= rhs;
+    }
+    friend Tensor operator/(Tensor lhs, int rhs)
+    {
+        return lhs /= rhs;
+    }
+
+    friend Tensor operator+(Tensor lhs, Tensor& rhs)
+    {
+        return lhs += rhs;
+    }
+
+    friend Tensor operator-(Tensor lhs, Tensor& rhs)
+    {
+        return lhs -= rhs;
+    }
+
+    friend Tensor operator*(Tensor lhs, Tensor& rhs)
+    {
+        return lhs *= rhs;
+    }
+
+    friend Tensor operator/(Tensor lhs, Tensor& rhs)
+    {
+        return lhs /= rhs;
+    }
 
 }; // class Tensor
 

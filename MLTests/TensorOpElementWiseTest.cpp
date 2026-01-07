@@ -32,7 +32,7 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
     b.FillConstant(ComputeType(1));
     ML::Tensor c = a.Add(b, ComputeType(2));
 
-    c.AddScalarInPlace(ComputeType(1));
+    c += ComputeType(1);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -67,7 +67,7 @@ void TestTensorOpSubtract(ML::DataType dataType, ML::Backend* backend)
     b.FillConstant(ComputeType(1));
     ML::Tensor c = a.Subtract(b, ComputeType(2));
 
-    c.SubtractScalarInPlace(ComputeType(1));
+    c -= ComputeType(1);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -100,9 +100,9 @@ void TestTensorOpMultiply(ML::DataType dataType, ML::Backend* backend)
 
     a.FillConstant(ComputeType(2));
     b.FillConstant(ComputeType(2));
-    ML::Tensor c = a.Multiply(b);
+    ML::Tensor c = a * b;
 
-    c.MultiplyScalarInPlace(ComputeType(2));
+    c *= ComputeType(2);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -134,9 +134,9 @@ void TestTensorOpDivide(ML::DataType dataType, ML::Backend* backend)
 
     a.FillConstant(ComputeType(8));
     b.FillConstant(ComputeType(2));
-    ML::Tensor c = a.Divide(b);
+    ML::Tensor c = a / b;
 
-    c.DivideScalarInPlace(ComputeType(2));
+    c /= ComputeType(2);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());

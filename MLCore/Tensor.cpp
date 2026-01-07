@@ -64,6 +64,10 @@ TensorStorage::~TensorStorage()
 {
 }
 
+Tensor::Tensor()
+{
+}
+
 Tensor::Tensor(rad::Ref<TensorStorage> storage, rad::Ref<Context> context) :
     m_device(storage->m_device),
     m_storage(std::move(storage)),
