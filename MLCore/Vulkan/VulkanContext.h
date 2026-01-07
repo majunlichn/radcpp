@@ -24,6 +24,8 @@ public:
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opSubtract;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opMultiplyScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opMultiply;
+    rad::Ref<VulkanTensorOpElementWiseUnary> m_opDivideScalar;
+    rad::Ref<VulkanTensorOpElementWiseBinary> m_opDivide;
 
     VulkanContext(rad::Ref<VulkanDevice> device);
     virtual ~VulkanContext() override;
@@ -49,6 +51,11 @@ public:
     virtual void MultiplyScalar(Tensor* input, float other, Tensor* output = nullptr) override;
     virtual void MultiplyScalar(Tensor* input, int other, Tensor* output = nullptr) override;
     virtual void Multiply(Tensor* input, Tensor* other, Tensor* output = nullptr) override;
+
+    virtual void DivideScalar(Tensor* input, float other, Tensor* output = nullptr) override;
+    virtual void DivideScalar(Tensor* input, int other, Tensor* output = nullptr) override;
+
+    virtual void Divide(Tensor* input, Tensor* other, Tensor* output = nullptr) override;
 
 }; // class VulkanContext
 

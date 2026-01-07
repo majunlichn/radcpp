@@ -49,6 +49,15 @@ public:
     // @param output If nullptr, results are written back to the input.
     virtual void Multiply(Tensor* input, Tensor* other, Tensor* output = nullptr) = 0;
 
+    // Divide input tensor by other scalar. For integer divisions, the result is truncated.
+    // @param output If nullptr, results are written back to the input.
+    virtual void DivideScalar(Tensor* input, float other, Tensor* output = nullptr) = 0;
+    virtual void DivideScalar(Tensor* input, int other, Tensor* output = nullptr) = 0;
+
+    // Divide input tensor by other tensor. For integer divisions, the result is truncated.
+    // @param output If nullptr, results are written back to the input.
+    virtual void Divide(Tensor* input, Tensor* other, Tensor* output = nullptr) = 0;
+
 }; // class Context
 
 } // namespace ML

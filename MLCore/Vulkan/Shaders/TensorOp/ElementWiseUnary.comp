@@ -49,6 +49,13 @@ COMPUTE_TYPE MultiplyScalar(COMPUTE_TYPE x)
 }
 #endif
 
+#if defined(DivideScalar)
+COMPUTE_TYPE DivideScalar(COMPUTE_TYPE x)
+{
+    return x / COMPUTE_TYPE(g_params[0]);
+}
+#endif
+
 void main()
 {
     const uint SizeN = g_sizes[0];

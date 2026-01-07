@@ -15,6 +15,8 @@ VulkanContext::VulkanContext(rad::Ref<VulkanDevice> device) :
     m_opSubtract = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Subtract");
     m_opMultiplyScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "MultiplyScalar");
     m_opMultiply = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Multiply");
+    m_opDivideScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "DivideScalar");
+    m_opDivide = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Divide");
 }
 
 VulkanContext::~VulkanContext()
@@ -147,6 +149,32 @@ void VulkanContext::Multiply(Tensor* input, Tensor* other, Tensor* output)
     m_opMultiply->SetTensor(2, other);
     m_opMultiply->SetTensor(3, output ? output : input);
     m_opMultiply->Execute();
+}
+
+void VulkanContext::DivideScalar(Tensor* input, float other, Tensor* output)
+{
+    assert(IsFloatingPointType(input->m_dataType));
+    m_opDivideScalar->SetTensor(1, input);
+    m_opDivideScalar->SetTensor(2, output ? output : input);
+    m_opDivideScalar->SetParameters(glm::vec4(other));
+    m_opDivideScalar->Execute();
+}
+
+void VulkanContext::DivideScalar(Tensor* input, int other, Tensor* output)
+{
+    assert(IsIntegerType(input->m_dataType));
+    m_opDivideScalar->SetTensor(1, input);
+    m_opDivideScalar->SetTensor(2, output ? output : input);
+    m_opDivideScalar->SetParameters(glm::ivec4(other));
+    m_opDivideScalar->Execute();
+}
+
+void VulkanContext::Divide(Tensor* input, Tensor* other, Tensor* output)
+{
+    m_opDivide->SetTensor(1, input);
+    m_opDivide->SetTensor(2, other);
+    m_opDivide->SetTensor(3, output ? output : input);
+    m_opDivide->Execute();
 }
 
 } // namespace ML

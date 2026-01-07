@@ -52,6 +52,13 @@ COMPUTE_TYPE Multiply(COMPUTE_TYPE a, COMPUTE_TYPE b)
 }
 #endif
 
+#if defined(Divide)
+COMPUTE_TYPE Divide(COMPUTE_TYPE a, COMPUTE_TYPE b)
+{
+    return a / b;
+}
+#endif
+
 void main()
 {
     const uint SizeN = g_sizes[0];

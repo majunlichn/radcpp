@@ -33,6 +33,11 @@ public:
 
     virtual void Multiply(Tensor* input, Tensor* other, Tensor* output = nullptr) override;
 
+    virtual void DivideScalar(Tensor* input, float other, Tensor* output = nullptr) override;
+    virtual void DivideScalar(Tensor* input, int other, Tensor* output = nullptr) override;
+
+    virtual void Divide(Tensor* input, Tensor* other, Tensor* output = nullptr) override;
+
 }; // class CpuContext
 
 } // namespace ML

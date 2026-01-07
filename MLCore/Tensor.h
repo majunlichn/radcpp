@@ -109,6 +109,13 @@ public:
     [[nodiscard]] Tensor Multiply(Tensor& other);
     Tensor& MultiplyInPlace(Tensor& other);
 
+    [[nodiscard]] Tensor DivideScalar(float other);
+    [[nodiscard]] Tensor DivideScalar(int other);
+    Tensor& DivideScalarInPlace(float other);
+    Tensor& DivideScalarInPlace(int other);
+    [[nodiscard]] Tensor Divide(Tensor& other);
+    Tensor& DivideInPlace(Tensor& other);
+
 }; // class Tensor
 
 Tensor MakeTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options = {});

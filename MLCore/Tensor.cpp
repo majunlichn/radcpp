@@ -480,4 +480,43 @@ Tensor& Tensor::MultiplyInPlace(Tensor& other)
     return *this;
 }
 
+Tensor Tensor::DivideScalar(float other)
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->DivideScalar(this, other, &output);
+    return output;
+}
+
+Tensor Tensor::DivideScalar(int other)
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->DivideScalar(this, other, &output);
+    return output;
+}
+
+Tensor& Tensor::DivideScalarInPlace(float other)
+{
+    m_context->DivideScalar(this, other, this);
+    return *this;
+}
+
+Tensor& Tensor::DivideScalarInPlace(int other)
+{
+    m_context->DivideScalar(this, other, this);
+    return *this;
+}
+
+Tensor Tensor::Divide(Tensor& other)
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->Divide(this, &other, &output);
+    return output;
+}
+
+Tensor& Tensor::DivideInPlace(Tensor& other)
+{
+    m_context->Divide(this, &other, this);
+    return *this;
+}
+
 } // namespace ML
