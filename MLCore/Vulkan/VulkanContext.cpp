@@ -47,7 +47,7 @@ void VulkanContext::FillConstant(const Tensor& input, Scalar value)
     m_opFillConstant->Execute();
 }
 
-void VulkanContext::Add(const Tensor& input, const Scalar other, const Tensor& output)
+void VulkanContext::Add(const Tensor& input, const Scalar other, Tensor& output)
 {
     m_opAddScalar->SetTensor(1, input);
     m_opAddScalar->SetTensor(2, output ? output : input);
@@ -62,7 +62,7 @@ void VulkanContext::Add(const Tensor& input, const Scalar other, const Tensor& o
     m_opAddScalar->Execute();
 }
 
-void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output)
+void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output)
 {
     m_opAdd->SetTensor(1, input);
     m_opAdd->SetTensor(2, other);
@@ -78,7 +78,7 @@ void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar a
     m_opAdd->Execute();
 }
 
-void VulkanContext::Subtract(const Tensor& input, const Scalar other, const Tensor& output)
+void VulkanContext::Subtract(const Tensor& input, const Scalar other, Tensor& output)
 {
     m_opSubtractScalar->SetTensor(1, input);
     m_opSubtractScalar->SetTensor(2, output ? output : input);
@@ -93,7 +93,7 @@ void VulkanContext::Subtract(const Tensor& input, const Scalar other, const Tens
     m_opSubtractScalar->Execute();
 }
 
-void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output)
+void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output)
 {
     m_opSubtract->SetTensor(1, input);
     m_opSubtract->SetTensor(2, other);
@@ -109,7 +109,7 @@ void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Sca
     m_opSubtract->Execute();
 }
 
-void VulkanContext::Multiply(const Tensor& input, const Scalar other, const Tensor& output)
+void VulkanContext::Multiply(const Tensor& input, const Scalar other, Tensor& output)
 {
     m_opMultiplyScalar->SetTensor(1, input);
     m_opMultiplyScalar->SetTensor(2, output ? output : input);
@@ -124,7 +124,7 @@ void VulkanContext::Multiply(const Tensor& input, const Scalar other, const Tens
     m_opMultiplyScalar->Execute();
 }
 
-void VulkanContext::Multiply(const Tensor& input, const Tensor& other, const Tensor& output)
+void VulkanContext::Multiply(const Tensor& input, const Tensor& other, Tensor& output)
 {
     m_opMultiply->SetTensor(1, input);
     m_opMultiply->SetTensor(2, other);
@@ -132,7 +132,7 @@ void VulkanContext::Multiply(const Tensor& input, const Tensor& other, const Ten
     m_opMultiply->Execute();
 }
 
-void VulkanContext::Divide(const Tensor& input, const Scalar other, const Tensor& output)
+void VulkanContext::Divide(const Tensor& input, const Scalar other, Tensor& output)
 {
     m_opDivideScalar->SetTensor(1, input);
     m_opDivideScalar->SetTensor(2, output ? output : input);
@@ -147,7 +147,7 @@ void VulkanContext::Divide(const Tensor& input, const Scalar other, const Tensor
     m_opDivideScalar->Execute();
 }
 
-void VulkanContext::Divide(const Tensor& input, const Tensor& other, const Tensor& output)
+void VulkanContext::Divide(const Tensor& input, const Tensor& other, Tensor& output)
 {
     m_opDivide->SetTensor(1, input);
     m_opDivide->SetTensor(2, other);

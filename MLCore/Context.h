@@ -18,24 +18,20 @@ public:
     virtual void FillConstant(const Tensor& input, Scalar value) = 0;
 
     // output = input + alpha * other;
-    // @param output If nullptr, results are written back to the input.
-    virtual void Add(const Tensor& input, const Scalar other, const Tensor& output) = 0;
-    virtual void Add(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output) = 0;
+    virtual void Add(const Tensor& input, const Scalar other, Tensor& output) = 0;
+    virtual void Add(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output) = 0;
 
     // output = input - alpha * other;
-    // @param output If nullptr, results are written back to the input.
-    virtual void Subtract(const Tensor& input, const Scalar other, const Tensor& output) = 0;
-    virtual void Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output) = 0;
+    virtual void Subtract(const Tensor& input, const Scalar other, Tensor& output) = 0;
+    virtual void Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output) = 0;
 
     // Multiply input tensor by other element-wise.
-    // @param output If nullptr, results are written back to the input.
-    virtual void Multiply(const Tensor& input, const Scalar other, const Tensor& output) = 0;
-    virtual void Multiply(const Tensor& input, const Tensor& other, const Tensor& output) = 0;
+    virtual void Multiply(const Tensor& input, const Scalar other, Tensor& output) = 0;
+    virtual void Multiply(const Tensor& input, const Tensor& other, Tensor& output) = 0;
 
     // Divide input tensor by other element-wise. For integer divisions, the result is truncated.
-    // @param output If nullptr, results are written back to the input.
-    virtual void Divide(const Tensor& input, const Scalar other, const Tensor& output) = 0;
-    virtual void Divide(const Tensor& input, const Tensor& other, const Tensor& output) = 0;
+    virtual void Divide(const Tensor& input, const Scalar other, Tensor& output) = 0;
+    virtual void Divide(const Tensor& input, const Tensor& other, Tensor& output) = 0;
 
 }; // class Context
 

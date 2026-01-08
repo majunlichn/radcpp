@@ -38,7 +38,7 @@ void CpuContext::FillConstant(const Tensor& input, Scalar value)
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Add(const Tensor& input, const Scalar other, const Tensor& output)
+void CpuContext::Add(const Tensor& input, const Scalar other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_ADD_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return x + ComputeType(other); });
@@ -63,7 +63,7 @@ void CpuContext::Add(const Tensor& input, const Scalar other, const Tensor& outp
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Add(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output)
+void CpuContext::Add(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output)
 {
 #define ML_CPU_DISPATCH_ADD(DataType, ComputeType)    \
     CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return a + ComputeType(alpha) * b; });
@@ -88,7 +88,7 @@ void CpuContext::Add(const Tensor& input, const Tensor& other, const Scalar alph
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Subtract(const Tensor& input, const Scalar other, const Tensor& output)
+void CpuContext::Subtract(const Tensor& input, const Scalar other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_SUBTRACT_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return x - ComputeType(other); });
@@ -113,7 +113,7 @@ void CpuContext::Subtract(const Tensor& input, const Scalar other, const Tensor&
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output)
+void CpuContext::Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output)
 {
 #define ML_CPU_DISPATCH_SUBTRACT(DataType, ComputeType)    \
     CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return a - ComputeType(alpha) * b; });
@@ -138,7 +138,7 @@ void CpuContext::Subtract(const Tensor& input, const Tensor& other, const Scalar
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Multiply(const Tensor& input, const Scalar other, const Tensor& output)
+void CpuContext::Multiply(const Tensor& input, const Scalar other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_MULTIPLY_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return x * ComputeType(other); });
@@ -163,7 +163,7 @@ void CpuContext::Multiply(const Tensor& input, const Scalar other, const Tensor&
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Multiply(const Tensor& input, const Tensor& other, const Tensor& output)
+void CpuContext::Multiply(const Tensor& input, const Tensor& other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_MULTIPLY(DataType, ComputeType)    \
     CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return a * b; });
@@ -188,7 +188,7 @@ void CpuContext::Multiply(const Tensor& input, const Tensor& other, const Tensor
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Divide(const Tensor& input, const Scalar other, const Tensor& output)
+void CpuContext::Divide(const Tensor& input, const Scalar other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_DIVIDE_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return x / ComputeType(other); });
@@ -213,7 +213,7 @@ void CpuContext::Divide(const Tensor& input, const Scalar other, const Tensor& o
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Divide(const Tensor& input, const Tensor& other, const Tensor& output)
+void CpuContext::Divide(const Tensor& input, const Tensor& other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_DIVIDE(DataType, ComputeType)    \
     CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return a / b; });

@@ -39,7 +39,7 @@ struct CpuTensorOpForEach
 template <typename T, typename ComputeType = T>
 struct CpuTensorOpElementWiseUnary
 {
-    void operator()(const Tensor& input, const Tensor& output, const std::function<ComputeType(ComputeType x)>& op)
+    void operator()(const Tensor& input, Tensor& output, const std::function<ComputeType(ComputeType x)>& op)
     {
         assert(input.m_sizes == output.m_sizes);
         assert(input.m_dataType == output.m_dataType);
@@ -73,7 +73,7 @@ struct CpuTensorOpElementWiseUnary
 template <typename T, typename ComputeType = T>
 struct CpuTensorOpElementWiseBinary
 {
-    void operator()(const Tensor& input, const Tensor& other, const Tensor& output,
+    void operator()(const Tensor& input, const Tensor& other, Tensor& output,
         const std::function<ComputeType(ComputeType a, ComputeType b)>& op)
     {
         assert(input.m_sizes == other.m_sizes);
