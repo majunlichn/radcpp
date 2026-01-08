@@ -1,4 +1,5 @@
 set(MLCORE_SOURCE_FILES
+    MLCore.h
     Global.h
     Global.cpp
     Common.h

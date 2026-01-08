@@ -1,6 +1,4 @@
-#include <MLCore/CPU/CpuBackend.h>
-#include <MLCore/TensorIterator.h>
-#include <MLCore/Logging.h>
+#include <MLCore/MLCore.h>
 
 #include <gtest/gtest.h>
 

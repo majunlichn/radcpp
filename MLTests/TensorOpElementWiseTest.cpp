@@ -1,9 +1,4 @@
-#include <MLCore/Backend.h>
-#include <MLCore/Device.h>
-#include <MLCore/Context.h>
-#include <MLCore/Tensor.h>
-#include <MLCore/Logging.h>
-#include <MLCore/Vulkan/VulkanBackend.h>
+#include <MLCore/MLCore.h>
 
 #include <gtest/gtest.h>
 

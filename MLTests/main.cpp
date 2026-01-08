@@ -1,8 +1,6 @@
 #include <rad/System/Application.h>
 
-#include <MLCore/Global.h>
-#include <MLCore/CPU/CpuBackend.h>
-#include <MLCore/Vulkan/VulkanBackend.h>
+#include <MLCore/MLCore.h>
 
 #include <gtest/gtest.h>
 

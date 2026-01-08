@@ -12,6 +12,10 @@
 namespace ML
 {
 
+class Device;
+class Context;
+class Tensor;
+
 enum class DataType
 {
     Unknown,
