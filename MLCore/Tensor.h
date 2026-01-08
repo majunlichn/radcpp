@@ -92,103 +92,91 @@ public:
     };
     std::string ToString(TextFormat format = TextFormat::Dec, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {});
 
-    Tensor& FillConstant(Scalar value);
+    Tensor& Fill(Scalar value);
 
-    [[nodiscard]] Tensor Add(Scalar other);
+    [[nodiscard]] Tensor Add(Scalar other) const;
     Tensor& AddInPlace(Scalar other);
-    [[nodiscard]] Tensor Add(const Tensor& other, Scalar alpha = 1);
+    [[nodiscard]] Tensor Add(const Tensor& other, Scalar alpha = 1) const;
     Tensor& AddInPlace(const Tensor& other, Scalar alpha = 1);
 
-    [[nodiscard]] Tensor Subtract(Scalar other);
+    Tensor& Add_(Scalar other) { return AddInPlace(other); }
+    Tensor& Add_(const Tensor& other, Scalar alpha = 1) { return AddInPlace(other); }
+
+    [[nodiscard]] Tensor Subtract(Scalar other) const;
     Tensor& SubtractInPlace(Scalar other);
-    [[nodiscard]] Tensor Subtract(const Tensor& other, Scalar alpha = 1);
+    [[nodiscard]] Tensor Subtract(const Tensor& other, Scalar alpha = 1) const;
     Tensor& SubtractInPlace(const Tensor& other, Scalar alpha = 1);
 
-    [[nodiscard]] Tensor Multiply(Scalar other);
+    [[nodiscard]] Tensor Sub(Scalar other) const { return Subtract(other); }
+    Tensor& Sub_(Scalar other) { return SubtractInPlace(other); }
+    [[nodiscard]] Tensor Sub(const Tensor& other, Scalar alpha = 1) const { return Subtract(other); }
+    Tensor& Sub_(const Tensor& other, Scalar alpha = 1) { return SubtractInPlace(other); }
+
+    [[nodiscard]] Tensor Multiply(Scalar other) const;
     Tensor& MultiplyInPlace(Scalar other);
-    [[nodiscard]] Tensor Multiply(const Tensor& other);
+    [[nodiscard]] Tensor Multiply(const Tensor& other) const;
     Tensor& MultiplyInPlace(const Tensor& other);
 
-    [[nodiscard]] Tensor Divide(Scalar other);
+    [[nodiscard]] Tensor Mul(Scalar other) const { return Multiply(other); }
+    Tensor& Mul_(Scalar other) { return MultiplyInPlace(other); }
+    [[nodiscard]] Tensor Mul(const Tensor& other) const { return Multiply(other); }
+    Tensor& Mul_(const Tensor& other) { return MultiplyInPlace(other); }
+
+    [[nodiscard]] Tensor Divide(Scalar other) const;
     Tensor& DivideInPlace(Scalar other);
-    [[nodiscard]] Tensor Divide(const Tensor& other);
+    [[nodiscard]] Tensor Divide(const Tensor& other) const;
     Tensor& DivideInPlace(const Tensor& other);
 
-    Tensor& operator+=(Scalar other) { return AddInPlace(other); }
-    Tensor& operator-=(Scalar other) { return SubtractInPlace(other); }
-    Tensor& operator*=(Scalar other) { return MultiplyInPlace(other); }
-    Tensor& operator/=(Scalar other) { return DivideInPlace(other); }
+    [[nodiscard]] Tensor Div(Scalar other) const { return Divide(other); }
+    Tensor& Div_(Scalar other) { return DivideInPlace(other); }
+    [[nodiscard]] Tensor Div(const Tensor& other) const { return Divide(other); }
+    Tensor& Div_(const Tensor& other) { return DivideInPlace(other); }
 
-    Tensor& operator+=(const Tensor& other) { return AddInPlace(other); }
-    Tensor& operator-=(const Tensor& other) { return SubtractInPlace(other); }
-    Tensor& operator*=(const Tensor& other) { return MultiplyInPlace(other); }
-    Tensor& operator/=(const Tensor& other) { return DivideInPlace(other); }
+    Tensor& operator+=(Scalar other) { return Add_(other); }
+    Tensor& operator-=(Scalar other) { return Sub_(other); }
+    Tensor& operator*=(Scalar other) { return Mul_(other); }
+    Tensor& operator/=(Scalar other) { return Div_(other); }
 
-    friend Tensor operator+(Tensor lhs, float rhs)
-    {
-        return lhs += rhs;
-    }
-    friend Tensor operator+(Tensor lhs, int rhs)
-    {
-        return lhs += rhs;
-    }
-
-    friend Tensor operator-(Tensor lhs, float rhs)
-    {
-        return lhs -= rhs;
-    }
-    friend Tensor operator-(Tensor lhs, int rhs)
-    {
-        return lhs -= rhs;
-    }
-
-    friend Tensor operator*(Tensor lhs, float rhs)
-    {
-        return lhs *= rhs;
-    }
-    friend Tensor operator*(Tensor lhs, int rhs)
-    {
-        return lhs *= rhs;
-    }
-
-    friend Tensor operator/(Tensor lhs, float rhs)
-    {
-        return lhs /= rhs;
-    }
-    friend Tensor operator/(Tensor lhs, int rhs)
-    {
-        return lhs /= rhs;
-    }
-
-    friend Tensor operator+(Tensor lhs, Tensor& rhs)
-    {
-        return lhs += rhs;
-    }
-
-    friend Tensor operator-(Tensor lhs, Tensor& rhs)
-    {
-        return lhs -= rhs;
-    }
-
-    friend Tensor operator*(Tensor lhs, Tensor& rhs)
-    {
-        return lhs *= rhs;
-    }
-
-    friend Tensor operator/(Tensor lhs, Tensor& rhs)
-    {
-        return lhs /= rhs;
-    }
+    Tensor& operator+=(const Tensor& other) { return Add_(other); }
+    Tensor& operator-=(const Tensor& other) { return Sub_(other); }
+    Tensor& operator*=(const Tensor& other) { return Mul_(other); }
+    Tensor& operator/=(const Tensor& other) { return Div_(other); }
 
 }; // class Tensor
 
 Tensor MakeTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options = {});
-Tensor MakeTensorLike(Tensor& ref);
-Tensor MakeTensorLike(Tensor* ref);
+Tensor MakeTensorLike(const Tensor& ref);
+Tensor MakeTensorLike(const Tensor* ref);
 
 inline bool HaveSameLayout(const Tensor& a, const Tensor& b)
 {
     return ((a.m_sizes == b.m_sizes) && (a.m_strides == b.m_strides));
 }
+
+#define ML_DEFINE_TENSOR_BINARY_OPS(_)                                      \
+  _(+, x.Add(y), y.Add(x))                                                  \
+  _(-,                                                                      \
+    x.Sub(y),                                                               \
+    MakeTensorLike(y).Fill(x).Sub_(y))                                      \
+  _(*, x.Mul(y), y.Mul(x))                                                  \
+  _(/,                                                                      \
+    x.Divide(y),                                                            \
+    MakeTensorLike(y).Fill(x).Div_(y))                                      \
+
+#define ML_TENSOR_BINARY_OP(op, body, reverse_scalar_body)      \
+  inline Tensor operator op(const Tensor& x, const Tensor& y) { \
+    return body;                                                \
+  }                                                             \
+  inline Tensor operator op(const Tensor& x, const Scalar& y) { \
+    return body;                                                \
+  }                                                             \
+  inline Tensor operator op(const Scalar& x, const Tensor& y) { \
+    return reverse_scalar_body;                                 \
+  }
+
+ML_DEFINE_TENSOR_BINARY_OPS(ML_TENSOR_BINARY_OP)
+
+#undef ML_TENSOR_BINARY_OP
+#undef ML_DEFINE_TENSOR_BINARY_OPS
 
 } // namespace ML

@@ -93,14 +93,14 @@ Tensor MakeTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOp
     return Tensor(storage, context);
 }
 
-Tensor MakeTensorLike(Tensor& ref)
+Tensor MakeTensorLike(const Tensor& ref)
 {
     TensorOptions options = {};
     options.m_strides = ref.m_strides;
     return Tensor(ref.GetDevice()->CreateTensorStorage(ref.m_sizes, ref.m_dataType, options), ref.m_context);
 }
 
-Tensor MakeTensorLike(Tensor* ref)
+Tensor MakeTensorLike(const Tensor* ref)
 {
     return MakeTensorLike(*ref);
 }
@@ -307,13 +307,13 @@ std::string Tensor::ToString(TextFormat format, rad::ArrayRef<size_t> offsets, r
     return ss.str();
 }
 
-Tensor& Tensor::FillConstant(Scalar value)
+Tensor& Tensor::Fill(Scalar value)
 {
     m_context->FillConstant(*this, value);
     return *this;
 }
 
-Tensor Tensor::Add(Scalar other)
+Tensor Tensor::Add(Scalar other) const
 {
     Tensor output = MakeTensorLike(this);
     m_context->Add(*this, other, output);
@@ -326,7 +326,7 @@ Tensor& Tensor::AddInPlace(Scalar other)
     return *this;
 }
 
-Tensor Tensor::Add(const Tensor& other, Scalar alpha)
+Tensor Tensor::Add(const Tensor& other, Scalar alpha) const
 {
     Tensor output = MakeTensorLike(this);
     m_context->Add(*this, other, alpha, output);
@@ -339,7 +339,7 @@ Tensor& Tensor::AddInPlace(const Tensor& other, Scalar alpha)
     return *this;
 }
 
-Tensor Tensor::Subtract(Scalar other)
+Tensor Tensor::Subtract(Scalar other) const
 {
     Tensor output = MakeTensorLike(this);
     m_context->Subtract(*this, other, output);
@@ -352,7 +352,7 @@ Tensor& Tensor::SubtractInPlace(Scalar other)
     return *this;
 }
 
-Tensor Tensor::Subtract(const Tensor& other, Scalar alpha)
+Tensor Tensor::Subtract(const Tensor& other, Scalar alpha) const
 {
     Tensor output = MakeTensorLike(this);
     m_context->Subtract(*this, other, alpha, output);
@@ -365,7 +365,7 @@ Tensor& Tensor::SubtractInPlace(const Tensor& other, Scalar alpha)
     return *this;
 }
 
-Tensor Tensor::Multiply(Scalar other)
+Tensor Tensor::Multiply(Scalar other) const
 {
     Tensor output = MakeTensorLike(this);
     m_context->Multiply(*this, other, output);
@@ -378,7 +378,7 @@ Tensor& Tensor::MultiplyInPlace(Scalar other)
     return *this;
 }
 
-Tensor Tensor::Multiply(const Tensor& other)
+Tensor Tensor::Multiply(const Tensor& other) const
 {
     Tensor output = MakeTensorLike(this);
     m_context->Multiply(*this, other, output);
@@ -391,7 +391,7 @@ Tensor& Tensor::MultiplyInPlace(const Tensor& other)
     return *this;
 }
 
-Tensor Tensor::Divide(Scalar other)
+Tensor Tensor::Divide(Scalar other) const
 {
     Tensor output = MakeTensorLike(this);
     m_context->Divide(*this, other, output);
@@ -404,7 +404,7 @@ Tensor& Tensor::DivideInPlace(Scalar other)
     return *this;
 }
 
-Tensor Tensor::Divide(const Tensor& other)
+Tensor Tensor::Divide(const Tensor& other) const
 {
     Tensor output = MakeTensorLike(this);
     m_context->Divide(*this, other, output);

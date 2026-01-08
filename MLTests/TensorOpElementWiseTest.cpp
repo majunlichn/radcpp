@@ -23,8 +23,8 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.FillConstant(ComputeType(1));
-    b.FillConstant(ComputeType(1));
+    a.Fill(ComputeType(1));
+    b.Fill(ComputeType(1));
     ML::Tensor c = a.Add(b, ComputeType(2));
 
     c += ComputeType(1);
@@ -58,8 +58,8 @@ void TestTensorOpSubtract(ML::DataType dataType, ML::Backend* backend)
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.FillConstant(ComputeType(4));
-    b.FillConstant(ComputeType(1));
+    a.Fill(ComputeType(4));
+    b.Fill(ComputeType(1));
     ML::Tensor c = a.Subtract(b, ComputeType(2));
 
     c -= ComputeType(1);
@@ -93,8 +93,8 @@ void TestTensorOpMultiply(ML::DataType dataType, ML::Backend* backend)
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.FillConstant(ComputeType(2));
-    b.FillConstant(ComputeType(2));
+    a.Fill(ComputeType(2));
+    b.Fill(ComputeType(2));
     ML::Tensor c = a * b;
 
     c *= ComputeType(2);
@@ -127,8 +127,8 @@ void TestTensorOpDivide(ML::DataType dataType, ML::Backend* backend)
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.FillConstant(ComputeType(8));
-    b.FillConstant(ComputeType(2));
+    a.Fill(ComputeType(8));
+    b.Fill(ComputeType(2));
     ML::Tensor c = a / b;
 
     c /= ComputeType(2);
