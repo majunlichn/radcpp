@@ -28,18 +28,21 @@ public:
 
 }; // class TensorStorage
 
+// Same as torch.Tensor, a multi-dimensional matrix containing elements of a single data type.
+// Tensor is actually a view over a reference counted TensorStorage.
 class Tensor : public rad::RefCounted<Tensor>
 {
 public:
-    rad::Ref<Device> m_device;
     rad::Ref<TensorStorage> m_storage;
     rad::Ref<Context> m_context;
 
-    size_t m_bufferOffset = 0;
     std::vector<size_t> m_offsets;
     std::vector<size_t> m_sizes;
     std::vector<size_t> m_strides;
     DataType m_dataType = DataType::Unknown;
+
+    size_t m_bufferOffset = 0;
+    size_t m_bufferSize = 0;
 
     Tensor();
     Tensor(rad::Ref<TensorStorage> storage, rad::Ref<Context> context);
@@ -49,7 +52,15 @@ public:
     Tensor& operator=(Tensor&& other) noexcept = default;
     virtual ~Tensor();
 
+    operator bool() const { return m_storage != nullptr; }
+
+    Device* GetDevice() const { return m_storage->m_device.get(); }
     void SetContext(rad::Ref<Context> context) { m_context = std::move(context); }
+
+    bool IsFloatingPoint() const;
+    bool IsInteger() const;
+    bool IsSignedInteger() const;
+    bool IsUnsignedInteger() const;
 
     size_t GetDimCount() const { return m_sizes.size(); }
 
@@ -60,6 +71,7 @@ public:
     virtual size_t GetDataSize() const;
 
     bool IsContiguous() const;
+    bool HasSameLayout(const Tensor& other) const;
     bool HasSameLayout(const Tensor* other) const;
 
     void Read(void* data, size_t offset, size_t dataSize);
@@ -80,60 +92,37 @@ public:
     };
     std::string ToString(TextFormat format = TextFormat::Dec, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {});
 
-    Tensor& FillConstant(float value);
-    Tensor& FillConstant(int value);
+    Tensor& FillConstant(Scalar value);
 
-    [[nodiscard]] Tensor AddScalar(float other);
-    [[nodiscard]] Tensor AddScalar(int other);
-    Tensor& AddScalarInPlace(float other);
-    Tensor& AddScalarInPlace(int other);
+    [[nodiscard]] Tensor Add(Scalar other);
+    Tensor& AddInPlace(Scalar other);
+    [[nodiscard]] Tensor Add(const Tensor& other, Scalar alpha = 1);
+    Tensor& AddInPlace(const Tensor& other, Scalar alpha = 1);
 
-    [[nodiscard]] Tensor Add(Tensor& other);
-    [[nodiscard]] Tensor Add(Tensor& other, float alpha);
-    [[nodiscard]] Tensor Add(Tensor& other, int alpha);
-    Tensor& AddInPlace(Tensor& other);
-    Tensor& AddInPlace(Tensor& other, float alpha);
-    Tensor& AddInPlace(Tensor& other, int alpha);
+    [[nodiscard]] Tensor Subtract(Scalar other);
+    Tensor& SubtractInPlace(Scalar other);
+    [[nodiscard]] Tensor Subtract(const Tensor& other, Scalar alpha = 1);
+    Tensor& SubtractInPlace(const Tensor& other, Scalar alpha = 1);
 
-    [[nodiscard]] Tensor SubtractScalar(float other);
-    [[nodiscard]] Tensor SubtractScalar(int other);
-    Tensor& SubtractScalarInPlace(float other);
-    Tensor& SubtractScalarInPlace(int other);
+    [[nodiscard]] Tensor Multiply(Scalar other);
+    Tensor& MultiplyInPlace(Scalar other);
+    [[nodiscard]] Tensor Multiply(const Tensor& other);
+    Tensor& MultiplyInPlace(const Tensor& other);
 
-    [[nodiscard]] Tensor Subtract(Tensor& other);
-    [[nodiscard]] Tensor Subtract(Tensor& other, float alpha);
-    [[nodiscard]] Tensor Subtract(Tensor& other, int alpha);
-    Tensor& SubtractInPlace(Tensor& other);
-    Tensor& SubtractInPlace(Tensor& other, float alpha);
-    Tensor& SubtractInPlace(Tensor& other, int alpha);
+    [[nodiscard]] Tensor Divide(Scalar other);
+    Tensor& DivideInPlace(Scalar other);
+    [[nodiscard]] Tensor Divide(const Tensor& other);
+    Tensor& DivideInPlace(const Tensor& other);
 
-    [[nodiscard]] Tensor MultiplyScalar(float other);
-    [[nodiscard]] Tensor MultiplyScalar(int other);
-    Tensor& MultiplyScalarInPlace(float other);
-    Tensor& MultiplyScalarInPlace(int other);
-    [[nodiscard]] Tensor Multiply(Tensor& other);
-    Tensor& MultiplyInPlace(Tensor& other);
+    Tensor& operator+=(Scalar other) { return AddInPlace(other); }
+    Tensor& operator-=(Scalar other) { return SubtractInPlace(other); }
+    Tensor& operator*=(Scalar other) { return MultiplyInPlace(other); }
+    Tensor& operator/=(Scalar other) { return DivideInPlace(other); }
 
-    [[nodiscard]] Tensor DivideScalar(float other);
-    [[nodiscard]] Tensor DivideScalar(int other);
-    Tensor& DivideScalarInPlace(float other);
-    Tensor& DivideScalarInPlace(int other);
-    [[nodiscard]] Tensor Divide(Tensor& other);
-    Tensor& DivideInPlace(Tensor& other);
-
-    Tensor& operator+=(float other) { return AddScalarInPlace(other); }
-    Tensor& operator+=(int other) { return AddScalarInPlace(other); }
-    Tensor& operator-=(float other) { return SubtractScalarInPlace(other); }
-    Tensor& operator-=(int other) { return SubtractScalarInPlace(other); }
-    Tensor& operator*=(float other) { return MultiplyScalarInPlace(other); }
-    Tensor& operator*=(int other) { return MultiplyScalarInPlace(other); }
-    Tensor& operator/=(float other) { return DivideScalarInPlace(other); }
-    Tensor& operator/=(int other) { return DivideScalarInPlace(other); }
-
-    Tensor& operator+=(Tensor& other) { return AddInPlace(other); }
-    Tensor& operator-=(Tensor& other) { return SubtractInPlace(other); }
-    Tensor& operator*=(Tensor& other) { return MultiplyInPlace(other); }
-    Tensor& operator/=(Tensor& other) { return DivideInPlace(other); }
+    Tensor& operator+=(const Tensor& other) { return AddInPlace(other); }
+    Tensor& operator-=(const Tensor& other) { return SubtractInPlace(other); }
+    Tensor& operator*=(const Tensor& other) { return MultiplyInPlace(other); }
+    Tensor& operator/=(const Tensor& other) { return DivideInPlace(other); }
 
     friend Tensor operator+(Tensor lhs, float rhs)
     {
@@ -197,9 +186,9 @@ Tensor MakeTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOp
 Tensor MakeTensorLike(Tensor& ref);
 Tensor MakeTensorLike(Tensor* ref);
 
-inline bool HaveSameLayout(const Tensor* a, const Tensor* b)
+inline bool HaveSameLayout(const Tensor& a, const Tensor& b)
 {
-    return ((a->m_sizes == b->m_sizes) && (a->m_strides == b->m_strides));
+    return ((a.m_sizes == b.m_sizes) && (a.m_strides == b.m_strides));
 }
 
 } // namespace ML

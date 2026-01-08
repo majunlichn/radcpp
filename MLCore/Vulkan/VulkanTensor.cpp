@@ -37,10 +37,10 @@ bool VulkanTensorStorage::Init(rad::ArrayRef<size_t> sizes, DataType dataType, c
         indexOfTheLastElement += (m_sizes[i] - 1) * m_strides[i];
     }
 
-    m_bufferSize = VkDeviceSize(indexOfTheLastElement + 1) * GetElementSize(m_dataType);
-    m_bufferSize = rad::Pow2AlignUp(m_bufferSize, VkDeviceSize(4));
+    VkDeviceSize bufferSize = VkDeviceSize(indexOfTheLastElement + 1) * GetElementSize(m_dataType);
+    bufferSize = rad::Pow2AlignUp(bufferSize, VkDeviceSize(4));
 
-    m_buffer = vkpp::Buffer::CreateStorage(static_cast<VulkanDevice*>(m_device.get())->m_impl, m_bufferSize);
+    m_buffer = vkpp::Buffer::CreateStorage(static_cast<VulkanDevice*>(m_device.get())->m_impl, bufferSize);
 
     return true;
 }

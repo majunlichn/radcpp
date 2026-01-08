@@ -33,29 +33,27 @@ public:
     VulkanDevice* GetDevice();
     vkpp::Device* GetDeviceImpl();
 
-    virtual void FillConstant(Tensor* input, float value) override;
-    virtual void FillConstant(Tensor* input, int value) override;
+    virtual void FillConstant(const Tensor& input, Scalar value) override;
 
-    virtual void AddScalar(Tensor* input, float other, Tensor* output = nullptr) override;
-    virtual void AddScalar(Tensor* input, int other, Tensor* output = nullptr) override;
+    // output = input + alpha * other;
+    // @param output If nullptr, results are written back to the input.
+    virtual void Add(const Tensor& input, const Scalar other, const Tensor& output) override;
+    virtual void Add(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output) override;
 
-    virtual void Add(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) override;
-    virtual void Add(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) override;
+    // output = input - alpha * other;
+    // @param output If nullptr, results are written back to the input.
+    virtual void Subtract(const Tensor& input, const Scalar other, const Tensor& output) override;
+    virtual void Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output) override;
 
-    virtual void SubtractScalar(Tensor* input, float other, Tensor* output = nullptr) override;
-    virtual void SubtractScalar(Tensor* input, int other, Tensor* output = nullptr) override;
+    // Multiply input tensor by other element-wise.
+    // @param output If nullptr, results are written back to the input.
+    virtual void Multiply(const Tensor& input, const Scalar other, const Tensor& output) override;
+    virtual void Multiply(const Tensor& input, const Tensor& other, const Tensor& output) override;
 
-    virtual void Subtract(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) override;
-    virtual void Subtract(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) override;
-
-    virtual void MultiplyScalar(Tensor* input, float other, Tensor* output = nullptr) override;
-    virtual void MultiplyScalar(Tensor* input, int other, Tensor* output = nullptr) override;
-    virtual void Multiply(Tensor* input, Tensor* other, Tensor* output = nullptr) override;
-
-    virtual void DivideScalar(Tensor* input, float other, Tensor* output = nullptr) override;
-    virtual void DivideScalar(Tensor* input, int other, Tensor* output = nullptr) override;
-
-    virtual void Divide(Tensor* input, Tensor* other, Tensor* output = nullptr) override;
+    // Divide input tensor by other element-wise. For integer divisions, the result is truncated.
+    // @param output If nullptr, results are written back to the input.
+    virtual void Divide(const Tensor& input, const Scalar other, const Tensor& output) override;
+    virtual void Divide(const Tensor& input, const Tensor& other, const Tensor& output) override;
 
 }; // class VulkanContext
 

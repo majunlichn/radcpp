@@ -143,6 +143,48 @@ public:
         RAD_UNREACHABLE();
     }
 
+    operator int8_t() const
+    {
+        switch (m_type)
+        {
+        case ML::Scalar::Type::Float: return static_cast<int8_t>(m_value.f);
+            break;
+        case ML::Scalar::Type::Sint: return static_cast<int8_t>(m_value.i);
+            break;
+        case ML::Scalar::Type::Uint: return static_cast<int8_t>(m_value.u);
+            break;
+        }
+        RAD_UNREACHABLE();
+    }
+
+    operator int16_t() const
+    {
+        switch (m_type)
+        {
+        case ML::Scalar::Type::Float: return static_cast<int16_t>(m_value.f);
+            break;
+        case ML::Scalar::Type::Sint: return static_cast<int16_t>(m_value.i);
+            break;
+        case ML::Scalar::Type::Uint: return static_cast<int16_t>(m_value.u);
+            break;
+        }
+        RAD_UNREACHABLE();
+    }
+
+    operator int32_t() const
+    {
+        switch (m_type)
+        {
+        case ML::Scalar::Type::Float: return static_cast<int32_t>(m_value.f);
+            break;
+        case ML::Scalar::Type::Sint: return static_cast<int32_t>(m_value.i);
+            break;
+        case ML::Scalar::Type::Uint: return static_cast<int32_t>(m_value.u);
+            break;
+        }
+        RAD_UNREACHABLE();
+    }
+
     operator int64_t() const
     {
         switch (m_type)
@@ -152,6 +194,48 @@ public:
         case ML::Scalar::Type::Sint: return static_cast<int64_t>(m_value.i);
             break;
         case ML::Scalar::Type::Uint: return static_cast<int64_t>(m_value.u);
+            break;
+        }
+        RAD_UNREACHABLE();
+    }
+
+    operator uint8_t() const
+    {
+        switch (m_type)
+        {
+        case ML::Scalar::Type::Float: return static_cast<uint8_t>(m_value.f);
+            break;
+        case ML::Scalar::Type::Sint: return static_cast<uint8_t>(m_value.i);
+            break;
+        case ML::Scalar::Type::Uint: return static_cast<uint8_t>(m_value.u);
+            break;
+        }
+        RAD_UNREACHABLE();
+    }
+
+    operator uint16_t() const
+    {
+        switch (m_type)
+        {
+        case ML::Scalar::Type::Float: return static_cast<uint16_t>(m_value.f);
+            break;
+        case ML::Scalar::Type::Sint: return static_cast<uint16_t>(m_value.i);
+            break;
+        case ML::Scalar::Type::Uint: return static_cast<uint16_t>(m_value.u);
+            break;
+        }
+        RAD_UNREACHABLE();
+    }
+
+    operator uint32_t() const
+    {
+        switch (m_type)
+        {
+        case ML::Scalar::Type::Float: return static_cast<uint32_t>(m_value.f);
+            break;
+        case ML::Scalar::Type::Sint: return static_cast<uint32_t>(m_value.i);
+            break;
+        case ML::Scalar::Type::Uint: return static_cast<uint32_t>(m_value.u);
             break;
         }
         RAD_UNREACHABLE();

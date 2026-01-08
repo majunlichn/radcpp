@@ -69,7 +69,6 @@ Tensor::Tensor()
 }
 
 Tensor::Tensor(rad::Ref<TensorStorage> storage, rad::Ref<Context> context) :
-    m_device(storage->m_device),
     m_storage(std::move(storage)),
     m_context(std::move(context))
 {
@@ -77,6 +76,9 @@ Tensor::Tensor(rad::Ref<TensorStorage> storage, rad::Ref<Context> context) :
     m_sizes = m_storage->m_sizes;
     m_strides = m_storage->m_strides;
     m_dataType = m_storage->m_dataType;
+
+    m_bufferOffset = 0;
+    m_bufferSize = GetDataSize();
 }
 
 Tensor::~Tensor()
@@ -95,12 +97,32 @@ Tensor MakeTensorLike(Tensor& ref)
 {
     TensorOptions options = {};
     options.m_strides = ref.m_strides;
-    return Tensor(ref.m_device->CreateTensorStorage(ref.m_sizes, ref.m_dataType, options), ref.m_context);
+    return Tensor(ref.GetDevice()->CreateTensorStorage(ref.m_sizes, ref.m_dataType, options), ref.m_context);
 }
 
 Tensor MakeTensorLike(Tensor* ref)
 {
     return MakeTensorLike(*ref);
+}
+
+bool Tensor::IsFloatingPoint() const
+{
+    return IsFloatingPointType(m_dataType);
+}
+
+bool Tensor::IsInteger() const
+{
+    return IsIntegerType(m_dataType);
+}
+
+bool Tensor::IsSignedInteger() const
+{
+    return IsSignedIntegerType(m_dataType);
+}
+
+bool Tensor::IsUnsignedInteger() const
+{
+    return IsUnsignedIntegerType(m_dataType);
 }
 
 size_t Tensor::GetElementCount() const
@@ -146,9 +168,14 @@ bool Tensor::IsContiguous() const
     return (GetElementCount() == GetDataSizeInElement());
 }
 
+bool Tensor::HasSameLayout(const Tensor& other) const
+{
+    return HaveSameLayout(*this, other);
+}
+
 bool Tensor::HasSameLayout(const Tensor* other) const
 {
-    return HaveSameLayout(this, other);
+    return HaveSameLayout(*this, *other);
 }
 
 void Tensor::Read(void* data, size_t offset, size_t dataSize)
@@ -280,246 +307,113 @@ std::string Tensor::ToString(TextFormat format, rad::ArrayRef<size_t> offsets, r
     return ss.str();
 }
 
-Tensor& Tensor::FillConstant(float value)
+Tensor& Tensor::FillConstant(Scalar value)
 {
-    m_context->FillConstant(this, value);
+    m_context->FillConstant(*this, value);
     return *this;
 }
 
-Tensor& Tensor::FillConstant(int value)
-{
-    m_context->FillConstant(this, value);
-    return *this;
-}
-
-Tensor Tensor::AddScalar(float other)
+Tensor Tensor::Add(Scalar other)
 {
     Tensor output = MakeTensorLike(this);
-    m_context->AddScalar(this, other, &output);
+    m_context->Add(*this, other, output);
     return output;
 }
 
-Tensor Tensor::AddScalar(int other)
+Tensor& Tensor::AddInPlace(Scalar other)
 {
-    Tensor output = MakeTensorLike(this);
-    m_context->AddScalar(this, other, &output);
-    return output;
-}
-
-Tensor& Tensor::AddScalarInPlace(float other)
-{
-    m_context->AddScalar(this, other);
+    m_context->Add(*this, other, *this);
     return *this;
 }
 
-Tensor& Tensor::AddScalarInPlace(int other)
-{
-    m_context->AddScalar(this, other);
-    return *this;
-}
-
-
-Tensor Tensor::Add(Tensor& other)
-{
-    if (IsFloatingPointType(m_dataType))
-    {
-        return Add(other, 1.0f);
-    }
-    else
-    {
-        return Add(other, 1);
-    }
-}
-
-Tensor Tensor::Add(Tensor& other, float alpha)
+Tensor Tensor::Add(const Tensor& other, Scalar alpha)
 {
     Tensor output = MakeTensorLike(this);
-    m_context->Add(this, &other, alpha, &output);
+    m_context->Add(*this, other, alpha, output);
     return output;
 }
 
-Tensor Tensor::Add(Tensor& other, int alpha)
+Tensor& Tensor::AddInPlace(const Tensor& other, Scalar alpha)
 {
-    Tensor output = MakeTensorLike(this);
-    m_context->Add(this, &other, alpha, &output);
-    return output;
-}
-
-Tensor& Tensor::AddInPlace(Tensor& other)
-{
-    if (IsFloatingPointType(m_dataType))
-    {
-        return AddInPlace(other, 1.0f);
-    }
-    else
-    {
-        return AddInPlace(other, 1);
-    }
-}
-
-Tensor& Tensor::AddInPlace(Tensor& other, float alpha)
-{
-    m_context->Add(this, &other, alpha);
+    m_context->Add(*this, other, alpha, *this);
     return *this;
 }
 
-Tensor& Tensor::AddInPlace(Tensor& other, int alpha)
-{
-    m_context->Add(this, &other, alpha);
-    return *this;
-}
-
-Tensor Tensor::SubtractScalar(float other)
+Tensor Tensor::Subtract(Scalar other)
 {
     Tensor output = MakeTensorLike(this);
-    m_context->SubtractScalar(this, other, &output);
+    m_context->Subtract(*this, other, output);
     return output;
 }
 
-Tensor Tensor::SubtractScalar(int other)
+Tensor& Tensor::SubtractInPlace(Scalar other)
 {
-    Tensor output = MakeTensorLike(this);
-    m_context->SubtractScalar(this, other, &output);
-    return output;
-}
-
-Tensor& Tensor::SubtractScalarInPlace(float other)
-{
-    m_context->SubtractScalar(this, other);
+    m_context->Subtract(*this, other, *this);
     return *this;
 }
 
-Tensor& Tensor::SubtractScalarInPlace(int other)
-{
-    m_context->SubtractScalar(this, other);
-    return *this;
-}
-
-Tensor Tensor::Subtract(Tensor& other)
-{
-    if (IsFloatingPointType(m_dataType))
-    {
-        return Subtract(other, 1.0f);
-    }
-    else
-    {
-        return Subtract(other, 1);
-    }
-}
-
-Tensor Tensor::Subtract(Tensor& other, float alpha)
+Tensor Tensor::Subtract(const Tensor& other, Scalar alpha)
 {
     Tensor output = MakeTensorLike(this);
-    m_context->Subtract(this, &other, alpha, &output);
+    m_context->Subtract(*this, other, alpha, output);
     return output;
 }
 
-Tensor Tensor::Subtract(Tensor& other, int alpha)
+Tensor& Tensor::SubtractInPlace(const Tensor& other, Scalar alpha)
 {
-    Tensor output = MakeTensorLike(this);
-    m_context->Subtract(this, &other, alpha, &output);
-    return output;
-}
-
-Tensor& Tensor::SubtractInPlace(Tensor& other)
-{
-    if (IsFloatingPointType(m_dataType))
-    {
-        return SubtractInPlace(other, 1.0f);
-    }
-    else
-    {
-        return SubtractInPlace(other, 1);
-    }
-}
-
-Tensor& Tensor::SubtractInPlace(Tensor& other, float alpha)
-{
-    m_context->Subtract(this, &other, alpha);
+    m_context->Subtract(*this, other, alpha, *this);
     return *this;
 }
 
-Tensor& Tensor::SubtractInPlace(Tensor& other, int alpha)
-{
-    m_context->Subtract(this, &other, alpha);
-    return *this;
-}
-
-Tensor Tensor::MultiplyScalar(float other)
+Tensor Tensor::Multiply(Scalar other)
 {
     Tensor output = MakeTensorLike(this);
-    m_context->MultiplyScalar(this, other, &output);
+    m_context->Multiply(*this, other, output);
     return output;
 }
 
-Tensor Tensor::MultiplyScalar(int other)
+Tensor& Tensor::MultiplyInPlace(Scalar other)
 {
-    Tensor output = MakeTensorLike(this);
-    m_context->MultiplyScalar(this, other, &output);
-    return output;
-}
-
-Tensor& Tensor::MultiplyScalarInPlace(float other)
-{
-    m_context->MultiplyScalar(this, other, this);
+    m_context->Multiply(*this, other, *this);
     return *this;
 }
 
-Tensor& Tensor::MultiplyScalarInPlace(int other)
-{
-    m_context->MultiplyScalar(this, other, this);
-    return *this;
-}
-
-Tensor Tensor::Multiply(Tensor& other)
+Tensor Tensor::Multiply(const Tensor& other)
 {
     Tensor output = MakeTensorLike(this);
-    m_context->Multiply(this, &other, &output);
+    m_context->Multiply(*this, other, output);
     return output;
 }
 
-Tensor& Tensor::MultiplyInPlace(Tensor& other)
+Tensor& Tensor::MultiplyInPlace(const Tensor& other)
 {
-    m_context->Multiply(this, &other, this);
+    m_context->Multiply(*this, other, *this);
     return *this;
 }
 
-Tensor Tensor::DivideScalar(float other)
+Tensor Tensor::Divide(Scalar other)
 {
     Tensor output = MakeTensorLike(this);
-    m_context->DivideScalar(this, other, &output);
+    m_context->Divide(*this, other, output);
     return output;
 }
 
-Tensor Tensor::DivideScalar(int other)
+Tensor& Tensor::DivideInPlace(Scalar other)
 {
-    Tensor output = MakeTensorLike(this);
-    m_context->DivideScalar(this, other, &output);
-    return output;
-}
-
-Tensor& Tensor::DivideScalarInPlace(float other)
-{
-    m_context->DivideScalar(this, other, this);
+    m_context->Divide(*this, other, *this);
     return *this;
 }
 
-Tensor& Tensor::DivideScalarInPlace(int other)
-{
-    m_context->DivideScalar(this, other, this);
-    return *this;
-}
-
-Tensor Tensor::Divide(Tensor& other)
+Tensor Tensor::Divide(const Tensor& other)
 {
     Tensor output = MakeTensorLike(this);
-    m_context->Divide(this, &other, &output);
+    m_context->Divide(*this, other, output);
     return output;
 }
 
-Tensor& Tensor::DivideInPlace(Tensor& other)
+Tensor& Tensor::DivideInPlace(const Tensor& other)
 {
-    m_context->Divide(this, &other, this);
+    m_context->Divide(*this, other, *this);
     return *this;
 }
 

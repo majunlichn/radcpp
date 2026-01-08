@@ -33,117 +33,98 @@ vkpp::Device* VulkanContext::GetDeviceImpl()
     return static_cast<VulkanDevice*>(m_device.get())->m_impl.get();
 }
 
-void VulkanContext::FillConstant(Tensor* input, float value)
+void VulkanContext::FillConstant(const Tensor& input, Scalar value)
 {
-    assert(IsFloatingPointType(input->m_dataType));
     m_opFillConstant->SetTensor(1, input);
-    m_opFillConstant->SetParameters(glm::vec4(value));
+    if (input.IsFloatingPoint())
+    {
+        m_opFillConstant->SetParameters(glm::vec4(float(value)));
+    }
+    else
+    {
+        m_opFillConstant->SetParameters(glm::ivec4(int(value)));
+    }
     m_opFillConstant->Execute();
 }
 
-void VulkanContext::FillConstant(Tensor* input, int value)
+void VulkanContext::Add(const Tensor& input, const Scalar other, const Tensor& output)
 {
-    assert(IsIntegerType(input->m_dataType));
-    m_opFillConstant->SetTensor(1, input);
-    m_opFillConstant->SetParameters(glm::ivec4(value));
-    m_opFillConstant->Execute();
-}
-
-void VulkanContext::AddScalar(Tensor* input, float other, Tensor* output)
-{
-    assert(IsFloatingPointType(input->m_dataType));
     m_opAddScalar->SetTensor(1, input);
     m_opAddScalar->SetTensor(2, output ? output : input);
-    m_opAddScalar->SetParameters(glm::vec4(other));
+    if (input.IsFloatingPoint())
+    {
+        m_opAddScalar->SetParameters(glm::vec4(float(other)));
+    }
+    else
+    {
+        m_opAddScalar->SetParameters(glm::ivec4(int(other)));
+    }
     m_opAddScalar->Execute();
 }
 
-void VulkanContext::AddScalar(Tensor* input, int other, Tensor* output)
+void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output)
 {
-    assert(IsIntegerType(input->m_dataType));
-    m_opAddScalar->SetTensor(1, input);
-    m_opAddScalar->SetTensor(2, output ? output : input);
-    m_opAddScalar->SetParameters(glm::ivec4(other));
-    m_opAddScalar->Execute();
-}
-
-void VulkanContext::Add(Tensor* input, Tensor* other, float alpha, Tensor* output)
-{
-    assert(IsFloatingPointType(input->m_dataType));
     m_opAdd->SetTensor(1, input);
     m_opAdd->SetTensor(2, other);
     m_opAdd->SetTensor(3, output ? output : input);
-    m_opAdd->SetParameters(glm::vec4(alpha));
+    if (input.IsFloatingPoint())
+    {
+        m_opAdd->SetParameters(glm::vec4(float(alpha)));
+    }
+    else
+    {
+        m_opAdd->SetParameters(glm::ivec4(int(alpha)));
+    }
     m_opAdd->Execute();
 }
 
-void VulkanContext::Add(Tensor* input, Tensor* other, int alpha, Tensor* output)
+void VulkanContext::Subtract(const Tensor& input, const Scalar other, const Tensor& output)
 {
-    assert(IsIntegerType(input->m_dataType));
-    m_opAdd->SetTensor(1, input);
-    m_opAdd->SetTensor(2, other);
-    m_opAdd->SetTensor(3, output ? output : input);
-    m_opAdd->SetParameters(glm::ivec4(alpha));
-    m_opAdd->Execute();
-}
-
-void VulkanContext::SubtractScalar(Tensor* input, float other, Tensor* output)
-{
-    assert(IsFloatingPointType(input->m_dataType));
     m_opSubtractScalar->SetTensor(1, input);
     m_opSubtractScalar->SetTensor(2, output ? output : input);
-    m_opSubtractScalar->SetParameters(glm::vec4(other));
+    if (input.IsFloatingPoint())
+    {
+        m_opSubtractScalar->SetParameters(glm::vec4(float(other)));
+    }
+    else
+    {
+        m_opSubtractScalar->SetParameters(glm::ivec4(int(other)));
+    }
     m_opSubtractScalar->Execute();
 }
 
-void VulkanContext::SubtractScalar(Tensor* input, int other, Tensor* output)
+void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output)
 {
-    assert(IsIntegerType(input->m_dataType));
-    m_opSubtractScalar->SetTensor(1, input);
-    m_opSubtractScalar->SetTensor(2, output ? output : input);
-    m_opSubtractScalar->SetParameters(glm::ivec4(other));
-    m_opSubtractScalar->Execute();
-}
-
-void VulkanContext::Subtract(Tensor* input, Tensor* other, float alpha, Tensor* output)
-{
-    assert(IsFloatingPointType(input->m_dataType));
     m_opSubtract->SetTensor(1, input);
     m_opSubtract->SetTensor(2, other);
     m_opSubtract->SetTensor(3, output ? output : input);
-    m_opSubtract->SetParameters(glm::vec4(alpha));
+    if (input.IsFloatingPoint())
+    {
+        m_opSubtract->SetParameters(glm::vec4(float(alpha)));
+    }
+    else
+    {
+        m_opSubtract->SetParameters(glm::ivec4(int(alpha)));
+    }
     m_opSubtract->Execute();
 }
 
-void VulkanContext::Subtract(Tensor* input, Tensor* other, int alpha, Tensor* output)
+void VulkanContext::Multiply(const Tensor& input, const Scalar other, const Tensor& output)
 {
-    assert(IsIntegerType(input->m_dataType));
-    m_opSubtract->SetTensor(1, input);
-    m_opSubtract->SetTensor(2, other);
-    m_opSubtract->SetTensor(3, output ? output : input);
-    m_opSubtract->SetParameters(glm::ivec4(alpha));
-    m_opSubtract->Execute();
-}
-
-void VulkanContext::MultiplyScalar(Tensor* input, float other, Tensor* output)
-{
-    assert(IsFloatingPointType(input->m_dataType));
     m_opMultiplyScalar->SetTensor(1, input);
     m_opMultiplyScalar->SetTensor(2, output ? output : input);
-    m_opMultiplyScalar->SetParameters(glm::vec4(other));
+    if (input.IsFloatingPoint())
+    {
+        m_opMultiplyScalar->SetParameters(glm::vec4(float(other)));
+    }
+    else
+    {
+        m_opMultiplyScalar->SetParameters(glm::ivec4(int(other)));
+    }
     m_opMultiplyScalar->Execute();
 }
 
-void VulkanContext::MultiplyScalar(Tensor* input, int other, Tensor* output)
-{
-    assert(IsIntegerType(input->m_dataType));
-    m_opMultiplyScalar->SetTensor(1, input);
-    m_opMultiplyScalar->SetTensor(2, output ? output : input);
-    m_opMultiplyScalar->SetParameters(glm::ivec4(other));
-    m_opMultiplyScalar->Execute();
-}
-
-void VulkanContext::Multiply(Tensor* input, Tensor* other, Tensor* output)
+void VulkanContext::Multiply(const Tensor& input, const Tensor& other, const Tensor& output)
 {
     m_opMultiply->SetTensor(1, input);
     m_opMultiply->SetTensor(2, other);
@@ -151,25 +132,22 @@ void VulkanContext::Multiply(Tensor* input, Tensor* other, Tensor* output)
     m_opMultiply->Execute();
 }
 
-void VulkanContext::DivideScalar(Tensor* input, float other, Tensor* output)
+void VulkanContext::Divide(const Tensor& input, const Scalar other, const Tensor& output)
 {
-    assert(IsFloatingPointType(input->m_dataType));
     m_opDivideScalar->SetTensor(1, input);
     m_opDivideScalar->SetTensor(2, output ? output : input);
-    m_opDivideScalar->SetParameters(glm::vec4(other));
+    if (input.IsFloatingPoint())
+    {
+        m_opDivideScalar->SetParameters(glm::vec4(float(other)));
+    }
+    else
+    {
+        m_opDivideScalar->SetParameters(glm::ivec4(int(other)));
+    }
     m_opDivideScalar->Execute();
 }
 
-void VulkanContext::DivideScalar(Tensor* input, int other, Tensor* output)
-{
-    assert(IsIntegerType(input->m_dataType));
-    m_opDivideScalar->SetTensor(1, input);
-    m_opDivideScalar->SetTensor(2, output ? output : input);
-    m_opDivideScalar->SetParameters(glm::ivec4(other));
-    m_opDivideScalar->Execute();
-}
-
-void VulkanContext::Divide(Tensor* input, Tensor* other, Tensor* output)
+void VulkanContext::Divide(const Tensor& input, const Tensor& other, const Tensor& output)
 {
     m_opDivide->SetTensor(1, input);
     m_opDivide->SetTensor(2, other);

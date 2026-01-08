@@ -15,48 +15,27 @@ public:
     Context(rad::Ref<Device> device) : m_device(std::move(device)) {}
     virtual ~Context() = default;
 
-    virtual void FillConstant(Tensor* input, float value) = 0;
-    virtual void FillConstant(Tensor* input, int value) = 0;
+    virtual void FillConstant(const Tensor& input, Scalar value) = 0;
 
-    // Add input tensor by other scalar.
+    // output = input + alpha * other;
     // @param output If nullptr, results are written back to the input.
-    virtual void AddScalar(Tensor* input, float other, Tensor* output = nullptr) = 0;
-    virtual void AddScalar(Tensor* input, int other, Tensor* output = nullptr) = 0;
+    virtual void Add(const Tensor& input, const Scalar other, const Tensor& output) = 0;
+    virtual void Add(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output) = 0;
 
-    // Add input tensor by other tensor.
+    // output = input - alpha * other;
     // @param output If nullptr, results are written back to the input.
-    // @param alpha  The multiplier for other.
-    virtual void Add(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) = 0;
-    virtual void Add(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) = 0;
+    virtual void Subtract(const Tensor& input, const Scalar other, const Tensor& output) = 0;
+    virtual void Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, const Tensor& output) = 0;
 
-    // Subtract a scalar from input.
+    // Multiply input tensor by other element-wise.
     // @param output If nullptr, results are written back to the input.
-    virtual void SubtractScalar(Tensor* input, float other, Tensor* output = nullptr) = 0;
-    virtual void SubtractScalar(Tensor* input, int other, Tensor* output = nullptr) = 0;
+    virtual void Multiply(const Tensor& input, const Scalar other, const Tensor& output) = 0;
+    virtual void Multiply(const Tensor& input, const Tensor& other, const Tensor& output) = 0;
 
-    // Subtract a tensor from input.
+    // Divide input tensor by other element-wise. For integer divisions, the result is truncated.
     // @param output If nullptr, results are written back to the input.
-    // @param alpha  The multiplier for other.
-    virtual void Subtract(Tensor* input, Tensor* other, float alpha = 1.0f, Tensor* output = nullptr) = 0;
-    virtual void Subtract(Tensor* input, Tensor* other, int alpha = 1, Tensor* output = nullptr) = 0;
-
-    // Multiply input tensor by other scalar.
-    // @param output If nullptr, results are written back to the input.
-    virtual void MultiplyScalar(Tensor* input, float other, Tensor* output = nullptr) = 0;
-    virtual void MultiplyScalar(Tensor* input, int other, Tensor* output = nullptr) = 0;
-
-    // Multiply input tensor by other tensor.
-    // @param output If nullptr, results are written back to the input.
-    virtual void Multiply(Tensor* input, Tensor* other, Tensor* output = nullptr) = 0;
-
-    // Divide input tensor by other scalar. For integer divisions, the result is truncated.
-    // @param output If nullptr, results are written back to the input.
-    virtual void DivideScalar(Tensor* input, float other, Tensor* output = nullptr) = 0;
-    virtual void DivideScalar(Tensor* input, int other, Tensor* output = nullptr) = 0;
-
-    // Divide input tensor by other tensor. For integer divisions, the result is truncated.
-    // @param output If nullptr, results are written back to the input.
-    virtual void Divide(Tensor* input, Tensor* other, Tensor* output = nullptr) = 0;
+    virtual void Divide(const Tensor& input, const Scalar other, const Tensor& output) = 0;
+    virtual void Divide(const Tensor& input, const Tensor& other, const Tensor& output) = 0;
 
 }; // class Context
 

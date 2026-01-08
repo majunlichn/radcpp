@@ -12,10 +12,6 @@ class VulkanContext;
 class VulkanTensorStorage : public TensorStorage
 {
 public:
-    // The base offset of the buffer range in bytes.
-    VkDeviceSize m_bufferOffset = 0;
-    // The buffer size required, must be rounded up to the nearest 4-byte boundary.
-    VkDeviceSize m_bufferSize = 0;
     rad::Ref<vkpp::Buffer> m_buffer;
 
     VulkanTensorStorage(rad::Ref<VulkanDevice> device);

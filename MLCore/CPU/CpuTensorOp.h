@@ -15,15 +15,15 @@ void ForEachParallelND(TensorIterator& iter, const std::function<void(size_t buf
 template <typename T>
 struct CpuTensorOpForEach
 {
-    void operator()(Tensor* input, const std::function<T()>& op)
+    void operator()(const Tensor& input, const std::function<T()>& op)
     {
-        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input->m_storage.get());
+        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input.m_storage.get());
         T* inputData = (T*)inputStorage->m_buffer.data();
 
-        if (input->IsContiguous())
+        if (input.IsContiguous())
         {
             auto& buffer = inputStorage->m_buffer;
-            std::generate_n(std::execution::par_unseq, inputData, input->GetElementCount(), [&]() { return op(); });
+            std::generate_n(std::execution::par_unseq, inputData, input.GetElementCount(), [&]() { return op(); });
         }
         else
         {
@@ -39,24 +39,20 @@ struct CpuTensorOpForEach
 template <typename T, typename ComputeType = T>
 struct CpuTensorOpElementWiseUnary
 {
-    void operator()(Tensor* input, Tensor* output, const std::function<ComputeType(ComputeType x)>& op)
+    void operator()(const Tensor& input, const Tensor& output, const std::function<ComputeType(ComputeType x)>& op)
     {
-        if (output == nullptr)
-        {
-            output = input;
-        }
-        assert(input->m_sizes == output->m_sizes);
-        assert(input->m_dataType == output->m_dataType);
+        assert(input.m_sizes == output.m_sizes);
+        assert(input.m_dataType == output.m_dataType);
 
-        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input->m_storage.get());
-        CpuTensorStorage* outputStorage = static_cast<CpuTensorStorage*>(output->m_storage.get());
+        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input.m_storage.get());
+        CpuTensorStorage* outputStorage = static_cast<CpuTensorStorage*>(output.m_storage.get());
         const T* inputData = (const T*)inputStorage->m_buffer.data();
         T* outputData = (T*)outputStorage->m_buffer.data();
 
-        if (input->IsContiguous() && HaveSameLayout(input, output))
+        if (input.IsContiguous() && HaveSameLayout(input, output))
         {
             std::transform(std::execution::par_unseq,
-                inputData, inputData + input->GetElementCount(), outputData,
+                inputData, inputData + input.GetElementCount(), outputData,
                 [&](T x) {
                     return static_cast<T>(op(static_cast<ComputeType>(x)));
                 });
@@ -77,29 +73,25 @@ struct CpuTensorOpElementWiseUnary
 template <typename T, typename ComputeType = T>
 struct CpuTensorOpElementWiseBinary
 {
-    void operator()(Tensor* input, Tensor* other, Tensor* output,
+    void operator()(const Tensor& input, const Tensor& other, const Tensor& output,
         const std::function<ComputeType(ComputeType a, ComputeType b)>& op)
     {
-        if (output == nullptr)
-        {
-            output = input;
-        }
-        assert(input->m_sizes == other->m_sizes);
-        assert(input->m_sizes == output->m_sizes);
-        assert(input->m_dataType == other->m_dataType);
-        assert(input->m_dataType == output->m_dataType);
+        assert(input.m_sizes == other.m_sizes);
+        assert(input.m_sizes == output.m_sizes);
+        assert(input.m_dataType == other.m_dataType);
+        assert(input.m_dataType == output.m_dataType);
 
-        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input->m_storage.get());
-        CpuTensorStorage* otherStorage = static_cast<CpuTensorStorage*>(other->m_storage.get());
-        CpuTensorStorage* outputStorage = static_cast<CpuTensorStorage*>(output->m_storage.get());
+        CpuTensorStorage* inputStorage = static_cast<CpuTensorStorage*>(input.m_storage.get());
+        CpuTensorStorage* otherStorage = static_cast<CpuTensorStorage*>(other.m_storage.get());
+        CpuTensorStorage* outputStorage = static_cast<CpuTensorStorage*>(output.m_storage.get());
         const T* inputData = (const T*)inputStorage->m_buffer.data();
         const T* otherData = (const T*)otherStorage->m_buffer.data();
         T* outputData = (T*)outputStorage->m_buffer.data();
 
-        if (input->IsContiguous() && HaveSameLayout(input, other) && HaveSameLayout(input, output))
+        if (input.IsContiguous() && HaveSameLayout(input, other) && HaveSameLayout(input, output))
         {
             std::transform(std::execution::par_unseq,
-                inputData, inputData + input->GetElementCount(), otherData, outputData,
+                inputData, inputData + input.GetElementCount(), otherData, outputData,
                 [&](T a, T b) {
                     return static_cast<T>(op(static_cast<ComputeType>(a), static_cast<ComputeType>(b)));
                 });

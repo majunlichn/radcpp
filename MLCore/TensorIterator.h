@@ -32,40 +32,45 @@ public:
         Reset();
     }
 
-    TensorIterator(Tensor* tensor, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {})
+    TensorIterator(const Tensor& tensor, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {})
     {
         if (offsets.empty())
         {
-            m_offsets.resize(tensor->GetDimCount(), 0);
+            m_offsets.resize(tensor.GetDimCount(), 0);
         }
         else
         {
-            assert(offsets.size() == tensor->GetDimCount());
+            assert(offsets.size() == tensor.GetDimCount());
             m_offsets = offsets;
         }
 
         if (sizes.empty())
         {
-            m_sizes.resize(tensor->GetDimCount());
-            for (size_t i = 0; i < tensor->GetDimCount(); ++i)
+            m_sizes.resize(tensor.GetDimCount());
+            for (size_t i = 0; i < tensor.GetDimCount(); ++i)
             {
-                m_sizes[i] = tensor->m_sizes[i] - m_offsets[i];
+                m_sizes[i] = tensor.m_sizes[i] - m_offsets[i];
             }
         }
         else
         {
-            assert(sizes.size() == tensor->GetDimCount());
+            assert(sizes.size() == tensor.GetDimCount());
             m_sizes = sizes;
         }
 
-        m_strides = tensor->m_strides;
+        m_strides = tensor.m_strides;
 
         for (size_t i = 0; i < m_sizes.size(); ++i)
         {
-            assert(m_offsets[i] + m_sizes[i] <= tensor->m_sizes[i]);
+            assert(m_offsets[i] + m_sizes[i] <= tensor.m_sizes[i]);
         }
 
         Reset();
+    }
+
+    TensorIterator(const Tensor* tensor, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {}) :
+        TensorIterator(*tensor, offsets, sizes)
+    {
     }
 
     ~TensorIterator() = default;
