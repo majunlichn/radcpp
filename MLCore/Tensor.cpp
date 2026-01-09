@@ -309,7 +309,7 @@ std::string Tensor::ToString(TextFormat format, rad::ArrayRef<size_t> offsets, r
 
 Tensor& Tensor::Fill(Scalar value)
 {
-    m_context->FillConstant(*this, value);
+    m_context->Fill(*this, value);
     return *this;
 }
 

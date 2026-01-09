@@ -64,14 +64,14 @@ def remove_dir(dir : str):
     if os.path.isdir(dir):
         shutil.rmtree(dir)
 
-def compile_tensor_op_fill_constant():
+def compile_tensor_op_fill():
     source = make_abspath(source_root + "/TensorOp/ForEach.comp")
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for data_type in DataType:
-        output = make_normpath(output_dir + f"/FillConstant-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFillConstant=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+        output = make_normpath(output_dir + f"/Fill-{data_type.name}.spv")
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFill=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -170,8 +170,8 @@ def main() -> int:
         compile_all = False
         if cmd_args.targets is None:
             compile_all = True
-        if compile_all or any(name in ['FillConstant'] for name in cmd_args.targets):
-            compile_tensor_op_fill_constant()
+        if compile_all or any(name in ['Fill'] for name in cmd_args.targets):
+            compile_tensor_op_fill()
         if compile_all or any(name in ['AddScalar'] for name in cmd_args.targets):
             compile_tensor_op_add_scalar()
         if compile_all or any(name in ['SubtractScalar'] for name in cmd_args.targets):

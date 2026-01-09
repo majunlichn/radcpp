@@ -13,7 +13,7 @@ public:
     CpuContext(rad::Ref<CpuDevice> device);
     ~CpuContext() override;
 
-    virtual void FillConstant(const Tensor& input, Scalar value) override;
+    virtual void Fill(const Tensor& input, Scalar value) override;
 
     // output = input + alpha * other;
     // @param output If nullptr, results are written back to the input.

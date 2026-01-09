@@ -13,7 +13,7 @@ CpuContext::~CpuContext()
 {
 }
 
-void CpuContext::FillConstant(const Tensor& input, Scalar value)
+void CpuContext::Fill(const Tensor& input, Scalar value)
 {
 #define ML_CPU_DISPATCH_FILL_CONSTANT(DataType)   \
     CpuTensorOpForEach<DataType>()(input, [&]() { return DataType(value); })

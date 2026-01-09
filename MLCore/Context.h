@@ -15,7 +15,7 @@ public:
     Context(rad::Ref<Device> device) : m_device(std::move(device)) {}
     virtual ~Context() = default;
 
-    virtual void FillConstant(const Tensor& input, Scalar value) = 0;
+    virtual void Fill(const Tensor& input, Scalar value) = 0;
 
     // output = input + alpha * other;
     virtual void Add(const Tensor& input, const Scalar other, Tensor& output) = 0;

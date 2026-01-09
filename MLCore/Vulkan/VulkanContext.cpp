@@ -8,7 +8,7 @@ namespace ML
 VulkanContext::VulkanContext(rad::Ref<VulkanDevice> device) :
     Context(std::move(device))
 {
-    m_opFillConstant = RAD_NEW VulkanTensorOpForEach(this, "FillConstant");
+    m_opFill = RAD_NEW VulkanTensorOpForEach(this, "Fill");
     m_opAddScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "AddScalar");
     m_opAdd = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Add");
     m_opSubtractScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "SubtractScalar");
@@ -33,18 +33,18 @@ vkpp::Device* VulkanContext::GetDeviceImpl()
     return static_cast<VulkanDevice*>(m_device.get())->m_impl.get();
 }
 
-void VulkanContext::FillConstant(const Tensor& input, Scalar value)
+void VulkanContext::Fill(const Tensor& input, Scalar value)
 {
-    m_opFillConstant->SetTensor(1, input);
+    m_opFill->SetTensor(1, input);
     if (input.IsFloatingPoint())
     {
-        m_opFillConstant->SetParameters(glm::vec4(float(value)));
+        m_opFill->SetParameters(glm::vec4(float(value)));
     }
     else
     {
-        m_opFillConstant->SetParameters(glm::ivec4(int(value)));
+        m_opFill->SetParameters(glm::ivec4(int(value)));
     }
-    m_opFillConstant->Execute();
+    m_opFill->Execute();
 }
 
 void VulkanContext::Add(const Tensor& input, const Scalar other, Tensor& output)

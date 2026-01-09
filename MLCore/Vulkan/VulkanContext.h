@@ -17,7 +17,7 @@ public:
     std::vector<vkpp::SubmitWaitInfo> m_submitWaits;
     std::vector<vk::Semaphore> m_submitSignals;
 
-    rad::Ref<VulkanTensorOpForEach> m_opFillConstant;
+    rad::Ref<VulkanTensorOpForEach> m_opFill;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opAddScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opAdd;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opSubtractScalar;
@@ -33,7 +33,7 @@ public:
     VulkanDevice* GetDevice();
     vkpp::Device* GetDeviceImpl();
 
-    virtual void FillConstant(const Tensor& input, Scalar value) override;
+    virtual void Fill(const Tensor& input, Scalar value) override;
 
     // output = input + alpha * other;
     // @param output If nullptr, results are written back to the input.
