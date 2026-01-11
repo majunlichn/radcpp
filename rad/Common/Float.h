@@ -234,4 +234,7 @@ constexpr bool is_non_native_floating_point_v = is_any_of<T, Float16, BFloat16, 
 template <class T>
 constexpr bool is_floating_point_v = std::is_floating_point_v<T> || is_any_of<T, Float16, BFloat16, Float8E4M3, Float8E5M2>;
 
+template <class T>
+constexpr bool is_signed_v = std::is_signed_v<T> || is_floating_point_v<T>;
+
 } // namespace rad

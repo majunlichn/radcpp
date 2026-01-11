@@ -33,6 +33,11 @@ public:
     virtual void Divide(const Tensor& input, const Scalar other, Tensor& output) = 0;
     virtual void Divide(const Tensor& input, const Tensor& other, Tensor& output) = 0;
 
+    // Computes Python's modulus operation entrywise.
+    // The result has the same sign as the divisor other and its absolute value is less than that of other.
+    virtual void Remainder(const Tensor& input, const Scalar other, Tensor& output) = 0;
+    virtual void Remainder(const Tensor& input, const Tensor& other, Tensor& output) = 0;
+
 }; // class Context
 
 } // namespace ML

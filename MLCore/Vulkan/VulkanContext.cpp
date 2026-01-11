@@ -17,6 +17,8 @@ VulkanContext::VulkanContext(rad::Ref<VulkanDevice> device) :
     m_opMultiply = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Multiply");
     m_opDivideScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "DivideScalar");
     m_opDivide = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Divide");
+    m_opRemainderScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "RemainderScalar");
+    m_opRemainder = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Remainder");
 }
 
 VulkanContext::~VulkanContext()
@@ -153,6 +155,29 @@ void VulkanContext::Divide(const Tensor& input, const Tensor& other, Tensor& out
     m_opDivide->SetTensor(2, other);
     m_opDivide->SetTensor(3, output ? output : input);
     m_opDivide->Execute();
+}
+
+void VulkanContext::Remainder(const Tensor& input, const Scalar other, Tensor& output)
+{
+    m_opRemainderScalar->SetTensor(1, input);
+    m_opRemainderScalar->SetTensor(2, output ? output : input);
+    if (input.IsFloatingPoint())
+    {
+        m_opRemainderScalar->SetParameters(glm::vec4(float(other)));
+    }
+    else
+    {
+        m_opRemainderScalar->SetParameters(glm::ivec4(int(other)));
+    }
+    m_opRemainderScalar->Execute();
+}
+
+void VulkanContext::Remainder(const Tensor& input, const Tensor& other, Tensor& output)
+{
+    m_opRemainder->SetTensor(1, input);
+    m_opRemainder->SetTensor(2, other);
+    m_opRemainder->SetTensor(3, output ? output : input);
+    m_opRemainder->Execute();
 }
 
 } // namespace ML

@@ -132,6 +132,11 @@ public:
     [[nodiscard]] Tensor Div(const Tensor& other) const { return Divide(other); }
     Tensor& Div_(const Tensor& other) { return DivideInPlace(other); }
 
+    [[nodiscard]] Tensor Remainder(Scalar other) const;
+    Tensor& Remainder_(Scalar other);
+    [[nodiscard]] Tensor Remainder(const Tensor& other) const;
+    Tensor& Remainder_(const Tensor& other);
+
     Tensor& operator+=(Scalar other) { return Add_(other); }
     Tensor& operator-=(Scalar other) { return Sub_(other); }
     Tensor& operator*=(Scalar other) { return Mul_(other); }
@@ -162,6 +167,10 @@ inline bool HaveSameLayout(const Tensor& a, const Tensor& b)
   _(/,                                                                      \
     x.Divide(y),                                                            \
     MakeTensorLike(y).Fill(x).Div_(y))                                      \
+  _(%,                                                                      \
+    x.Remainder(y),                                                         \
+    MakeTensorLike(y).Fill(x).Remainder_(y))
+
 
 #define ML_TENSOR_BINARY_OP(op, body, reverse_scalar_body)      \
   inline Tensor operator op(const Tensor& x, const Tensor& y) { \

@@ -238,4 +238,82 @@ void CpuContext::Divide(const Tensor& input, const Tensor& other, Tensor& output
     RAD_UNREACHABLE();
 }
 
+template <std::floating_point T>
+T remainder(T x, T y)
+{
+    T r = std::fmod(x, y);
+    if ((r != 0) && ((x < 0) != (y < 0)))
+    {
+        r += y;
+    }
+    return r;
+}
+
+template <std::signed_integral T>
+T remainder(T x, T y)
+{
+    T r = x % y;
+    if ((r != 0) && ((x < 0) != (y < 0)))
+    {
+        r += y;
+    }
+    return r;
+}
+
+template <std::unsigned_integral T>
+T remainder(T x, T y)
+{
+    return x % y;
+}
+
+void CpuContext::Remainder(const Tensor& input, const Scalar other, Tensor& output)
+{
+#define ML_CPU_DISPATCH_REMAINDER_SCALAR(DataType, ComputeType)    \
+    CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return remainder(x, ComputeType(other)); });
+    switch (input.m_dataType)
+    {
+    case DataType::Float16:     ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Float16, rad::Float32); return;
+    case DataType::Float32:     ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Float32, rad::Float32); return;
+    case DataType::Float64:     ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Float64, rad::Float64); return;
+    case DataType::Sint8:       ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Uint64, rad::Uint64); return;
+    case DataType::BFloat16:    ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::BFloat16, rad::Float32); return;
+    case DataType::Float8E4M3:  ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Float8E4M3, rad::Float32); return;
+    case DataType::Float8E5M2:  ML_CPU_DISPATCH_REMAINDER_SCALAR(rad::Float8E5M2, rad::Float32); return;
+    }
+#undef ML_CPU_DISPATCH_REMAINDER_SCALAR
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::Remainder(const Tensor& input, const Tensor& other, Tensor& output)
+{
+#define ML_CPU_DISPATCH_REMAINDER(DataType, ComputeType)    \
+    CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return remainder(a, b); });
+    switch (input.m_dataType)
+    {
+    case DataType::Float16:     ML_CPU_DISPATCH_REMAINDER(rad::Float16, rad::Float32); return;
+    case DataType::Float32:     ML_CPU_DISPATCH_REMAINDER(rad::Float32, rad::Float32); return;
+    case DataType::Float64:     ML_CPU_DISPATCH_REMAINDER(rad::Float64, rad::Float64); return;
+    case DataType::Sint8:       ML_CPU_DISPATCH_REMAINDER(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_REMAINDER(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_REMAINDER(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_REMAINDER(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_REMAINDER(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_REMAINDER(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_REMAINDER(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_REMAINDER(rad::Uint64, rad::Uint64); return;
+    case DataType::BFloat16:    ML_CPU_DISPATCH_REMAINDER(rad::BFloat16, rad::Float32); return;
+    case DataType::Float8E4M3:  ML_CPU_DISPATCH_REMAINDER(rad::Float8E4M3, rad::Float32); return;
+    case DataType::Float8E5M2:  ML_CPU_DISPATCH_REMAINDER(rad::Float8E5M2, rad::Float32); return;
+    }
+#undef ML_CPU_DISPATCH_REMAINDER
+    RAD_UNREACHABLE();
+}
+
 } // namespace ML

@@ -417,4 +417,30 @@ Tensor& Tensor::DivideInPlace(const Tensor& other)
     return *this;
 }
 
+Tensor Tensor::Remainder(Scalar other) const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->Remainder(*this, other, output);
+    return output;
+}
+
+Tensor& Tensor::Remainder_(Scalar other)
+{
+    m_context->Remainder(*this, other, *this);
+    return *this;
+}
+
+Tensor Tensor::Remainder(const Tensor& other) const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->Remainder(*this, other, output);
+    return output;
+}
+
+Tensor& Tensor::Remainder_(const Tensor& other)
+{
+    m_context->Remainder(*this, other, *this);
+    return *this;
+}
+
 } // namespace ML

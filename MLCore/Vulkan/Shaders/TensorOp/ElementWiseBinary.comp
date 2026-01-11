@@ -59,6 +59,17 @@ COMPUTE_TYPE Divide(COMPUTE_TYPE a, COMPUTE_TYPE b)
 }
 #endif
 
+#if defined(Remainder)
+COMPUTE_TYPE Remainder(COMPUTE_TYPE a, COMPUTE_TYPE b)
+{
+#if DATA_TYPE_IS_FLOATING_POINT
+    return mod(a, b);
+#else
+    return a % b;
+#endif
+}
+#endif
+
 void main()
 {
     const uint SizeN = g_sizes[0];

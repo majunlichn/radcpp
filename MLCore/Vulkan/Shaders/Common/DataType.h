@@ -104,18 +104,21 @@
 
 #if ((DATA_TYPE_ID == DataTypeFloat64) || (DATA_TYPE_ID == DataTypeSint64) || (DATA_TYPE_ID == DataTypeUint64))
 #define DATA_TYPE_IS_64_BIT 1
+#define ELEMENT_SIZE 8
 #else
 #define DATA_TYPE_IS_64_BIT 0
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat32) || (DATA_TYPE_ID == DataTypeSint32) || (DATA_TYPE_ID == DataTypeUint32))
 #define DATA_TYPE_IS_32_BIT 1
+#define ELEMENT_SIZE 4
 #else
 #define DATA_TYPE_IS_32_BIT 0
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeSint16) || (DATA_TYPE_ID == DataTypeUint16) || (DATA_TYPE_ID == DataTypeBFloat16))
 #define DATA_TYPE_IS_16_BIT 1
+#define ELEMENT_SIZE 2
 #else
 #define DATA_TYPE_IS_16_BIT 0
 #endif
@@ -123,18 +126,25 @@
 #if ((DATA_TYPE_ID == DataTypeSint8) || (DATA_TYPE_ID == DataTypeUint8) || \
     (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
 #define DATA_TYPE_IS_8_BIT 1
+#define ELEMENT_SIZE 1
 #else
 #define DATA_TYPE_IS_8_BIT 0
 #endif
 
 #if !defined(COMPUTE_TYPE)
-#if ((DATA_TYPE_ID == DataTypeBFloat16) || (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
-#define IS_DATA_TYPE_COMPUTABLE 0
-#define COMPUTE_TYPE float
-#else
-#define IS_DATA_TYPE_COMPUTABLE 1
-#define COMPUTE_TYPE DATA_TYPE
-#endif
+    #if ((DATA_TYPE_ID == DataTypeBFloat16) || (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
+        #define IS_DATA_TYPE_COMPUTABLE 0
+        #define COMPUTE_TYPE float
+    #else
+        #define IS_DATA_TYPE_COMPUTABLE 1
+        #if (DATA_TYPE_ID == DataTypeSint8) || (DATA_TYPE_ID == DataTypeSint16)
+            #define COMPUTE_TYPE int32_t
+        #elif (DATA_TYPE_ID == DataTypeUint8) || (DATA_TYPE_ID == DataTypeUint16)
+            #define COMPUTE_TYPE uint32_t
+        #else
+            #define COMPUTE_TYPE DATA_TYPE
+        #endif
+    #endif
 #endif
 
 #endif // defined(DATA_TYPE_ID)

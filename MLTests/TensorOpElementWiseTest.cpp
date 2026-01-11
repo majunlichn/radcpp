@@ -5,17 +5,18 @@
 extern std::vector<ML::Backend*> g_backends;
 
 template <typename T>
-void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
+void TestTensorOpAdd(ML::DataType dataType)
 {
-    ML::Device* device = backend->GetDevice(0);
-    ML::SetCurrentDevice(device);
-    if (!device || !device->IsDataTypeSupported(dataType))
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
     {
-        ML_LOG(info, "{}.Add({}): not supported!", backend->m_name, ML::GetDataTypeName(dataType));
+        ML_LOG(info, "TensorOp.Add({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Add({}): not supported!", ML::GetDataTypeName(dataType));
         return;
     }
-
-    ML_LOG(info, "{}.Add({}): start", backend->m_name, ML::GetDataTypeName(dataType));
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
@@ -39,18 +40,42 @@ void TestTensorOpAdd(ML::DataType dataType, ML::Backend* backend)
     }
 }
 
-template <typename T>
-void TestTensorOpSubtract(ML::DataType dataType, ML::Backend* backend)
+TEST(TensorOp, Add)
 {
-    ML::Device* device = backend->GetDevice(0);
-    ML::SetCurrentDevice(device);
-    if (!device || !device->IsDataTypeSupported(dataType))
+    for (auto backend : g_backends)
     {
-        ML_LOG(info, "{}.Subtract({}): not supported!", backend->m_name, ML::GetDataTypeName(dataType));
+        ML::Device* device = backend->GetDevice(0);
+        ML::SetCurrentDevice(device);
+
+        TestTensorOpAdd<rad::Float32>(ML::DataType::Float32);
+        TestTensorOpAdd<rad::Float16>(ML::DataType::Float16);
+        TestTensorOpAdd<rad::BFloat16>(ML::DataType::BFloat16);
+        TestTensorOpAdd<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+        TestTensorOpAdd<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+        TestTensorOpAdd<rad::Sint8>(ML::DataType::Sint8);
+        TestTensorOpAdd<rad::Sint16>(ML::DataType::Sint16);
+        TestTensorOpAdd<rad::Sint32>(ML::DataType::Sint32);
+        TestTensorOpAdd<rad::Sint64>(ML::DataType::Sint64);
+        TestTensorOpAdd<rad::Uint8>(ML::DataType::Uint8);
+        TestTensorOpAdd<rad::Uint16>(ML::DataType::Uint16);
+        TestTensorOpAdd<rad::Uint32>(ML::DataType::Uint32);
+        TestTensorOpAdd<rad::Uint64>(ML::DataType::Uint64);
+    }
+}
+
+template <typename T>
+void TestTensorOpSubtract(ML::DataType dataType)
+{
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "TensorOp.Subtract({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Subtract({}): not supported!", ML::GetDataTypeName(dataType));
         return;
     }
-
-    ML_LOG(info, "{}.Subtract({}): start", backend->m_name, ML::GetDataTypeName(dataType));
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
@@ -74,18 +99,42 @@ void TestTensorOpSubtract(ML::DataType dataType, ML::Backend* backend)
     }
 }
 
-template <typename T>
-void TestTensorOpMultiply(ML::DataType dataType, ML::Backend* backend)
+TEST(TensorOp, Subtract)
 {
-    ML::Device* device = backend->GetDevice(0);
-    ML::SetCurrentDevice(device);
-    if (!device || !device->IsDataTypeSupported(dataType))
+    for (auto backend : g_backends)
     {
-        ML_LOG(info, "{}.Multiply({}): not supported!", backend->m_name, ML::GetDataTypeName(dataType));
+        ML::Device* device = backend->GetDevice(0);
+        ML::SetCurrentDevice(device);
+
+        TestTensorOpSubtract<rad::Float32>(ML::DataType::Float32);
+        TestTensorOpSubtract<rad::Float16>(ML::DataType::Float16);
+        TestTensorOpSubtract<rad::BFloat16>(ML::DataType::BFloat16);
+        TestTensorOpSubtract<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+        TestTensorOpSubtract<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+        TestTensorOpSubtract<rad::Sint8>(ML::DataType::Sint8);
+        TestTensorOpSubtract<rad::Sint16>(ML::DataType::Sint16);
+        TestTensorOpSubtract<rad::Sint32>(ML::DataType::Sint32);
+        TestTensorOpSubtract<rad::Sint64>(ML::DataType::Sint64);
+        TestTensorOpSubtract<rad::Uint8>(ML::DataType::Uint8);
+        TestTensorOpSubtract<rad::Uint16>(ML::DataType::Uint16);
+        TestTensorOpSubtract<rad::Uint32>(ML::DataType::Uint32);
+        TestTensorOpSubtract<rad::Uint64>(ML::DataType::Uint64);
+    }
+}
+
+template <typename T>
+void TestTensorOpMultiply(ML::DataType dataType)
+{
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "TensorOp.Multiply({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Multiply({}): not supported!", ML::GetDataTypeName(dataType));
         return;
     }
-
-    ML_LOG(info, "{}.Multiply({}): start", backend->m_name, ML::GetDataTypeName(dataType));
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
@@ -109,18 +158,43 @@ void TestTensorOpMultiply(ML::DataType dataType, ML::Backend* backend)
     }
 }
 
-template <typename T>
-void TestTensorOpDivide(ML::DataType dataType, ML::Backend* backend)
+TEST(TensorOp, Multiply)
 {
-    ML::Device* device = backend->GetDevice(0);
-    ML::SetCurrentDevice(device);
-    if (!device || !device->IsDataTypeSupported(dataType))
+    for (auto backend : g_backends)
     {
-        ML_LOG(info, "{}.Divide({}): not supported!", backend->m_name, ML::GetDataTypeName(dataType));
+        ML::Device* device = backend->GetDevice(0);
+        ML::SetCurrentDevice(device);
+
+        TestTensorOpMultiply<rad::Float32>(ML::DataType::Float32);
+        TestTensorOpMultiply<rad::Float16>(ML::DataType::Float16);
+        TestTensorOpMultiply<rad::BFloat16>(ML::DataType::BFloat16);
+        TestTensorOpMultiply<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+        TestTensorOpMultiply<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+        TestTensorOpMultiply<rad::Sint8>(ML::DataType::Sint8);
+        TestTensorOpMultiply<rad::Sint16>(ML::DataType::Sint16);
+        TestTensorOpMultiply<rad::Sint32>(ML::DataType::Sint32);
+        TestTensorOpMultiply<rad::Sint64>(ML::DataType::Sint64);
+        TestTensorOpMultiply<rad::Uint8>(ML::DataType::Uint8);
+        TestTensorOpMultiply<rad::Uint16>(ML::DataType::Uint16);
+        TestTensorOpMultiply<rad::Uint32>(ML::DataType::Uint32);
+        TestTensorOpMultiply<rad::Uint64>(ML::DataType::Uint64);
+    }
+}
+
+template <typename T>
+void TestTensorOpDivide(ML::DataType dataType)
+{
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "TensorOp.Divide({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Divide({}): not supported!", ML::GetDataTypeName(dataType));
         return;
     }
 
-    ML_LOG(info, "{}.Divide({}): start", backend->m_name, ML::GetDataTypeName(dataType));
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
     using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
@@ -143,82 +217,91 @@ void TestTensorOpDivide(ML::DataType dataType, ML::Backend* backend)
     }
 }
 
-TEST(TensorOp, Add)
-{
-    for (auto backend : g_backends)
-    {
-        TestTensorOpAdd<rad::Float32>(ML::DataType::Float32, backend);
-        TestTensorOpAdd<rad::Float16>(ML::DataType::Float16, backend);
-        TestTensorOpAdd<rad::BFloat16>(ML::DataType::BFloat16, backend);
-        TestTensorOpAdd<rad::Float8E4M3>(ML::DataType::Float8E4M3, backend);
-        TestTensorOpAdd<rad::Float8E5M2>(ML::DataType::Float8E5M2, backend);
-        TestTensorOpAdd<rad::Sint8>(ML::DataType::Sint8, backend);
-        TestTensorOpAdd<rad::Sint16>(ML::DataType::Sint16, backend);
-        TestTensorOpAdd<rad::Sint32>(ML::DataType::Sint32, backend);
-        TestTensorOpAdd<rad::Sint64>(ML::DataType::Sint64, backend);
-        TestTensorOpAdd<rad::Uint8>(ML::DataType::Uint8, backend);
-        TestTensorOpAdd<rad::Uint16>(ML::DataType::Uint16, backend);
-        TestTensorOpAdd<rad::Uint32>(ML::DataType::Uint32, backend);
-        TestTensorOpAdd<rad::Uint64>(ML::DataType::Uint64, backend);
-    }
-}
-
-TEST(TensorOp, Subtract)
-{
-    for (auto backend : g_backends)
-    {
-        TestTensorOpSubtract<rad::Float32>(ML::DataType::Float32, backend);
-        TestTensorOpSubtract<rad::Float16>(ML::DataType::Float16, backend);
-        TestTensorOpSubtract<rad::BFloat16>(ML::DataType::BFloat16, backend);
-        TestTensorOpSubtract<rad::Float8E4M3>(ML::DataType::Float8E4M3, backend);
-        TestTensorOpSubtract<rad::Float8E5M2>(ML::DataType::Float8E5M2, backend);
-        TestTensorOpSubtract<rad::Sint8>(ML::DataType::Sint8, backend);
-        TestTensorOpSubtract<rad::Sint16>(ML::DataType::Sint16, backend);
-        TestTensorOpSubtract<rad::Sint32>(ML::DataType::Sint32, backend);
-        TestTensorOpSubtract<rad::Sint64>(ML::DataType::Sint64, backend);
-        TestTensorOpSubtract<rad::Uint8>(ML::DataType::Uint8, backend);
-        TestTensorOpSubtract<rad::Uint16>(ML::DataType::Uint16, backend);
-        TestTensorOpSubtract<rad::Uint32>(ML::DataType::Uint32, backend);
-        TestTensorOpSubtract<rad::Uint64>(ML::DataType::Uint64, backend);
-    }
-}
-
-TEST(TensorOp, Multiply)
-{
-    for (auto backend : g_backends)
-    {
-        TestTensorOpMultiply<rad::Float32>(ML::DataType::Float32, backend);
-        TestTensorOpMultiply<rad::Float16>(ML::DataType::Float16, backend);
-        TestTensorOpMultiply<rad::BFloat16>(ML::DataType::BFloat16, backend);
-        TestTensorOpMultiply<rad::Float8E4M3>(ML::DataType::Float8E4M3, backend);
-        TestTensorOpMultiply<rad::Float8E5M2>(ML::DataType::Float8E5M2, backend);
-        TestTensorOpMultiply<rad::Sint8>(ML::DataType::Sint8, backend);
-        TestTensorOpMultiply<rad::Sint16>(ML::DataType::Sint16, backend);
-        TestTensorOpMultiply<rad::Sint32>(ML::DataType::Sint32, backend);
-        TestTensorOpMultiply<rad::Sint64>(ML::DataType::Sint64, backend);
-        TestTensorOpMultiply<rad::Uint8>(ML::DataType::Uint8, backend);
-        TestTensorOpMultiply<rad::Uint16>(ML::DataType::Uint16, backend);
-        TestTensorOpMultiply<rad::Uint32>(ML::DataType::Uint32, backend);
-        TestTensorOpMultiply<rad::Uint64>(ML::DataType::Uint64, backend);
-    }
-}
-
 TEST(TensorOp, Divide)
 {
     for (auto backend : g_backends)
     {
-        TestTensorOpDivide<rad::Float32>(ML::DataType::Float32, backend);
-        TestTensorOpDivide<rad::Float16>(ML::DataType::Float16, backend);
-        TestTensorOpDivide<rad::BFloat16>(ML::DataType::BFloat16, backend);
-        TestTensorOpDivide<rad::Float8E4M3>(ML::DataType::Float8E4M3, backend);
-        TestTensorOpDivide<rad::Float8E5M2>(ML::DataType::Float8E5M2, backend);
-        TestTensorOpDivide<rad::Sint8>(ML::DataType::Sint8, backend);
-        TestTensorOpDivide<rad::Sint16>(ML::DataType::Sint16, backend);
-        TestTensorOpDivide<rad::Sint32>(ML::DataType::Sint32, backend);
-        TestTensorOpDivide<rad::Sint64>(ML::DataType::Sint64, backend);
-        TestTensorOpDivide<rad::Uint8>(ML::DataType::Uint8, backend);
-        TestTensorOpDivide<rad::Uint16>(ML::DataType::Uint16, backend);
-        TestTensorOpDivide<rad::Uint32>(ML::DataType::Uint32, backend);
-        TestTensorOpDivide<rad::Uint64>(ML::DataType::Uint64, backend);
+        ML::Device* device = backend->GetDevice(0);
+        ML::SetCurrentDevice(device);
+
+        TestTensorOpDivide<rad::Float32>(ML::DataType::Float32);
+        TestTensorOpDivide<rad::Float16>(ML::DataType::Float16);
+        TestTensorOpDivide<rad::BFloat16>(ML::DataType::BFloat16);
+        TestTensorOpDivide<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+        TestTensorOpDivide<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+        TestTensorOpDivide<rad::Sint8>(ML::DataType::Sint8);
+        TestTensorOpDivide<rad::Sint16>(ML::DataType::Sint16);
+        TestTensorOpDivide<rad::Sint32>(ML::DataType::Sint32);
+        TestTensorOpDivide<rad::Sint64>(ML::DataType::Sint64);
+        TestTensorOpDivide<rad::Uint8>(ML::DataType::Uint8);
+        TestTensorOpDivide<rad::Uint16>(ML::DataType::Uint16);
+        TestTensorOpDivide<rad::Uint32>(ML::DataType::Uint32);
+        TestTensorOpDivide<rad::Uint64>(ML::DataType::Uint64);
+    }
+}
+
+template <typename T>
+void TestTensorOpRemainder(ML::DataType dataType)
+{
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "TensorOp.Remainder({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Remainder({}): not supported!", ML::GetDataTypeName(dataType));
+        return;
+    }
+
+    static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
+    using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
+
+    ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+
+    ComputeType dividend = ComputeType(7);
+    ComputeType divisor = ComputeType(3);
+    ComputeType ref = ComputeType(1);
+    if (rad::is_signed_v<T>)
+    {
+        dividend = ComputeType(-7);
+        divisor = ComputeType(3);
+        ref = ComputeType(2);
+    }
+    a.Fill(dividend);
+    b.Fill(divisor);
+    ML::Tensor c = a % b;
+
+    std::vector<uint8_t> dataBuffer;
+    dataBuffer.resize(c.GetDataSize());
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    const T* results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], ref);
+    }
+}
+
+TEST(TensorOp, Remainder)
+{
+    for (auto backend : g_backends)
+    {
+        ML::Device* device = backend->GetDevice(0);
+        ML::SetCurrentDevice(device);
+
+        TestTensorOpRemainder<rad::Float32>(ML::DataType::Float32);
+        TestTensorOpRemainder<rad::Float16>(ML::DataType::Float16);
+        TestTensorOpRemainder<rad::BFloat16>(ML::DataType::BFloat16);
+        TestTensorOpRemainder<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+        TestTensorOpRemainder<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+        TestTensorOpRemainder<rad::Sint8>(ML::DataType::Sint8);
+        TestTensorOpRemainder<rad::Sint16>(ML::DataType::Sint16);
+        TestTensorOpRemainder<rad::Sint32>(ML::DataType::Sint32);
+        TestTensorOpRemainder<rad::Sint64>(ML::DataType::Sint64);
+        TestTensorOpRemainder<rad::Uint8>(ML::DataType::Uint8);
+        TestTensorOpRemainder<rad::Uint16>(ML::DataType::Uint16);
+        TestTensorOpRemainder<rad::Uint32>(ML::DataType::Uint32);
+        TestTensorOpRemainder<rad::Uint64>(ML::DataType::Uint64);
     }
 }
