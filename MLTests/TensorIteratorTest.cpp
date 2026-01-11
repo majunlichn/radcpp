@@ -4,8 +4,6 @@
 
 TEST(TensorIterator, NextND)
 {
-    ML::Backend* backend = ML::GetBackend("CPU");
-    ML::SetCurrentDevice(backend->GetDevice(0));
     auto tensor = ML::MakeTensor({ 2, 4, 8, 8 }, ML::DataType::Float16);
     ML::TensorIterator iter(&tensor);
     iter.Reset();
@@ -45,8 +43,6 @@ TEST(TensorIterator, NextND)
 
 TEST(TensorIterator, Next)
 {
-    ML::Backend* backend = ML::GetBackend("CPU");
-    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
     auto tensor = ML::MakeTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
     ML::TensorIterator iter(&tensor, { 0, 0, 2, 2 });
@@ -61,8 +57,6 @@ TEST(TensorIterator, Next)
 
 TEST(TensorIterator, ForEach)
 {
-    ML::Backend* backend = ML::GetBackend("CPU");
-    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
     auto tensor = ML::MakeTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
     ML::TensorIterator iter(&tensor, { 0, 0, 2, 2 });
@@ -77,8 +71,6 @@ TEST(TensorIterator, ForEach)
 
 TEST(TensorIterator, ForEachRecursively)
 {
-    ML::Backend* backend = ML::GetBackend("CPU");
-    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
     auto tensor = ML::MakeTensor({ 2, 2, 4, 4 }, ML::DataType::Float16, options);
     ML::TensorIterator iter(&tensor, { 0, 0, 2, 2 });
@@ -93,8 +85,6 @@ TEST(TensorIterator, ForEachRecursively)
 
 TEST(TensorIterator, ForEachSubrangeND)
 {
-    ML::Backend* backend = ML::GetBackend("CPU");
-    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
     auto tensor = ML::MakeTensor({ 2, 4, 8, 8 }, ML::DataType::Float16, options);
     ML::TensorIterator iter(&tensor, { 1, 2, 4, 4 });
@@ -109,8 +99,6 @@ TEST(TensorIterator, ForEachSubrangeND)
 
 TEST(TensorIterator, ForEachNHWC)
 {
-    ML::Backend* backend = ML::GetBackend("CPU");
-    ML::SetCurrentDevice(backend->GetDevice(0));
     ML::TensorOptions options = {};
     std::array<size_t, 4> sizes = { 2, 4, 8, 8 };
     options.m_strides = ML::MakeTensorStrides(sizes, { 1, 3, 2, 0 });

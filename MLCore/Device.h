@@ -24,6 +24,7 @@ public:
     virtual ~Device() = default;
 
     DeviceType GetType() const { return m_type; }
+    const std::string& GetName() const { return m_name; }
 
     virtual rad::Ref<Context> CreateContext() = 0;
     virtual rad::Ref<TensorStorage> CreateTensorStorage(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options = {}) = 0;

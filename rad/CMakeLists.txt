@@ -82,6 +82,7 @@ target_sources(rad PUBLIC
 )
 
 target_include_directories(rad
+    PUBLIC ${RADCPP_ROOT}/imported/argparse/include
     PUBLIC ${RADCPP_ROOT}/imported/taskflow
 )
 

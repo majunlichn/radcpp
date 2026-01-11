@@ -2,7 +2,6 @@
 
 #include <gtest/gtest.h>
 
-extern std::vector<ML::Backend*> g_backends;
 
 template <typename T>
 void TestTensorOpAdd(ML::DataType dataType)
@@ -42,25 +41,19 @@ void TestTensorOpAdd(ML::DataType dataType)
 
 TEST(TensorOp, Add)
 {
-    for (auto backend : g_backends)
-    {
-        ML::Device* device = backend->GetDevice(0);
-        ML::SetCurrentDevice(device);
-
-        TestTensorOpAdd<rad::Float32>(ML::DataType::Float32);
-        TestTensorOpAdd<rad::Float16>(ML::DataType::Float16);
-        TestTensorOpAdd<rad::BFloat16>(ML::DataType::BFloat16);
-        TestTensorOpAdd<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-        TestTensorOpAdd<rad::Float8E5M2>(ML::DataType::Float8E5M2);
-        TestTensorOpAdd<rad::Sint8>(ML::DataType::Sint8);
-        TestTensorOpAdd<rad::Sint16>(ML::DataType::Sint16);
-        TestTensorOpAdd<rad::Sint32>(ML::DataType::Sint32);
-        TestTensorOpAdd<rad::Sint64>(ML::DataType::Sint64);
-        TestTensorOpAdd<rad::Uint8>(ML::DataType::Uint8);
-        TestTensorOpAdd<rad::Uint16>(ML::DataType::Uint16);
-        TestTensorOpAdd<rad::Uint32>(ML::DataType::Uint32);
-        TestTensorOpAdd<rad::Uint64>(ML::DataType::Uint64);
-    }
+    TestTensorOpAdd<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpAdd<rad::Float16>(ML::DataType::Float16);
+    TestTensorOpAdd<rad::BFloat16>(ML::DataType::BFloat16);
+    TestTensorOpAdd<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+    TestTensorOpAdd<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpAdd<rad::Sint8>(ML::DataType::Sint8);
+    TestTensorOpAdd<rad::Sint16>(ML::DataType::Sint16);
+    TestTensorOpAdd<rad::Sint32>(ML::DataType::Sint32);
+    TestTensorOpAdd<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpAdd<rad::Uint8>(ML::DataType::Uint8);
+    TestTensorOpAdd<rad::Uint16>(ML::DataType::Uint16);
+    TestTensorOpAdd<rad::Uint32>(ML::DataType::Uint32);
+    TestTensorOpAdd<rad::Uint64>(ML::DataType::Uint64);
 }
 
 template <typename T>
@@ -101,25 +94,19 @@ void TestTensorOpSubtract(ML::DataType dataType)
 
 TEST(TensorOp, Subtract)
 {
-    for (auto backend : g_backends)
-    {
-        ML::Device* device = backend->GetDevice(0);
-        ML::SetCurrentDevice(device);
-
-        TestTensorOpSubtract<rad::Float32>(ML::DataType::Float32);
-        TestTensorOpSubtract<rad::Float16>(ML::DataType::Float16);
-        TestTensorOpSubtract<rad::BFloat16>(ML::DataType::BFloat16);
-        TestTensorOpSubtract<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-        TestTensorOpSubtract<rad::Float8E5M2>(ML::DataType::Float8E5M2);
-        TestTensorOpSubtract<rad::Sint8>(ML::DataType::Sint8);
-        TestTensorOpSubtract<rad::Sint16>(ML::DataType::Sint16);
-        TestTensorOpSubtract<rad::Sint32>(ML::DataType::Sint32);
-        TestTensorOpSubtract<rad::Sint64>(ML::DataType::Sint64);
-        TestTensorOpSubtract<rad::Uint8>(ML::DataType::Uint8);
-        TestTensorOpSubtract<rad::Uint16>(ML::DataType::Uint16);
-        TestTensorOpSubtract<rad::Uint32>(ML::DataType::Uint32);
-        TestTensorOpSubtract<rad::Uint64>(ML::DataType::Uint64);
-    }
+    TestTensorOpSubtract<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpSubtract<rad::Float16>(ML::DataType::Float16);
+    TestTensorOpSubtract<rad::BFloat16>(ML::DataType::BFloat16);
+    TestTensorOpSubtract<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+    TestTensorOpSubtract<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpSubtract<rad::Sint8>(ML::DataType::Sint8);
+    TestTensorOpSubtract<rad::Sint16>(ML::DataType::Sint16);
+    TestTensorOpSubtract<rad::Sint32>(ML::DataType::Sint32);
+    TestTensorOpSubtract<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpSubtract<rad::Uint8>(ML::DataType::Uint8);
+    TestTensorOpSubtract<rad::Uint16>(ML::DataType::Uint16);
+    TestTensorOpSubtract<rad::Uint32>(ML::DataType::Uint32);
+    TestTensorOpSubtract<rad::Uint64>(ML::DataType::Uint64);
 }
 
 template <typename T>
@@ -160,25 +147,19 @@ void TestTensorOpMultiply(ML::DataType dataType)
 
 TEST(TensorOp, Multiply)
 {
-    for (auto backend : g_backends)
-    {
-        ML::Device* device = backend->GetDevice(0);
-        ML::SetCurrentDevice(device);
-
-        TestTensorOpMultiply<rad::Float32>(ML::DataType::Float32);
-        TestTensorOpMultiply<rad::Float16>(ML::DataType::Float16);
-        TestTensorOpMultiply<rad::BFloat16>(ML::DataType::BFloat16);
-        TestTensorOpMultiply<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-        TestTensorOpMultiply<rad::Float8E5M2>(ML::DataType::Float8E5M2);
-        TestTensorOpMultiply<rad::Sint8>(ML::DataType::Sint8);
-        TestTensorOpMultiply<rad::Sint16>(ML::DataType::Sint16);
-        TestTensorOpMultiply<rad::Sint32>(ML::DataType::Sint32);
-        TestTensorOpMultiply<rad::Sint64>(ML::DataType::Sint64);
-        TestTensorOpMultiply<rad::Uint8>(ML::DataType::Uint8);
-        TestTensorOpMultiply<rad::Uint16>(ML::DataType::Uint16);
-        TestTensorOpMultiply<rad::Uint32>(ML::DataType::Uint32);
-        TestTensorOpMultiply<rad::Uint64>(ML::DataType::Uint64);
-    }
+    TestTensorOpMultiply<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpMultiply<rad::Float16>(ML::DataType::Float16);
+    TestTensorOpMultiply<rad::BFloat16>(ML::DataType::BFloat16);
+    TestTensorOpMultiply<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+    TestTensorOpMultiply<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpMultiply<rad::Sint8>(ML::DataType::Sint8);
+    TestTensorOpMultiply<rad::Sint16>(ML::DataType::Sint16);
+    TestTensorOpMultiply<rad::Sint32>(ML::DataType::Sint32);
+    TestTensorOpMultiply<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpMultiply<rad::Uint8>(ML::DataType::Uint8);
+    TestTensorOpMultiply<rad::Uint16>(ML::DataType::Uint16);
+    TestTensorOpMultiply<rad::Uint32>(ML::DataType::Uint32);
+    TestTensorOpMultiply<rad::Uint64>(ML::DataType::Uint64);
 }
 
 template <typename T>
@@ -219,25 +200,19 @@ void TestTensorOpDivide(ML::DataType dataType)
 
 TEST(TensorOp, Divide)
 {
-    for (auto backend : g_backends)
-    {
-        ML::Device* device = backend->GetDevice(0);
-        ML::SetCurrentDevice(device);
-
-        TestTensorOpDivide<rad::Float32>(ML::DataType::Float32);
-        TestTensorOpDivide<rad::Float16>(ML::DataType::Float16);
-        TestTensorOpDivide<rad::BFloat16>(ML::DataType::BFloat16);
-        TestTensorOpDivide<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-        TestTensorOpDivide<rad::Float8E5M2>(ML::DataType::Float8E5M2);
-        TestTensorOpDivide<rad::Sint8>(ML::DataType::Sint8);
-        TestTensorOpDivide<rad::Sint16>(ML::DataType::Sint16);
-        TestTensorOpDivide<rad::Sint32>(ML::DataType::Sint32);
-        TestTensorOpDivide<rad::Sint64>(ML::DataType::Sint64);
-        TestTensorOpDivide<rad::Uint8>(ML::DataType::Uint8);
-        TestTensorOpDivide<rad::Uint16>(ML::DataType::Uint16);
-        TestTensorOpDivide<rad::Uint32>(ML::DataType::Uint32);
-        TestTensorOpDivide<rad::Uint64>(ML::DataType::Uint64);
-    }
+    TestTensorOpDivide<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpDivide<rad::Float16>(ML::DataType::Float16);
+    TestTensorOpDivide<rad::BFloat16>(ML::DataType::BFloat16);
+    TestTensorOpDivide<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+    TestTensorOpDivide<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpDivide<rad::Sint8>(ML::DataType::Sint8);
+    TestTensorOpDivide<rad::Sint16>(ML::DataType::Sint16);
+    TestTensorOpDivide<rad::Sint32>(ML::DataType::Sint32);
+    TestTensorOpDivide<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpDivide<rad::Uint8>(ML::DataType::Uint8);
+    TestTensorOpDivide<rad::Uint16>(ML::DataType::Uint16);
+    TestTensorOpDivide<rad::Uint32>(ML::DataType::Uint32);
+    TestTensorOpDivide<rad::Uint64>(ML::DataType::Uint64);
 }
 
 template <typename T>
@@ -285,23 +260,17 @@ void TestTensorOpRemainder(ML::DataType dataType)
 
 TEST(TensorOp, Remainder)
 {
-    for (auto backend : g_backends)
-    {
-        ML::Device* device = backend->GetDevice(0);
-        ML::SetCurrentDevice(device);
-
-        TestTensorOpRemainder<rad::Float32>(ML::DataType::Float32);
-        TestTensorOpRemainder<rad::Float16>(ML::DataType::Float16);
-        TestTensorOpRemainder<rad::BFloat16>(ML::DataType::BFloat16);
-        TestTensorOpRemainder<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-        TestTensorOpRemainder<rad::Float8E5M2>(ML::DataType::Float8E5M2);
-        TestTensorOpRemainder<rad::Sint8>(ML::DataType::Sint8);
-        TestTensorOpRemainder<rad::Sint16>(ML::DataType::Sint16);
-        TestTensorOpRemainder<rad::Sint32>(ML::DataType::Sint32);
-        TestTensorOpRemainder<rad::Sint64>(ML::DataType::Sint64);
-        TestTensorOpRemainder<rad::Uint8>(ML::DataType::Uint8);
-        TestTensorOpRemainder<rad::Uint16>(ML::DataType::Uint16);
-        TestTensorOpRemainder<rad::Uint32>(ML::DataType::Uint32);
-        TestTensorOpRemainder<rad::Uint64>(ML::DataType::Uint64);
-    }
+    TestTensorOpRemainder<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpRemainder<rad::Float16>(ML::DataType::Float16);
+    TestTensorOpRemainder<rad::BFloat16>(ML::DataType::BFloat16);
+    TestTensorOpRemainder<rad::Float8E4M3>(ML::DataType::Float8E4M3);
+    TestTensorOpRemainder<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpRemainder<rad::Sint8>(ML::DataType::Sint8);
+    TestTensorOpRemainder<rad::Sint16>(ML::DataType::Sint16);
+    TestTensorOpRemainder<rad::Sint32>(ML::DataType::Sint32);
+    TestTensorOpRemainder<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpRemainder<rad::Uint8>(ML::DataType::Uint8);
+    TestTensorOpRemainder<rad::Uint16>(ML::DataType::Uint16);
+    TestTensorOpRemainder<rad::Uint32>(ML::DataType::Uint32);
+    TestTensorOpRemainder<rad::Uint64>(ML::DataType::Uint64);
 }
