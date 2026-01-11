@@ -13,3 +13,6 @@
 [submodule "imported/mdspan"]
 	path = imported/mdspan
 	url = https://github.com/kokkos/mdspan.git
+[submodule "imported/argparse"]
+	path = imported/argparse
+	url = https://github.com/p-ranav/argparse.git
