@@ -21,6 +21,9 @@ uint32_t GetElementSize(DataType type)
     case DataType::BFloat16: return 2;
     case DataType::Float8E4M3: return 1;
     case DataType::Float8E5M2: return 1;
+    case DataType::Complex32: return 4;
+    case DataType::Complex64: return 8;
+    case DataType::Complex128: return 16;
     default: RAD_UNREACHABLE();
     }
 }
@@ -81,21 +84,24 @@ const char* GetDataTypeName(DataType dataType)
 {
     switch (dataType)
     {
-    case DataType::Unknown:    return "Unknown";
-    case DataType::Float16:    return "Float16";
-    case DataType::Float32:    return "Float32";
-    case DataType::Float64:    return "Float64";
-    case DataType::Sint8:      return "Sint8";
-    case DataType::Sint16:     return "Sint16";
-    case DataType::Sint32:     return "Sint32";
-    case DataType::Sint64:     return "Sint64";
-    case DataType::Uint8:      return "Uint8";
-    case DataType::Uint16:     return "Uint16";
-    case DataType::Uint32:     return "Uint32";
-    case DataType::Uint64:     return "Uint64";
-    case DataType::BFloat16:   return "BFloat16";
-    case DataType::Float8E4M3: return "Float8E4M3";
-    case DataType::Float8E5M2: return "Float8E5M2";
+    case DataType::Unknown:     return "Unknown";
+    case DataType::Float16:     return "Float16";
+    case DataType::Float32:     return "Float32";
+    case DataType::Float64:     return "Float64";
+    case DataType::Sint8:       return "Sint8";
+    case DataType::Sint16:      return "Sint16";
+    case DataType::Sint32:      return "Sint32";
+    case DataType::Sint64:      return "Sint64";
+    case DataType::Uint8:       return "Uint8";
+    case DataType::Uint16:      return "Uint16";
+    case DataType::Uint32:      return "Uint32";
+    case DataType::Uint64:      return "Uint64";
+    case DataType::BFloat16:    return "BFloat16";
+    case DataType::Float8E4M3:  return "Float8E4M3";
+    case DataType::Float8E5M2:  return "Float8E5M2";
+    case DataType::Complex32:   return "Complex32";
+    case DataType::Complex64:   return "Complex64";
+    case DataType::Complex128:  return "Complex128";
     }
     RAD_UNREACHABLE();
     return nullptr;

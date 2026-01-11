@@ -18,16 +18,16 @@ void TestTensorOpAdd(ML::DataType dataType)
     }
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
-    using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
+    using ScalarType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.Fill(ComputeType(1));
-    b.Fill(ComputeType(1));
-    ML::Tensor c = a.Add(b, ComputeType(2));
+    a.Fill(ScalarType(1));
+    b.Fill(ScalarType(1));
+    ML::Tensor c = a.Add(b, ScalarType(2));
 
-    c += ComputeType(1);
+    c += ScalarType(1);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -41,19 +41,13 @@ void TestTensorOpAdd(ML::DataType dataType)
 
 TEST(TensorOp, Add)
 {
-    TestTensorOpAdd<rad::Float32>(ML::DataType::Float32);
     TestTensorOpAdd<rad::Float16>(ML::DataType::Float16);
-    TestTensorOpAdd<rad::BFloat16>(ML::DataType::BFloat16);
-    TestTensorOpAdd<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-    TestTensorOpAdd<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpAdd<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpAdd<rad::Float64>(ML::DataType::Float64);
     TestTensorOpAdd<rad::Sint8>(ML::DataType::Sint8);
     TestTensorOpAdd<rad::Sint16>(ML::DataType::Sint16);
     TestTensorOpAdd<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpAdd<rad::Sint64>(ML::DataType::Sint64);
-    TestTensorOpAdd<rad::Uint8>(ML::DataType::Uint8);
-    TestTensorOpAdd<rad::Uint16>(ML::DataType::Uint16);
-    TestTensorOpAdd<rad::Uint32>(ML::DataType::Uint32);
-    TestTensorOpAdd<rad::Uint64>(ML::DataType::Uint64);
 }
 
 template <typename T>
@@ -71,16 +65,16 @@ void TestTensorOpSubtract(ML::DataType dataType)
     }
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
-    using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
+    using ScalarType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.Fill(ComputeType(4));
-    b.Fill(ComputeType(1));
-    ML::Tensor c = a.Subtract(b, ComputeType(2));
+    a.Fill(ScalarType(4));
+    b.Fill(ScalarType(1));
+    ML::Tensor c = a.Subtract(b, ScalarType(2));
 
-    c -= ComputeType(1);
+    c -= ScalarType(1);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -94,19 +88,13 @@ void TestTensorOpSubtract(ML::DataType dataType)
 
 TEST(TensorOp, Subtract)
 {
-    TestTensorOpSubtract<rad::Float32>(ML::DataType::Float32);
     TestTensorOpSubtract<rad::Float16>(ML::DataType::Float16);
-    TestTensorOpSubtract<rad::BFloat16>(ML::DataType::BFloat16);
-    TestTensorOpSubtract<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-    TestTensorOpSubtract<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpSubtract<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpSubtract<rad::Float64>(ML::DataType::Float64);
     TestTensorOpSubtract<rad::Sint8>(ML::DataType::Sint8);
     TestTensorOpSubtract<rad::Sint16>(ML::DataType::Sint16);
     TestTensorOpSubtract<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpSubtract<rad::Sint64>(ML::DataType::Sint64);
-    TestTensorOpSubtract<rad::Uint8>(ML::DataType::Uint8);
-    TestTensorOpSubtract<rad::Uint16>(ML::DataType::Uint16);
-    TestTensorOpSubtract<rad::Uint32>(ML::DataType::Uint32);
-    TestTensorOpSubtract<rad::Uint64>(ML::DataType::Uint64);
 }
 
 template <typename T>
@@ -124,16 +112,16 @@ void TestTensorOpMultiply(ML::DataType dataType)
     }
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
-    using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
+    using ScalarType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.Fill(ComputeType(2));
-    b.Fill(ComputeType(2));
+    a.Fill(ScalarType(2));
+    b.Fill(ScalarType(2));
     ML::Tensor c = a * b;
 
-    c *= ComputeType(2);
+    c *= ScalarType(2);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -147,19 +135,13 @@ void TestTensorOpMultiply(ML::DataType dataType)
 
 TEST(TensorOp, Multiply)
 {
-    TestTensorOpMultiply<rad::Float32>(ML::DataType::Float32);
     TestTensorOpMultiply<rad::Float16>(ML::DataType::Float16);
-    TestTensorOpMultiply<rad::BFloat16>(ML::DataType::BFloat16);
-    TestTensorOpMultiply<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-    TestTensorOpMultiply<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpMultiply<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpMultiply<rad::Float64>(ML::DataType::Float64);
     TestTensorOpMultiply<rad::Sint8>(ML::DataType::Sint8);
     TestTensorOpMultiply<rad::Sint16>(ML::DataType::Sint16);
     TestTensorOpMultiply<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpMultiply<rad::Sint64>(ML::DataType::Sint64);
-    TestTensorOpMultiply<rad::Uint8>(ML::DataType::Uint8);
-    TestTensorOpMultiply<rad::Uint16>(ML::DataType::Uint16);
-    TestTensorOpMultiply<rad::Uint32>(ML::DataType::Uint32);
-    TestTensorOpMultiply<rad::Uint64>(ML::DataType::Uint64);
 }
 
 template <typename T>
@@ -177,16 +159,16 @@ void TestTensorOpDivide(ML::DataType dataType)
     }
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
-    using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
+    using ScalarType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.Fill(ComputeType(8));
-    b.Fill(ComputeType(2));
+    a.Fill(ScalarType(8));
+    b.Fill(ScalarType(2));
     ML::Tensor c = a / b;
 
-    c /= ComputeType(2);
+    c /= ScalarType(2);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -200,19 +182,13 @@ void TestTensorOpDivide(ML::DataType dataType)
 
 TEST(TensorOp, Divide)
 {
-    TestTensorOpDivide<rad::Float32>(ML::DataType::Float32);
     TestTensorOpDivide<rad::Float16>(ML::DataType::Float16);
-    TestTensorOpDivide<rad::BFloat16>(ML::DataType::BFloat16);
-    TestTensorOpDivide<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-    TestTensorOpDivide<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpDivide<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpDivide<rad::Float64>(ML::DataType::Float64);
     TestTensorOpDivide<rad::Sint8>(ML::DataType::Sint8);
     TestTensorOpDivide<rad::Sint16>(ML::DataType::Sint16);
     TestTensorOpDivide<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpDivide<rad::Sint64>(ML::DataType::Sint64);
-    TestTensorOpDivide<rad::Uint8>(ML::DataType::Uint8);
-    TestTensorOpDivide<rad::Uint16>(ML::DataType::Uint16);
-    TestTensorOpDivide<rad::Uint32>(ML::DataType::Uint32);
-    TestTensorOpDivide<rad::Uint64>(ML::DataType::Uint64);
 }
 
 template <typename T>
@@ -230,19 +206,19 @@ void TestTensorOpRemainder(ML::DataType dataType)
     }
 
     static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
-    using ComputeType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
+    using ScalarType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
 
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    ComputeType dividend = ComputeType(7);
-    ComputeType divisor = ComputeType(3);
-    ComputeType ref = ComputeType(1);
+    ScalarType dividend = ScalarType(7);
+    ScalarType divisor = ScalarType(3);
+    ScalarType ref = ScalarType(1);
     if (rad::is_signed_v<T>)
     {
-        dividend = ComputeType(-7);
-        divisor = ComputeType(3);
-        ref = ComputeType(2);
+        dividend = ScalarType(-7);
+        divisor = ScalarType(3);
+        ref = ScalarType(2);
     }
     a.Fill(dividend);
     b.Fill(divisor);
@@ -260,17 +236,11 @@ void TestTensorOpRemainder(ML::DataType dataType)
 
 TEST(TensorOp, Remainder)
 {
-    TestTensorOpRemainder<rad::Float32>(ML::DataType::Float32);
     TestTensorOpRemainder<rad::Float16>(ML::DataType::Float16);
-    TestTensorOpRemainder<rad::BFloat16>(ML::DataType::BFloat16);
-    TestTensorOpRemainder<rad::Float8E4M3>(ML::DataType::Float8E4M3);
-    TestTensorOpRemainder<rad::Float8E5M2>(ML::DataType::Float8E5M2);
+    TestTensorOpRemainder<rad::Float32>(ML::DataType::Float32);
+    TestTensorOpRemainder<rad::Float64>(ML::DataType::Float64);
     TestTensorOpRemainder<rad::Sint8>(ML::DataType::Sint8);
     TestTensorOpRemainder<rad::Sint16>(ML::DataType::Sint16);
     TestTensorOpRemainder<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpRemainder<rad::Sint64>(ML::DataType::Sint64);
-    TestTensorOpRemainder<rad::Uint8>(ML::DataType::Uint8);
-    TestTensorOpRemainder<rad::Uint16>(ML::DataType::Uint16);
-    TestTensorOpRemainder<rad::Uint32>(ML::DataType::Uint32);
-    TestTensorOpRemainder<rad::Uint64>(ML::DataType::Uint64);
 }

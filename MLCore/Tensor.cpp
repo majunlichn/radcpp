@@ -279,15 +279,17 @@ std::string Tensor::ToString(TextFormat format, rad::ArrayRef<size_t> offsets, r
     {
         do {
             iter.Reset2D();
-            size_t sizeH = m_sizes[dimCount - 2];
-            size_t sizeW = m_sizes[dimCount - 1];
+            size_t offsetH = iter.m_offsets[dimCount - 2];
+            size_t offsetW = iter.m_offsets[dimCount - 1];
+            size_t sizeH = iter.m_sizes[dimCount - 2];
+            size_t sizeW = iter.m_sizes[dimCount - 1];
             ss << std::format("Indices = [{}]\n", rad::ToString(iter.m_coord, ", "));
             size_t bufferIndex = iter.m_bufferIndex;
-            for (size_t h = 0; h < sizeH; ++h)
+            for (size_t h = offsetH; h < offsetH + sizeH; ++h)
             {
                 iter.m_coord[dimCount - 2] = h;
                 bufferIndex += h * m_strides[dimCount - 2];
-                for (size_t w = 0; w < sizeW; ++w)
+                for (size_t w = offsetW; w < offsetW + sizeW; ++w)
                 {
                     iter.m_coord[dimCount - 1] = w;
                     bufferIndex += w * m_strides[dimCount - 1];

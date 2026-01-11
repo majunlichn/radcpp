@@ -30,9 +30,15 @@ enum class DataType
     Uint16,
     Uint32,
     Uint64,
+
     BFloat16,
     Float8E4M3,
     Float8E5M2,
+
+    Complex32,  // Float16x2
+    Complex64,  // Float32x2
+    Complex128, // Float64x2
+
     Count,
 };
 

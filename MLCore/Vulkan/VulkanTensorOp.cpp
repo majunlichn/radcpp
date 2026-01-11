@@ -136,7 +136,7 @@ VulkanTensorOpForEach::VulkanTensorOpForEach(VulkanContext* context, std::string
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
         DataType dataType = static_cast<DataType>(i);
-        if (!m_context->GetDevice()->IsDataTypeSupported(static_cast<DataType>(i)))
+        if (!m_context->GetDevice()->IsDataTypeSupported(dataType))
         {
             continue;
         }
@@ -232,7 +232,8 @@ VulkanTensorOpElementWiseUnary::VulkanTensorOpElementWiseUnary(VulkanContext* co
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
         DataType dataType = static_cast<DataType>(i);
-        if (!m_context->GetDevice()->IsDataTypeSupported(static_cast<DataType>(i)))
+        if (!m_context->GetDevice()->IsDataTypeComputable(dataType) ||
+            IsUnsignedIntegerType(dataType))
         {
             continue;
         }
@@ -336,7 +337,8 @@ VulkanTensorOpElementWiseBinary::VulkanTensorOpElementWiseBinary(VulkanContext* 
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
         DataType dataType = static_cast<DataType>(i);
-        if (!m_context->GetDevice()->IsDataTypeSupported(static_cast<DataType>(i)))
+        if (!m_context->GetDevice()->IsDataTypeComputable(dataType) ||
+            IsUnsignedIntegerType(dataType))
         {
             continue;
         }

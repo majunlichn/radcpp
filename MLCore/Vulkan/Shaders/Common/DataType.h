@@ -3,6 +3,8 @@
 
 #extension GL_EXT_shader_explicit_arithmetic_types : require
 
+#include "Complex.h"
+
 #define DataTypeFloat16 1
 #define DataTypeFloat32 2
 #define DataTypeFloat64 3
@@ -17,6 +19,9 @@
 #define DataTypeBFloat16 12
 #define DataTypeFloat8E4M3 13
 #define DataTypeFloat8E5M2 14
+#define DataTypeComplex32 15
+#define DataTypeComplex64 16
+#define DataTypeComplex128 17
 
 #if defined(DATA_TYPE_ID)
 
@@ -66,8 +71,15 @@
 #define DATA_TYPE floate5m2_t
 #endif
 
+#if ((DATA_TYPE_ID == DataTypeComplex32) || (DATA_TYPE_ID == DataTypeComplex64) || (DATA_TYPE_ID == DataTypeComplex128))
+#define DATA_TYPE_IS_COMPLEX 1
+#else
+#define DATA_TYPE_IS_COMPLEX 0
+#endif
+
 #if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeFloat32) || (DATA_TYPE_ID == DataTypeFloat64) || \
-    (DATA_TYPE_ID == DataTypeBFloat16) || (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
+    (DATA_TYPE_ID == DataTypeBFloat16) || (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2) || \
+    DATA_TYPE_IS_COMPLEX)
 #define DATA_TYPE_IS_FLOATING_POINT 1
 #else
 #define DATA_TYPE_IS_FLOATING_POINT 0
@@ -102,33 +114,30 @@
 #define DATA_TYPE_IS_SIGNED 0
 #endif
 
-#if ((DATA_TYPE_ID == DataTypeFloat64) || (DATA_TYPE_ID == DataTypeSint64) || (DATA_TYPE_ID == DataTypeUint64))
-#define DATA_TYPE_IS_64_BIT 1
-#define ELEMENT_SIZE 8
-#else
-#define DATA_TYPE_IS_64_BIT 0
+#if (DATA_TYPE_ID == DataTypeComplex128)
+#define DATA_TYPE_IS_128_BIT 1
+#define ELEMENT_SIZE 16
 #endif
 
-#if ((DATA_TYPE_ID == DataTypeFloat32) || (DATA_TYPE_ID == DataTypeSint32) || (DATA_TYPE_ID == DataTypeUint32))
+#if ((DATA_TYPE_ID == DataTypeFloat64) || (DATA_TYPE_ID == DataTypeSint64) || (DATA_TYPE_ID == DataTypeUint64) || (DATA_TYPE_ID == DataTypeComplex64))
+#define DATA_TYPE_IS_64_BIT 1
+#define ELEMENT_SIZE 8
+#endif
+
+#if ((DATA_TYPE_ID == DataTypeFloat32) || (DATA_TYPE_ID == DataTypeSint32) || (DATA_TYPE_ID == DataTypeUint32) || (DATA_TYPE_ID == DataTypeComplex32))
 #define DATA_TYPE_IS_32_BIT 1
 #define ELEMENT_SIZE 4
-#else
-#define DATA_TYPE_IS_32_BIT 0
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeSint16) || (DATA_TYPE_ID == DataTypeUint16) || (DATA_TYPE_ID == DataTypeBFloat16))
 #define DATA_TYPE_IS_16_BIT 1
 #define ELEMENT_SIZE 2
-#else
-#define DATA_TYPE_IS_16_BIT 0
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeSint8) || (DATA_TYPE_ID == DataTypeUint8) || \
     (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
 #define DATA_TYPE_IS_8_BIT 1
 #define ELEMENT_SIZE 1
-#else
-#define DATA_TYPE_IS_8_BIT 0
 #endif
 
 #if !defined(COMPUTE_TYPE)

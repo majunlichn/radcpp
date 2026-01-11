@@ -45,6 +45,7 @@ class DataType(Enum):
     Float8E4M3      = 13
     Float8E5M2      = 14
 
+
 def make_abspath(path:str):
     return os.path.normpath(os.path.abspath(path))
 
@@ -64,157 +65,70 @@ def remove_dir(dir : str):
     if os.path.isdir(dir):
         shutil.rmtree(dir)
 
-def compile_tensor_op_fill():
+def compile_tensor_op_fill(dtypes : list[DataType]):
     source = make_abspath(source_root + "/TensorOp/ForEach.comp")
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/Fill-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFill=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+    for dtype in dtypes:
+        output = make_normpath(output_dir + f"/Fill-{dtype.name}.spv")
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFill=ElementOp -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
-def compile_tensor_op_add_scalar():
+def compile_tensor_op_element_wise_unary(opname : str, dtypes : list[DataType]):
     source = make_abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/AddScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAddScalar=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+    for dtype in dtypes:
+        output = make_normpath(output_dir + f"/{opname}-{dtype.name}.spv")
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -D{opname}=ElementOp -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
-def compile_tensor_op_subtract_scalar():
-    source = make_abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
-    output_dir = cmd_args.output_dir + "/TensorOp/"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/SubtractScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtractScalar=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
-        if cmd_args.enable_optimization:
-            run(f'spirv-opt "{output}" -o "{output}" -O')
-
-def compile_tensor_op_multiply_scalar():
-    source = make_abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
-    output_dir = cmd_args.output_dir + "/TensorOp/"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/MultiplyScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DMultiplyScalar=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
-        if cmd_args.enable_optimization:
-            run(f'spirv-opt "{output}" -o "{output}" -O')
-
-def compile_tensor_op_divide_scalar():
-    source = make_abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
-    output_dir = cmd_args.output_dir + "/TensorOp/"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/DivideScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DDivideScalar=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
-        if cmd_args.enable_optimization:
-            run(f'spirv-opt "{output}" -o "{output}" -O')
-
-def compile_tensor_op_remainder_scalar():
-    source = make_abspath(source_root + "/TensorOp/ElementWiseUnary.comp")
-    output_dir = cmd_args.output_dir + "/TensorOp/"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/RemainderScalar-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DRemainderScalar=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
-        if cmd_args.enable_optimization:
-            run(f'spirv-opt "{output}" -o "{output}" -O')
-
-def compile_tensor_op_add():
+def compile_tensor_op_element_wise_binary(opname : str, dtypes : list[DataType]):
     source = make_abspath(source_root + "/TensorOp/ElementWiseBinary.comp")
     output_dir = cmd_args.output_dir + "/TensorOp/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/Add-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DAdd=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
+    for dtype in dtypes:
+        output = make_normpath(output_dir + f"/{opname}-{dtype.name}.spv")
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -D{opname}=ElementOp -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
-
-def compile_tensor_op_subtract():
-    source = make_abspath(os.path.abspath(source_root + "/TensorOp/ElementWiseBinary.comp"))
-    output_dir = cmd_args.output_dir + "/TensorOp/"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/Subtract-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DSubtract=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
-        if cmd_args.enable_optimization:
-            run(f'spirv-opt "{output}" -o "{output}" -O')
-
-def compile_tensor_op_multiply():
-    source = make_abspath(os.path.abspath(source_root + "/TensorOp/ElementWiseBinary.comp"))
-    output_dir = cmd_args.output_dir + "/TensorOp/"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/Multiply-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DMultiply=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
-        if cmd_args.enable_optimization:
-            run(f'spirv-opt "{output}" -o "{output}" -O')
-
-def compile_tensor_op_divide():
-    source = make_abspath(os.path.abspath(source_root + "/TensorOp/ElementWiseBinary.comp"))
-    output_dir = cmd_args.output_dir + "/TensorOp/"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/Divide-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DDivide=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
-        if cmd_args.enable_optimization:
-            run(f'spirv-opt "{output}" -o "{output}" -O')
-
-def compile_tensor_op_remainder():
-    source = make_abspath(os.path.abspath(source_root + "/TensorOp/ElementWiseBinary.comp"))
-    output_dir = cmd_args.output_dir + "/TensorOp/"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for data_type in DataType:
-        output = make_normpath(output_dir + f"/Remainder-{data_type.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DRemainder=ElementOp -DDATA_TYPE_ID={data_type.value} -I"{source_root}"')
-        if cmd_args.enable_optimization:
-            run(f'spirv-opt "{output}" -o "{output}" -O')
-
 
 def main() -> int:
     err = 0
+
+    dtypes = list(DataType)
+    computable_dtypes = [
+        DataType.Float16, DataType.Float32, DataType.Float64,
+        DataType.Sint8, DataType.Sint16, DataType.Sint32, DataType.Sint64,
+    ]
+
     try:
         original_working_dir = os.getcwd()
         compile_all = False
         if cmd_args.targets is None:
             compile_all = True
         if compile_all or any(name in ['Fill'] for name in cmd_args.targets):
-            compile_tensor_op_fill()
-        if compile_all or any(name in ['AddScalar'] for name in cmd_args.targets):
-            compile_tensor_op_add_scalar()
-        if compile_all or any(name in ['SubtractScalar'] for name in cmd_args.targets):
-            compile_tensor_op_subtract_scalar()
-        if compile_all or any(name in ['MultiplyScalar'] for name in cmd_args.targets):
-            compile_tensor_op_multiply_scalar()
-        if compile_all or any(name in ['DivideScalar'] for name in cmd_args.targets):
-            compile_tensor_op_divide_scalar()
-        if compile_all or any(name in ['RemainderScalar'] for name in cmd_args.targets):
-            compile_tensor_op_remainder_scalar()
+            compile_tensor_op_fill(dtypes)
         if compile_all or any(name in ['Add'] for name in cmd_args.targets):
-            compile_tensor_op_add()
+            compile_tensor_op_element_wise_unary('AddScalar', computable_dtypes)
+            compile_tensor_op_element_wise_binary('Add', computable_dtypes)
         if compile_all or any(name in ['Subtract'] for name in cmd_args.targets):
-            compile_tensor_op_subtract()
+            compile_tensor_op_element_wise_unary('SubtractScalar', computable_dtypes)
+            compile_tensor_op_element_wise_binary('Subtract', computable_dtypes)
         if compile_all or any(name in ['Multiply'] for name in cmd_args.targets):
-            compile_tensor_op_multiply()
+            compile_tensor_op_element_wise_unary('MultiplyScalar', computable_dtypes)
+            compile_tensor_op_element_wise_binary('Multiply', computable_dtypes)
         if compile_all or any(name in ['Divide'] for name in cmd_args.targets):
-            compile_tensor_op_divide()
+            compile_tensor_op_element_wise_unary('DivideScalar', computable_dtypes)
+            compile_tensor_op_element_wise_binary('Divide', computable_dtypes)
         if compile_all or any(name in ['Remainder'] for name in cmd_args.targets):
-            compile_tensor_op_remainder()
+            compile_tensor_op_element_wise_unary('RemainderScalar', computable_dtypes)
+            compile_tensor_op_element_wise_binary('Remainder', computable_dtypes)
     except Exception as e:
         print(e)
         err = -1
