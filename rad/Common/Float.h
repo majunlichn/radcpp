@@ -15,6 +15,8 @@
 
 #include <rad/Common/half.hpp>
 
+#include <complex>
+
 namespace rad
 {
 
@@ -228,11 +230,56 @@ using BF16 = BFloat16;
 using FP8E4M3 = Float8E4M3;
 using FP8E5M2 = Float8E5M2;
 
-template <class T>
-constexpr bool is_non_native_floating_point_v = is_any_of<T, Float16, BFloat16, Float8E4M3, Float8E5M2>;
+using Complex64 = std::complex<Float32>;
+static_assert(sizeof(Complex64) == 8);
+using Complex128 = std::complex<Float64>;
+static_assert(sizeof(Complex128) == 16);
+
+struct Complex32
+{
+    using ComputeType = Complex64;
+
+    Complex32() = default;
+    Complex32(float real, float imag) :
+        m_real(real),
+        m_imag(imag)
+    {
+    }
+
+    Complex32(const Complex64& other) :
+        m_real(other.real()),
+        m_imag(other.imag())
+    {
+    }
+
+    Complex32(const Complex128& other) :
+        m_real(other.real()),
+        m_imag(other.imag())
+    {
+    }
+
+    Float16 m_real;
+    Float16 m_imag;
+
+    operator Complex64() const
+    {
+        return Complex64(static_cast<Float32>(m_real), static_cast<Float32>(m_imag));
+    }
+
+}; // struct Complex32
+
+static_assert(sizeof(Complex32) == 4);
 
 template <class T>
-constexpr bool is_floating_point_v = std::is_floating_point_v<T> || is_any_of<T, Float16, BFloat16, Float8E4M3, Float8E5M2>;
+constexpr bool is_complex_v = is_any_of<T, Complex32, Complex64, Complex128>;
+
+template <class T>
+constexpr bool is_non_native_floating_point_v = is_any_of<T, Float16, BFloat16, Float8E4M3, Float8E5M2, Complex32>;
+
+template <class T>
+constexpr bool is_floating_point_v = std::is_floating_point_v<T> ||
+    is_any_of<T, Float16, BFloat16, Float8E4M3, Float8E5M2> ||
+    is_any_of<T, Complex32, Complex64, Complex128>;
 
 template <class T>
 constexpr bool is_signed_v = std::is_signed_v<T> || is_floating_point_v<T>;
