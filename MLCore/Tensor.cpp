@@ -445,4 +445,82 @@ Tensor& Tensor::Remainder_(const Tensor& other)
     return *this;
 }
 
+Tensor Tensor::BitwiseAnd(Scalar other) const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->BitwiseAnd(*this, other, output);
+    return output;
+}
+
+Tensor& Tensor::BitwiseAnd_(Scalar other)
+{
+    m_context->BitwiseAnd(*this, other, *this);
+    return *this;
+}
+
+Tensor Tensor::BitwiseAnd(const Tensor& other) const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->BitwiseAnd(*this, other, output);
+    return output;
+}
+
+Tensor& Tensor::BitwiseAnd_(const Tensor& other)
+{
+    m_context->BitwiseAnd(*this, other, *this);
+    return *this;
+}
+
+Tensor Tensor::BitwiseOr(Scalar other) const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->BitwiseOr(*this, other, output);
+    return output;
+}
+
+Tensor& Tensor::BitwiseOr_(Scalar other)
+{
+    m_context->BitwiseOr(*this, other, *this);
+    return *this;
+}
+
+Tensor Tensor::BitwiseOr(const Tensor& other) const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->BitwiseOr(*this, other, output);
+    return output;
+}
+
+Tensor& Tensor::BitwiseOr_(const Tensor& other)
+{
+    m_context->BitwiseOr(*this, other, *this);
+    return *this;
+}
+
+Tensor Tensor::BitwiseXor(Scalar other) const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->BitwiseXor(*this, other, output);
+    return output;
+}
+
+Tensor& Tensor::BitwiseXor_(Scalar other)
+{
+    m_context->BitwiseXor(*this, other, *this);
+    return *this;
+}
+
+Tensor Tensor::BitwiseXor(const Tensor& other) const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->BitwiseXor(*this, other, output);
+    return output;
+}
+
+Tensor& Tensor::BitwiseXor_(const Tensor& other)
+{
+    m_context->BitwiseXor(*this, other, *this);
+    return *this;
+}
+
 } // namespace ML

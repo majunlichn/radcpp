@@ -30,11 +30,6 @@ VulkanDevice* VulkanContext::GetDevice()
     return static_cast<VulkanDevice*>(m_device.get());
 }
 
-vkpp::Device* VulkanContext::GetDeviceImpl()
-{
-    return static_cast<VulkanDevice*>(m_device.get())->m_impl.get();
-}
-
 void VulkanContext::Fill(const Tensor& input, Scalar value)
 {
     m_opFill->SetTensor(1, input);
@@ -178,6 +173,83 @@ void VulkanContext::Remainder(const Tensor& input, const Tensor& other, Tensor& 
     m_opRemainder->SetTensor(2, other);
     m_opRemainder->SetTensor(3, output ? output : input);
     m_opRemainder->Execute();
+}
+
+void VulkanContext::BitwiseAnd(const Tensor& input, const Scalar other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+    m_opBitwiseAndScalar->SetTensor(1, input);
+    m_opBitwiseAndScalar->SetTensor(2, output ? output : input);
+    if (input.IsSignedInteger())
+    {
+        assert(other.IsSignedInteger());
+        if (input.m_dataType == DataType::Sint64)
+        {
+            m_opBitwiseAndScalar->SetParameters(glm::i64vec4(other.m_value.i));
+        }
+        else
+        {
+            m_opBitwiseAndScalar->SetParameters(glm::i32vec4(other.m_value.i));
+        }
+    }
+    else
+    {
+        assert(other.IsUnsignedInteger());
+        if (input.m_dataType == DataType::Uint64)
+        {
+            m_opBitwiseAndScalar->SetParameters(glm::u64vec4(other.m_value.u));
+        }
+        else
+        {
+            m_opBitwiseAndScalar->SetParameters(glm::u32vec4(other.m_value.u));
+        }
+    }
+    m_opBitwiseAndScalar->Execute();
+}
+
+void VulkanContext::BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+    m_opBitwiseAnd->SetTensor(1, input);
+    m_opBitwiseAnd->SetTensor(2, other);
+    m_opBitwiseAnd->SetTensor(3, output ? output : input);
+    m_opBitwiseAnd->Execute();
+}
+
+void VulkanContext::BitwiseOr(const Tensor& input, const Scalar other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+    m_opBitwiseOrScalar->SetTensor(1, input);
+    m_opBitwiseOrScalar->SetTensor(2, output ? output : input);
+    m_opBitwiseOrScalar->SetParameters(glm::ivec4(other.m_value.u));
+    m_opBitwiseOrScalar->Execute();
+}
+
+void VulkanContext::BitwiseOr(const Tensor& input, const Tensor& other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+    m_opBitwiseOr->SetTensor(1, input);
+    m_opBitwiseOr->SetTensor(2, other);
+    m_opBitwiseOr->SetTensor(3, output ? output : input);
+    m_opBitwiseOr->Execute();
+}
+
+void VulkanContext::BitwiseXor(const Tensor& input, const Scalar other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+    m_opBitwiseXorScalar->SetTensor(1, input);
+    m_opBitwiseXorScalar->SetTensor(2, output ? output : input);
+    m_opBitwiseXorScalar->SetParameters(glm::ivec4(other.m_value.u));
+    m_opBitwiseXorScalar->Execute();
+}
+
+void VulkanContext::BitwiseXor(const Tensor& input, const Tensor& other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+    m_opBitwiseXor->SetTensor(1, input);
+    m_opBitwiseXor->SetTensor(2, other);
+    m_opBitwiseXor->SetTensor(3, output ? output : input);
+    m_opBitwiseXor->Execute();
 }
 
 } // namespace ML

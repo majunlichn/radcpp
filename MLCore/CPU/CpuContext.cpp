@@ -316,4 +316,124 @@ void CpuContext::Remainder(const Tensor& input, const Tensor& other, Tensor& out
     RAD_UNREACHABLE();
 }
 
+void CpuContext::BitwiseAnd(const Tensor& input, const Scalar other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+#define ML_CPU_DISPATCH_BITWISE_AND(DataType, ComputeType)    \
+    CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return (x & ComputeType(other)); });
+    switch (input.m_dataType)
+    {
+    case DataType::Sint8:       ML_CPU_DISPATCH_BITWISE_AND(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_BITWISE_AND(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_BITWISE_AND(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_BITWISE_AND(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_BITWISE_AND(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_BITWISE_AND(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_BITWISE_AND(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_AND(rad::Uint64, rad::Uint64); return;
+    }
+#undef ML_CPU_DISPATCH_BITWISE_AND
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+#define ML_CPU_DISPATCH_BITWISE_AND(DataType, ComputeType)    \
+    CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return (a & b); });
+    switch (input.m_dataType)
+    {
+    case DataType::Sint8:       ML_CPU_DISPATCH_BITWISE_AND(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_BITWISE_AND(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_BITWISE_AND(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_BITWISE_AND(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_BITWISE_AND(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_BITWISE_AND(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_BITWISE_AND(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_AND(rad::Uint64, rad::Uint64); return;
+    }
+#undef ML_CPU_DISPATCH_BITWISE_AND
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::BitwiseOr(const Tensor& input, const Scalar other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+#define ML_CPU_DISPATCH_BITWISE_OR(DataType, ComputeType)    \
+    CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return (x | ComputeType(other)); });
+    switch (input.m_dataType)
+    {
+    case DataType::Sint8:       ML_CPU_DISPATCH_BITWISE_OR(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_BITWISE_OR(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_BITWISE_OR(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_BITWISE_OR(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_BITWISE_OR(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_BITWISE_OR(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_BITWISE_OR(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_OR(rad::Uint64, rad::Uint64); return;
+    }
+#undef ML_CPU_DISPATCH_BITWISE_OR
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::BitwiseOr(const Tensor& input, const Tensor& other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+#define ML_CPU_DISPATCH_BITWISE_OR(DataType, ComputeType)    \
+    CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return (a | b); });
+    switch (input.m_dataType)
+    {
+    case DataType::Sint8:       ML_CPU_DISPATCH_BITWISE_OR(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_BITWISE_OR(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_BITWISE_OR(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_BITWISE_OR(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_BITWISE_OR(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_BITWISE_OR(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_BITWISE_OR(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_OR(rad::Uint64, rad::Uint64); return;
+    }
+#undef ML_CPU_DISPATCH_BITWISE_OR
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::BitwiseXor(const Tensor& input, const Scalar other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+#define ML_CPU_DISPATCH_BITWISE_XOR(DataType, ComputeType)    \
+    CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return (x ^ ComputeType(other)); });
+    switch (input.m_dataType)
+    {
+    case DataType::Sint8:       ML_CPU_DISPATCH_BITWISE_XOR(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_BITWISE_XOR(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Uint64, rad::Uint64); return;
+    }
+#undef ML_CPU_DISPATCH_BITWISE_XOR
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::BitwiseXor(const Tensor& input, const Tensor& other, Tensor& output)
+{
+    assert(input.IsInteger() && other.IsInteger());
+#define ML_CPU_DISPATCH_BITWISE_XOR(DataType, ComputeType)    \
+    CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return (a ^ b); });
+    switch (input.m_dataType)
+    {
+    case DataType::Sint8:       ML_CPU_DISPATCH_BITWISE_XOR(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_BITWISE_XOR(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_XOR(rad::Uint64, rad::Uint64); return;
+    }
+#undef ML_CPU_DISPATCH_BITWISE_XOR
+    RAD_UNREACHABLE();
+}
+
 } // namespace ML

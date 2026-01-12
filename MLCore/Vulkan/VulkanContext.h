@@ -28,12 +28,17 @@ public:
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opDivide;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opRemainderScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opRemainder;
+    rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseAndScalar;
+    rad::Ref<VulkanTensorOpElementWiseBinary> m_opBitwiseAnd;
+    rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseOrScalar;
+    rad::Ref<VulkanTensorOpElementWiseBinary> m_opBitwiseOr;
+    rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseXorScalar;
+    rad::Ref<VulkanTensorOpElementWiseBinary> m_opBitwiseXor;
 
     VulkanContext(rad::Ref<VulkanDevice> device);
     virtual ~VulkanContext() override;
 
     VulkanDevice* GetDevice();
-    vkpp::Device* GetDeviceImpl();
 
     virtual void Fill(const Tensor& input, Scalar value) override;
 
@@ -51,6 +56,15 @@ public:
 
     virtual void Remainder(const Tensor& input, const Scalar other, Tensor& output) override;
     virtual void Remainder(const Tensor& input, const Tensor& other, Tensor& output) override;
+
+    virtual void BitwiseAnd(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& output) override;
+
+    virtual void BitwiseOr(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void BitwiseOr(const Tensor& input, const Tensor& other, Tensor& output) override;
+
+    virtual void BitwiseXor(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void BitwiseXor(const Tensor& input, const Tensor& other, Tensor& output) override;
 
 }; // class VulkanContext
 

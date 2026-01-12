@@ -137,6 +137,21 @@ public:
     [[nodiscard]] Tensor Remainder(const Tensor& other) const;
     Tensor& Remainder_(const Tensor& other);
 
+    [[nodiscard]] Tensor BitwiseAnd(Scalar other) const;
+    Tensor& BitwiseAnd_(Scalar other);
+    [[nodiscard]] Tensor BitwiseAnd(const Tensor& other) const;
+    Tensor& BitwiseAnd_(const Tensor& other);
+
+    [[nodiscard]] Tensor BitwiseOr(Scalar other) const;
+    Tensor& BitwiseOr_(Scalar other);
+    [[nodiscard]] Tensor BitwiseOr(const Tensor& other) const;
+    Tensor& BitwiseOr_(const Tensor& other);
+
+    [[nodiscard]] Tensor BitwiseXor(Scalar other) const;
+    Tensor& BitwiseXor_(Scalar other);
+    [[nodiscard]] Tensor BitwiseXor(const Tensor& other) const;
+    Tensor& BitwiseXor_(const Tensor& other);
+
     Tensor& operator+=(Scalar other) { return Add_(other); }
     Tensor& operator-=(Scalar other) { return Sub_(other); }
     Tensor& operator*=(Scalar other) { return Mul_(other); }
@@ -158,30 +173,32 @@ inline bool HaveSameLayout(const Tensor& a, const Tensor& b)
     return ((a.m_sizes == b.m_sizes) && (a.m_strides == b.m_strides));
 }
 
-#define ML_DEFINE_TENSOR_BINARY_OPS(_)                                      \
-  _(+, x.Add(y), y.Add(x))                                                  \
-  _(-,                                                                      \
-    x.Sub(y),                                                               \
-    MakeTensorLike(y).Fill(x).Sub_(y))                                      \
-  _(*, x.Mul(y), y.Mul(x))                                                  \
-  _(/,                                                                      \
-    x.Divide(y),                                                            \
-    MakeTensorLike(y).Fill(x).Div_(y))                                      \
-  _(%,                                                                      \
-    x.Remainder(y),                                                         \
-    MakeTensorLike(y).Fill(x).Remainder_(y))
+#define ML_DEFINE_TENSOR_BINARY_OPS(_)                              \
+    _(+, x.Add(y), y.Add(x))                                        \
+    _(-,                                                            \
+      x.Sub(y),                                                     \
+      MakeTensorLike(y).Fill(x).Sub_(y))                            \
+    _(*, x.Mul(y), y.Mul(x))                                        \
+    _(/,                                                            \
+      x.Divide(y),                                                  \
+      MakeTensorLike(y).Fill(x).Div_(y))                            \
+    _(%,                                                            \
+      x.Remainder(y),                                               \
+      MakeTensorLike(y).Fill(x).Remainder_(y))                      \
+    _(&, x.BitwiseAnd(y), y.BitwiseAnd(x))                          \
+    _(|, x.BitwiseOr(y), y.BitwiseOr(x))                            \
+    _(^, x.BitwiseXor(y), y.BitwiseXor(x))
 
-
-#define ML_TENSOR_BINARY_OP(op, body, reverse_scalar_body)      \
-  inline Tensor operator op(const Tensor& x, const Tensor& y) { \
-    return body;                                                \
-  }                                                             \
-  inline Tensor operator op(const Tensor& x, const Scalar& y) { \
-    return body;                                                \
-  }                                                             \
-  inline Tensor operator op(const Scalar& x, const Tensor& y) { \
-    return reverse_scalar_body;                                 \
-  }
+#define ML_TENSOR_BINARY_OP(op, body, reverse_scalar_body)          \
+    inline Tensor operator op(const Tensor& x, const Tensor& y) {   \
+      return body;                                                  \
+    }                                                               \
+    inline Tensor operator op(const Tensor& x, const Scalar& y) {   \
+      return body;                                                  \
+    }                                                               \
+    inline Tensor operator op(const Scalar& x, const Tensor& y) {   \
+      return reverse_scalar_body;                                   \
+    }
 
 ML_DEFINE_TENSOR_BINARY_OPS(ML_TENSOR_BINARY_OP)
 

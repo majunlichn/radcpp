@@ -38,6 +38,15 @@ public:
     virtual void Remainder(const Tensor& input, const Scalar other, Tensor& output) = 0;
     virtual void Remainder(const Tensor& input, const Tensor& other, Tensor& output) = 0;
 
+    virtual void BitwiseAnd(const Tensor& input, const Scalar other, Tensor& output) = 0;
+    virtual void BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& output) = 0;
+
+    virtual void BitwiseOr(const Tensor& input, const Scalar other, Tensor& output) = 0;
+    virtual void BitwiseOr(const Tensor& input, const Tensor& other, Tensor& output) = 0;
+
+    virtual void BitwiseXor(const Tensor& input, const Scalar other, Tensor& output) = 0;
+    virtual void BitwiseXor(const Tensor& input, const Tensor& other, Tensor& output) = 0;
+
 }; // class Context
 
 } // namespace ML

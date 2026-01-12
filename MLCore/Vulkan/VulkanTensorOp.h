@@ -76,12 +76,8 @@ public:
 
     const Tensor* GetInputTensor() { return m_bindings[1]; }
 
-    void SetParameters(glm::vec4 params)
-    {
-        std::memcpy(&m_uniformData.params, &params, sizeof(params));
-    }
-
-    void SetParameters(glm::ivec4 params)
+    template <rad::TriviallyCopyable T>
+    void SetParameters(const T& params)
     {
         std::memcpy(&m_uniformData.params, &params, sizeof(params));
     }
@@ -117,12 +113,8 @@ public:
     const Tensor* GetInputTensor() { return m_bindings[1]; }
     const Tensor* GetOutputTensor() { return m_bindings[2]; }
 
-    void SetParameters(glm::vec4 params)
-    {
-        std::memcpy(&m_uniformData.params, &params, sizeof(params));
-    }
-
-    void SetParameters(glm::ivec4 params)
+    template <rad::TriviallyCopyable T>
+    void SetParameters(const T& params)
     {
         std::memcpy(&m_uniformData.params, &params, sizeof(params));
     }
@@ -149,12 +141,8 @@ public:
     VulkanTensorOpElementWiseBinary(VulkanContext* context, std::string_view opName);
     ~VulkanTensorOpElementWiseBinary();
 
-    void SetParameters(glm::vec4 params)
-    {
-        std::memcpy(&m_uniformData.params, &params, sizeof(params));
-    }
-
-    void SetParameters(glm::ivec4 params)
+    template <rad::TriviallyCopyable T>
+    void SetParameters(const T& params)
     {
         std::memcpy(&m_uniformData.params, &params, sizeof(params));
     }

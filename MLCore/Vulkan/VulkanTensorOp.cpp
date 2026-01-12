@@ -20,7 +20,7 @@ namespace ML
 VulkanTensorOp::VulkanTensorOp(VulkanContext* context) :
     m_context(context)
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
     m_cmdStream = device->CreateCommandStream(vkpp::QueueFamily::Universal);
 }
 
@@ -31,7 +31,7 @@ VulkanTensorOp::~VulkanTensorOp()
 void VulkanTensorOp::CreatePipelineLayout(size_t tensorCount,
     rad::ArrayRef<vk::PushConstantRange> pushConstantRanges)
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
     rad::SmallVector<vk::DescriptorSetLayoutBinding, 8> bindings;
     bindings.reserve(1 + tensorCount);
     bindings.emplace_back(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eCompute);
@@ -53,7 +53,7 @@ void VulkanTensorOp::CreatePipelineLayout(size_t tensorCount,
 
 void VulkanTensorOp::SetUniforms(const void* data, size_t dataSize)
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
     if (!m_uniformBuffer || (m_uniformBuffer->GetSize() != dataSize))
     {
         m_uniformBuffer = vkpp::Buffer::CreateUniform(device, dataSize);
@@ -131,7 +131,7 @@ VulkanTensorOpForEach::VulkanTensorOpForEach(VulkanContext* context, std::string
     VulkanTensorOp(context),
     m_opName(opName)
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
 
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
@@ -161,7 +161,7 @@ VulkanTensorOpForEach::~VulkanTensorOpForEach()
 
 void VulkanTensorOpForEach::Execute()
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
 
     const Tensor* input = GetInputTensor();
 
@@ -227,7 +227,7 @@ VulkanTensorOpElementWiseUnary::VulkanTensorOpElementWiseUnary(VulkanContext* co
     VulkanTensorOp(context),
     m_opName(opName)
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
 
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
@@ -258,7 +258,7 @@ VulkanTensorOpElementWiseUnary::~VulkanTensorOpElementWiseUnary()
 
 void VulkanTensorOpElementWiseUnary::Execute()
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
 
     const Tensor* input = GetInputTensor();
     const Tensor* output = GetOutputTensor();
@@ -332,7 +332,7 @@ VulkanTensorOpElementWiseBinary::VulkanTensorOpElementWiseBinary(VulkanContext* 
     VulkanTensorOp(context),
     m_opName(opName)
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
 
     for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
     {
@@ -363,7 +363,7 @@ VulkanTensorOpElementWiseBinary::~VulkanTensorOpElementWiseBinary()
 
 void VulkanTensorOpElementWiseBinary::Execute()
 {
-    vkpp::Device* device = m_context->GetDeviceImpl();
+    vkpp::Device* device = m_context->GetDevice()->m_impl.get();
 
     const Tensor* input = GetInputTensor();
     const Tensor* other = GetInputTensor();
