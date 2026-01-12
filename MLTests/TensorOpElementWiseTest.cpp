@@ -244,3 +244,64 @@ TEST(TensorOp, Remainder)
     TestTensorOpRemainder<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpRemainder<rad::Sint64>(ML::DataType::Sint64);
 }
+
+template <typename T>
+void TestTensorOpBitwise(ML::DataType dataType)
+{
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "TensorOp.Bitwise({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Bitwise({}): not supported!", ML::GetDataTypeName(dataType));
+        return;
+    }
+
+    static_assert(std::is_integral_v<T>);
+
+    ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+
+    a.Fill(0b1010);
+    b.Fill(0b0110);
+    ML::Tensor c = a & b;
+
+    std::vector<uint8_t> dataBuffer;
+    dataBuffer.resize(c.GetDataSize());
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    const T* results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], 0b0010);
+    }
+
+    c = a | b;
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], 0b1110);
+    }
+
+    c = a ^ b;
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], 0b1100);
+    }
+}
+
+TEST(TensorOp, Bitwise)
+{
+    TestTensorOpBitwise<rad::Sint8>(ML::DataType::Sint8);
+    TestTensorOpBitwise<rad::Sint16>(ML::DataType::Sint16);
+    TestTensorOpBitwise<rad::Sint32>(ML::DataType::Sint32);
+    TestTensorOpBitwise<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpBitwise<rad::Uint8>(ML::DataType::Uint8);
+    TestTensorOpBitwise<rad::Uint16>(ML::DataType::Uint16);
+    TestTensorOpBitwise<rad::Uint32>(ML::DataType::Uint32);
+    TestTensorOpBitwise<rad::Uint64>(ML::DataType::Uint64);
+}

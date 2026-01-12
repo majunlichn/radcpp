@@ -101,10 +101,16 @@ def compile_tensor_op_element_wise_binary(opname : str, dtypes : list[DataType])
 def main() -> int:
     err = 0
 
-    dtypes = list(DataType)
-    computable_dtypes = [
+    types = list(DataType)
+    computable_types = [
         DataType.Float16, DataType.Float32, DataType.Float64,
         DataType.Sint8, DataType.Sint16, DataType.Sint32, DataType.Sint64,
+    ]
+    sint_types = [
+        DataType.Sint8, DataType.Sint16, DataType.Sint32, DataType.Sint64,
+    ]
+    uint_types =[
+        DataType.Uint8, DataType.Uint16, DataType.Uint32, DataType.Uint64,
     ]
 
     try:
@@ -113,22 +119,31 @@ def main() -> int:
         if cmd_args.targets is None:
             compile_all = True
         if compile_all or any(name in ['Fill'] for name in cmd_args.targets):
-            compile_tensor_op_fill(dtypes)
+            compile_tensor_op_fill(types)
         if compile_all or any(name in ['Add'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('AddScalar', computable_dtypes)
-            compile_tensor_op_element_wise_binary('Add', computable_dtypes)
+            compile_tensor_op_element_wise_unary('AddScalar', computable_types)
+            compile_tensor_op_element_wise_binary('Add', computable_types)
         if compile_all or any(name in ['Subtract'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('SubtractScalar', computable_dtypes)
-            compile_tensor_op_element_wise_binary('Subtract', computable_dtypes)
+            compile_tensor_op_element_wise_unary('SubtractScalar', computable_types)
+            compile_tensor_op_element_wise_binary('Subtract', computable_types)
         if compile_all or any(name in ['Multiply'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('MultiplyScalar', computable_dtypes)
-            compile_tensor_op_element_wise_binary('Multiply', computable_dtypes)
+            compile_tensor_op_element_wise_unary('MultiplyScalar', computable_types)
+            compile_tensor_op_element_wise_binary('Multiply', computable_types)
         if compile_all or any(name in ['Divide'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('DivideScalar', computable_dtypes)
-            compile_tensor_op_element_wise_binary('Divide', computable_dtypes)
+            compile_tensor_op_element_wise_unary('DivideScalar', computable_types)
+            compile_tensor_op_element_wise_binary('Divide', computable_types)
         if compile_all or any(name in ['Remainder'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('RemainderScalar', computable_dtypes)
-            compile_tensor_op_element_wise_binary('Remainder', computable_dtypes)
+            compile_tensor_op_element_wise_unary('RemainderScalar', computable_types)
+            compile_tensor_op_element_wise_binary('Remainder', computable_types)
+        if compile_all or any(name in ['BitwiseAnd'] for name in cmd_args.targets):
+            compile_tensor_op_element_wise_unary('BitwiseAndScalar', sint_types + uint_types)
+            compile_tensor_op_element_wise_binary('BitwiseAnd', sint_types + uint_types)
+        if compile_all or any(name in ['BitwiseOr'] for name in cmd_args.targets):
+            compile_tensor_op_element_wise_unary('BitwiseOrScalar', sint_types + uint_types)
+            compile_tensor_op_element_wise_binary('BitwiseOr', sint_types + uint_types)
+        if compile_all or any(name in ['BitwiseXor'] for name in cmd_args.targets):
+            compile_tensor_op_element_wise_unary('BitwiseXorScalar', sint_types + uint_types)
+            compile_tensor_op_element_wise_binary('BitwiseXor', sint_types + uint_types)
     except Exception as e:
         print(e)
         err = -1

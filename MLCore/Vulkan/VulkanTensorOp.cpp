@@ -175,15 +175,15 @@ void VulkanTensorOpForEach::Execute()
     m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]), 16u);  // H
     m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
 
-    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
-    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
-    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
-    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
-    m_uniformData.strides[0] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 4]);
-    m_uniformData.strides[1] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 3]);
-    m_uniformData.strides[2] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 2]);
-    m_uniformData.strides[3] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 1]);
-    SetUniforms(m_uniformData);
+    m_shaderUniforms.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
+    m_shaderUniforms.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
+    m_shaderUniforms.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
+    m_shaderUniforms.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
+    m_shaderUniforms.strides[0] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 4]);
+    m_shaderUniforms.strides[1] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 3]);
+    m_shaderUniforms.strides[2] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 2]);
+    m_shaderUniforms.strides[3] = static_cast<uint32_t>(dispatchStrides[DispatchDimCount - 1]);
+    SetUniforms(m_shaderUniforms);
 
     rad::Ref<vkpp::CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
 
@@ -222,18 +222,16 @@ void VulkanTensorOpForEach::Execute()
     m_context->m_submitSignals.clear();
 }
 
-
-VulkanTensorOpElementWiseUnary::VulkanTensorOpElementWiseUnary(VulkanContext* context, std::string_view opName) :
+VulkanTensorOpElementWiseUnary::VulkanTensorOpElementWiseUnary(
+    VulkanContext* context, std::string_view opName, rad::ArrayRef<DataType> dataTypes) :
     VulkanTensorOp(context),
     m_opName(opName)
 {
     vkpp::Device* device = m_context->GetDevice()->m_impl.get();
 
-    for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
+    for (DataType dataType : dataTypes)
     {
-        DataType dataType = static_cast<DataType>(i);
-        if (!m_context->GetDevice()->IsDataTypeComputable(dataType) ||
-            IsUnsignedIntegerType(dataType))
+        if (!m_context->GetDevice()->IsDataTypeComputable(dataType))
         {
             continue;
         }
@@ -276,19 +274,19 @@ void VulkanTensorOpElementWiseUnary::Execute()
     m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]), 16u);  // H
     m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - DispatchDimCount]);
 
-    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
-    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
-    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
-    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
-    m_uniformData.inputStrides[0] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 4]);
-    m_uniformData.inputStrides[1] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 3]);
-    m_uniformData.inputStrides[2] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 2]);
-    m_uniformData.inputStrides[3] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 1]);
-    m_uniformData.outputStrides[0] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 4]);
-    m_uniformData.outputStrides[1] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 3]);
-    m_uniformData.outputStrides[2] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 2]);
-    m_uniformData.outputStrides[3] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 1]);
-    SetUniforms(m_uniformData);
+    m_shaderUniforms.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
+    m_shaderUniforms.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
+    m_shaderUniforms.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
+    m_shaderUniforms.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
+    m_shaderUniforms.inputStrides[0] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 4]);
+    m_shaderUniforms.inputStrides[1] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 3]);
+    m_shaderUniforms.inputStrides[2] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 2]);
+    m_shaderUniforms.inputStrides[3] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 1]);
+    m_shaderUniforms.outputStrides[0] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 4]);
+    m_shaderUniforms.outputStrides[1] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 3]);
+    m_shaderUniforms.outputStrides[2] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 2]);
+    m_shaderUniforms.outputStrides[3] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 1]);
+    SetUniforms(m_shaderUniforms);
 
     rad::Ref<vkpp::CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
 
@@ -328,17 +326,16 @@ void VulkanTensorOpElementWiseUnary::Execute()
     m_context->m_submitSignals.clear();
 }
 
-VulkanTensorOpElementWiseBinary::VulkanTensorOpElementWiseBinary(VulkanContext* context, std::string_view opName) :
+VulkanTensorOpElementWiseBinary::VulkanTensorOpElementWiseBinary(
+    VulkanContext* context, std::string_view opName, rad::ArrayRef<DataType> dataTypes) :
     VulkanTensorOp(context),
     m_opName(opName)
 {
     vkpp::Device* device = m_context->GetDevice()->m_impl.get();
 
-    for (size_t i = 1; i < rad::ToUnderlying(DataType::Count); ++i)
+    for (DataType dataType : dataTypes)
     {
-        DataType dataType = static_cast<DataType>(i);
-        if (!m_context->GetDevice()->IsDataTypeComputable(dataType) ||
-            IsUnsignedIntegerType(dataType))
+        if (!m_context->GetDevice()->IsDataTypeComputable(dataType))
         {
             continue;
         }
@@ -385,23 +382,23 @@ void VulkanTensorOpElementWiseBinary::Execute()
     m_threadGroupCount.y = rad::DivRoundUp<uint32_t>(static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]), 16u);  // H
     m_threadGroupCount.z = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - DispatchDimCount]);
 
-    m_uniformData.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
-    m_uniformData.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
-    m_uniformData.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
-    m_uniformData.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
-    m_uniformData.inputStrides[0] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 4]);
-    m_uniformData.inputStrides[1] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 3]);
-    m_uniformData.inputStrides[2] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 2]);
-    m_uniformData.inputStrides[3] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 1]);
-    m_uniformData.otherStrides[0] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 4]);
-    m_uniformData.otherStrides[1] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 3]);
-    m_uniformData.otherStrides[2] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 2]);
-    m_uniformData.otherStrides[3] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 1]);
-    m_uniformData.outputStrides[0] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 4]);
-    m_uniformData.outputStrides[1] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 3]);
-    m_uniformData.outputStrides[2] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 2]);
-    m_uniformData.outputStrides[3] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 1]);
-    SetUniforms(m_uniformData);
+    m_shaderUniforms.sizes[0] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 4]);
+    m_shaderUniforms.sizes[1] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 3]);
+    m_shaderUniforms.sizes[2] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 2]);
+    m_shaderUniforms.sizes[3] = static_cast<uint32_t>(dispatchSizes[DispatchDimCount - 1]);
+    m_shaderUniforms.inputStrides[0] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 4]);
+    m_shaderUniforms.inputStrides[1] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 3]);
+    m_shaderUniforms.inputStrides[2] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 2]);
+    m_shaderUniforms.inputStrides[3] = static_cast<uint32_t>(dispatchInputStrides[DispatchDimCount - 1]);
+    m_shaderUniforms.otherStrides[0] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 4]);
+    m_shaderUniforms.otherStrides[1] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 3]);
+    m_shaderUniforms.otherStrides[2] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 2]);
+    m_shaderUniforms.otherStrides[3] = static_cast<uint32_t>(dispatchOtherStrides[DispatchDimCount - 1]);
+    m_shaderUniforms.outputStrides[0] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 4]);
+    m_shaderUniforms.outputStrides[1] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 3]);
+    m_shaderUniforms.outputStrides[2] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 2]);
+    m_shaderUniforms.outputStrides[3] = static_cast<uint32_t>(dispatchOutputStrides[DispatchDimCount - 1]);
+    SetUniforms(m_shaderUniforms);
 
     rad::Ref<vkpp::CommandBuffer> cmdBuffer = m_cmdStream->m_cmdPoolTransientAlloc->AllocatePrimary();
 

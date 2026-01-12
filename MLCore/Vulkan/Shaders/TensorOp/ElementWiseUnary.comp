@@ -10,17 +10,35 @@ layout(push_constant, std430) uniform PushConstants
     uint g_outputIndexOffset;
 };
 
+#ifndef PARAM_TYPE
+    #if DATA_TYPE_IS_FLOATING_POINT
+        #if ELEMENT_SIZE <= 4
+            #define PARAM_TYPE f32vec4
+        #elif DATA_TYPE_ID == DataTypeFloat64
+            #define PARAM_TYPE f64vec4
+        #endif
+    #elif DATA_TYPE_IS_SIGNED_INTEGRAL
+        #if ELEMENT_SIZE <= 4
+            #define PARAM_TYPE i32vec4
+        #else
+            #define PARAM_TYPE i64vec4
+        #endif
+    #elif DATA_TYPE_IS_UNSIGNED_INTEGRAL
+        #if ELEMENT_SIZE <= 4
+            #define PARAM_TYPE u32vec4
+        #else
+            #define PARAM_TYPE u64vec4
+        #endif
+    #endif // DATA_TYPE_IS_*
+#endif // PARAM_TYPE
+
 layout(set = 0, binding = 0) uniform Uniforms
 {
     uvec4 g_sizes;
     uvec4 g_inputStrides;
     uvec4 g_outputStrides;
-#if DATA_TYPE_IS_FLOATING_POINT
-    vec4 g_params;
-#endif
-#if DATA_TYPE_IS_INTEGRAL
-    ivec4 g_params;
-#endif
+    uvec4 g_padding; // Unused, just for alignment
+    PARAM_TYPE g_params;
 };
 
 layout(set = 0, binding = 1) readonly buffer InputTensor { DATA_TYPE g_inputTensor[]; };
@@ -66,6 +84,27 @@ COMPUTE_TYPE RemainderScalar(COMPUTE_TYPE x)
 #else
     return COMPUTE_TYPE(int(a) % int(b));
 #endif
+}
+#endif
+
+#if defined(BitwiseAndScalar)
+COMPUTE_TYPE BitwiseAndScalar(COMPUTE_TYPE x)
+{
+    return x & COMPUTE_TYPE(g_params[0]);
+}
+#endif
+
+#if defined(BitwiseOrScalar)
+COMPUTE_TYPE BitwiseOrScalar(COMPUTE_TYPE x)
+{
+    return x | COMPUTE_TYPE(g_params[0]);
+}
+#endif
+
+#if defined(BitwiseXorScalar)
+COMPUTE_TYPE BitwiseXorScalar(COMPUTE_TYPE x)
+{
+    return x ^ COMPUTE_TYPE(g_params[0]);
 }
 #endif
 
