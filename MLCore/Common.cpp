@@ -96,12 +96,13 @@ const char* GetDataTypeName(DataType dataType)
     case DataType::Uint16:      return "Uint16";
     case DataType::Uint32:      return "Uint32";
     case DataType::Uint64:      return "Uint64";
-    case DataType::BFloat16:    return "BFloat16";
-    case DataType::Float8E4M3:  return "Float8E4M3";
-    case DataType::Float8E5M2:  return "Float8E5M2";
+    case DataType::Bool:        return "Bool";
     case DataType::Complex32:   return "Complex32";
     case DataType::Complex64:   return "Complex64";
     case DataType::Complex128:  return "Complex128";
+    case DataType::BFloat16:    return "BFloat16";
+    case DataType::Float8E4M3:  return "Float8E4M3";
+    case DataType::Float8E5M2:  return "Float8E5M2";
     }
     RAD_UNREACHABLE();
     return nullptr;

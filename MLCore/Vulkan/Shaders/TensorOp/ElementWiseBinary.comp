@@ -12,10 +12,10 @@ layout(push_constant, std430) uniform PushConstants
 };
 
 #ifndef PARAM_TYPE
-    #if DATA_TYPE_IS_FLOATING_POINT
+    #if DATA_TYPE_IS_FLOATING_POINT && (!DATA_TYPE_IS_COMPLEX)
         #if ELEMENT_SIZE <= 4
             #define PARAM_TYPE f32vec4
-        #else
+        #elif DATA_TYPE_ID == DataTypeFloat64
             #define PARAM_TYPE f64vec4
         #endif
     #elif DATA_TYPE_IS_SIGNED_INTEGRAL
@@ -30,6 +30,11 @@ layout(push_constant, std430) uniform PushConstants
         #else
             #define PARAM_TYPE u64vec4
         #endif
+    #elif DATA_TYPE_IS_BOOL
+        #define PARAM_TYPE u32vec4
+    #elif DATA_TYPE_IS_COMPLEX
+        struct Params { DATA_TYPE x; DATA_TYPE y; DATA_TYPE z; DATA_TYPE w; };
+        #define PARAM_TYPE Params
     #endif // DATA_TYPE_IS_*
 #endif // PARAM_TYPE
 

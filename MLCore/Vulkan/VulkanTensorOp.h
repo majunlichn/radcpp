@@ -62,6 +62,9 @@ struct ElementWiseParams
         glm::f64vec4 f64;
         glm::i64vec4 i64;
         glm::u64vec4 u64;
+        rad::Complex32 c32[4];
+        rad::Complex64 c64[4];
+        rad::Complex128 c128[4];
     } m_params;
 
     void Set(DataType dataType, const Scalar& a, const Scalar& b = {}, const Scalar& c = {}, const Scalar& d = {})
@@ -94,6 +97,27 @@ struct ElementWiseParams
             break;
         case ML::DataType::Uint64:
             m_params.u64 = glm::u64vec4(static_cast<uint64_t>(a), static_cast<uint64_t>(b), static_cast<uint64_t>(c), static_cast<uint64_t>(d));
+            break;
+        case ML::DataType::Bool:
+            m_params.u32 = glm::u32vec4(static_cast<bool>(a), static_cast<bool>(b), static_cast<bool>(c), static_cast<bool>(d));
+            break;
+        case ML::DataType::Complex32:
+            m_params.c32[0] = a;
+            m_params.c32[1] = b;
+            m_params.c32[2] = c;
+            m_params.c32[3] = d;
+            break;
+        case ML::DataType::Complex64:
+            m_params.c64[0] = a;
+            m_params.c64[1] = b;
+            m_params.c64[2] = c;
+            m_params.c64[3] = d;
+            break;
+        case ML::DataType::Complex128:
+            m_params.c128[0] = a;
+            m_params.c128[1] = b;
+            m_params.c128[2] = c;
+            m_params.c128[3] = d;
             break;
         }
         RAD_UNREACHABLE();

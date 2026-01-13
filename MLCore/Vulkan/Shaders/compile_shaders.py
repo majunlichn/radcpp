@@ -41,9 +41,13 @@ class DataType(Enum):
     Uint16          = 9
     Uint32          = 10
     Uint64          = 11
-    BFloat16        = 12
-    Float8E4M3      = 13
-    Float8E5M2      = 14
+    Bool            = 12
+    Complex32       = 13
+    Complex64       = 14
+    Complex128      = 15
+    BFloat16        = 16
+    Float8E4M3      = 17
+    Float8E5M2      = 18
 
 
 def make_abspath(path:str):

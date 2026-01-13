@@ -16,12 +16,14 @@
 #define DataTypeUint16 9
 #define DataTypeUint32 10
 #define DataTypeUint64 11
-#define DataTypeBFloat16 12
-#define DataTypeFloat8E4M3 13
-#define DataTypeFloat8E5M2 14
-#define DataTypeComplex32 15
-#define DataTypeComplex64 16
-#define DataTypeComplex128 17
+#define DataTypeBool 12
+#define DataTypeComplex32 13
+#define DataTypeComplex64 14
+#define DataTypeComplex128 15
+#define DataTypeBFloat16 16
+#define DataTypeFloat8E4M3 17
+#define DataTypeFloat8E5M2 18
+
 
 #if defined(DATA_TYPE_ID)
 
@@ -58,6 +60,19 @@
 #if DATA_TYPE_ID == DataTypeUint64
 #define DATA_TYPE uint64_t
 #endif
+#if DATA_TYPE_ID == DataTypeBool
+#define Bool uint8_t
+#define DATA_TYPE Bool
+#endif
+#if DATA_TYPE_ID == DataTypeComplex32
+#define DATA_TYPE Complex32
+#endif
+#if DATA_TYPE_ID == DataTypeComplex64
+#define DATA_TYPE Complex64
+#endif
+#if DATA_TYPE_ID == DataTypeComplex128
+#define DATA_TYPE Complex128
+#endif
 #if DATA_TYPE_ID == DataTypeBFloat16
 #extension GL_EXT_bfloat16 : require
 #define DATA_TYPE bfloat16_t
@@ -78,8 +93,7 @@
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeFloat32) || (DATA_TYPE_ID == DataTypeFloat64) || \
-    (DATA_TYPE_ID == DataTypeBFloat16) || (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2) || \
-    DATA_TYPE_IS_COMPLEX)
+    (DATA_TYPE_ID == DataTypeBFloat16) || (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
 #define DATA_TYPE_IS_FLOATING_POINT 1
 #else
 #define DATA_TYPE_IS_FLOATING_POINT 0
@@ -112,6 +126,12 @@
 #define DATA_TYPE_IS_SIGNED 1
 #else
 #define DATA_TYPE_IS_SIGNED 0
+#endif
+
+#if (DATA_TYPE_ID == DataTypeBool)
+#define DATA_TYPE_IS_BOOL 1
+#else
+#define DATA_TYPE_IS_BOOL 0
 #endif
 
 #if (DATA_TYPE_ID == DataTypeComplex128)
