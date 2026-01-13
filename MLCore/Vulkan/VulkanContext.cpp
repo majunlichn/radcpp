@@ -50,14 +50,14 @@ VulkanDevice* VulkanContext::GetDevice()
     return static_cast<VulkanDevice*>(m_device.get());
 }
 
-void VulkanContext::Fill(const Tensor& input, Scalar value)
+void VulkanContext::Fill(const Tensor& input, const Scalar& value)
 {
     m_opFill->SetTensor(1, input);
     m_opFill->m_shaderUniforms.params.Set(input.m_dataType, value);
     m_opFill->Execute();
 }
 
-void VulkanContext::Add(const Tensor& input, const Scalar other, Tensor& output)
+void VulkanContext::Add(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsFloatingPoint() == other.IsFloatingPoint());
     m_opAddScalar->SetTensor(1, input);
@@ -66,7 +66,7 @@ void VulkanContext::Add(const Tensor& input, const Scalar other, Tensor& output)
     m_opAddScalar->Execute();
 }
 
-void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output)
+void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar& alpha, Tensor& output)
 {
     assert(input.m_dataType == other.m_dataType);
     assert(input.IsFloatingPoint() == alpha.IsFloatingPoint());
@@ -77,7 +77,7 @@ void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar a
     m_opAdd->Execute();
 }
 
-void VulkanContext::Subtract(const Tensor& input, const Scalar other, Tensor& output)
+void VulkanContext::Subtract(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsFloatingPoint() == other.IsFloatingPoint());
     m_opSubtractScalar->SetTensor(1, input);
@@ -86,7 +86,7 @@ void VulkanContext::Subtract(const Tensor& input, const Scalar other, Tensor& ou
     m_opSubtractScalar->Execute();
 }
 
-void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output)
+void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Scalar& alpha, Tensor& output)
 {
     assert(input.m_dataType == other.m_dataType);
     assert(input.IsFloatingPoint() == alpha.IsFloatingPoint());
@@ -97,7 +97,7 @@ void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Sca
     m_opSubtract->Execute();
 }
 
-void VulkanContext::Multiply(const Tensor& input, const Scalar other, Tensor& output)
+void VulkanContext::Multiply(const Tensor& input, const Scalar& other, Tensor& output)
 {
     m_opMultiplyScalar->SetTensor(1, input);
     m_opMultiplyScalar->SetTensor(2, output ? output : input);
@@ -113,7 +113,7 @@ void VulkanContext::Multiply(const Tensor& input, const Tensor& other, Tensor& o
     m_opMultiply->Execute();
 }
 
-void VulkanContext::Divide(const Tensor& input, const Scalar other, Tensor& output)
+void VulkanContext::Divide(const Tensor& input, const Scalar& other, Tensor& output)
 {
     m_opDivideScalar->SetTensor(1, input);
     m_opDivideScalar->SetTensor(2, output ? output : input);
@@ -129,7 +129,7 @@ void VulkanContext::Divide(const Tensor& input, const Tensor& other, Tensor& out
     m_opDivide->Execute();
 }
 
-void VulkanContext::Remainder(const Tensor& input, const Scalar other, Tensor& output)
+void VulkanContext::Remainder(const Tensor& input, const Scalar& other, Tensor& output)
 {
     m_opRemainderScalar->SetTensor(1, input);
     m_opRemainderScalar->SetTensor(2, output ? output : input);
@@ -145,7 +145,7 @@ void VulkanContext::Remainder(const Tensor& input, const Tensor& other, Tensor& 
     m_opRemainder->Execute();
 }
 
-void VulkanContext::BitwiseAnd(const Tensor& input, const Scalar other, Tensor& output)
+void VulkanContext::BitwiseAnd(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsInteger() && other.IsInteger());
     m_opBitwiseAndScalar->SetTensor(1, input);
@@ -163,7 +163,7 @@ void VulkanContext::BitwiseAnd(const Tensor& input, const Tensor& other, Tensor&
     m_opBitwiseAnd->Execute();
 }
 
-void VulkanContext::BitwiseOr(const Tensor& input, const Scalar other, Tensor& output)
+void VulkanContext::BitwiseOr(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsInteger() && other.IsInteger());
     m_opBitwiseOrScalar->SetTensor(1, input);
@@ -181,7 +181,7 @@ void VulkanContext::BitwiseOr(const Tensor& input, const Tensor& other, Tensor& 
     m_opBitwiseOr->Execute();
 }
 
-void VulkanContext::BitwiseXor(const Tensor& input, const Scalar other, Tensor& output)
+void VulkanContext::BitwiseXor(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsInteger() && other.IsInteger());
     m_opBitwiseXorScalar->SetTensor(1, input);

@@ -13,7 +13,7 @@ CpuContext::~CpuContext()
 {
 }
 
-void CpuContext::Fill(const Tensor& input, Scalar value)
+void CpuContext::Fill(const Tensor& input, const Scalar& value)
 {
 #define ML_CPU_DISPATCH_FILL_CONSTANT(DataType)   \
     CpuTensorOpForEach<DataType>()(input, [&]() { return DataType(value); })
@@ -38,7 +38,7 @@ void CpuContext::Fill(const Tensor& input, Scalar value)
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Add(const Tensor& input, const Scalar other, Tensor& output)
+void CpuContext::Add(const Tensor& input, const Scalar& other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_ADD_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return x + ComputeType(other); });
@@ -63,7 +63,7 @@ void CpuContext::Add(const Tensor& input, const Scalar other, Tensor& output)
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Add(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output)
+void CpuContext::Add(const Tensor& input, const Tensor& other, const Scalar& alpha, Tensor& output)
 {
 #define ML_CPU_DISPATCH_ADD(DataType, ComputeType)    \
     CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return a + ComputeType(alpha) * b; });
@@ -88,7 +88,7 @@ void CpuContext::Add(const Tensor& input, const Tensor& other, const Scalar alph
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Subtract(const Tensor& input, const Scalar other, Tensor& output)
+void CpuContext::Subtract(const Tensor& input, const Scalar& other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_SUBTRACT_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return x - ComputeType(other); });
@@ -113,7 +113,7 @@ void CpuContext::Subtract(const Tensor& input, const Scalar other, Tensor& outpu
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output)
+void CpuContext::Subtract(const Tensor& input, const Tensor& other, const Scalar& alpha, Tensor& output)
 {
 #define ML_CPU_DISPATCH_SUBTRACT(DataType, ComputeType)    \
     CpuTensorOpElementWiseBinary<DataType, ComputeType>()(input, other, output, [&](ComputeType a, ComputeType b) { return a - ComputeType(alpha) * b; });
@@ -138,7 +138,7 @@ void CpuContext::Subtract(const Tensor& input, const Tensor& other, const Scalar
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Multiply(const Tensor& input, const Scalar other, Tensor& output)
+void CpuContext::Multiply(const Tensor& input, const Scalar& other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_MULTIPLY_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return x * ComputeType(other); });
@@ -188,7 +188,7 @@ void CpuContext::Multiply(const Tensor& input, const Tensor& other, Tensor& outp
     RAD_UNREACHABLE();
 }
 
-void CpuContext::Divide(const Tensor& input, const Scalar other, Tensor& output)
+void CpuContext::Divide(const Tensor& input, const Scalar& other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_DIVIDE_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return x / ComputeType(other); });
@@ -266,7 +266,7 @@ T remainder(T x, T y)
     return x % y;
 }
 
-void CpuContext::Remainder(const Tensor& input, const Scalar other, Tensor& output)
+void CpuContext::Remainder(const Tensor& input, const Scalar& other, Tensor& output)
 {
 #define ML_CPU_DISPATCH_REMAINDER_SCALAR(DataType, ComputeType)    \
     CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return remainder(x, ComputeType(other)); });
@@ -316,7 +316,7 @@ void CpuContext::Remainder(const Tensor& input, const Tensor& other, Tensor& out
     RAD_UNREACHABLE();
 }
 
-void CpuContext::BitwiseAnd(const Tensor& input, const Scalar other, Tensor& output)
+void CpuContext::BitwiseAnd(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsInteger() && other.IsInteger());
 #define ML_CPU_DISPATCH_BITWISE_AND(DataType, ComputeType)    \
@@ -356,7 +356,7 @@ void CpuContext::BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& ou
     RAD_UNREACHABLE();
 }
 
-void CpuContext::BitwiseOr(const Tensor& input, const Scalar other, Tensor& output)
+void CpuContext::BitwiseOr(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsInteger() && other.IsInteger());
 #define ML_CPU_DISPATCH_BITWISE_OR(DataType, ComputeType)    \
@@ -396,7 +396,7 @@ void CpuContext::BitwiseOr(const Tensor& input, const Tensor& other, Tensor& out
     RAD_UNREACHABLE();
 }
 
-void CpuContext::BitwiseXor(const Tensor& input, const Scalar other, Tensor& output)
+void CpuContext::BitwiseXor(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsInteger() && other.IsInteger());
 #define ML_CPU_DISPATCH_BITWISE_XOR(DataType, ComputeType)    \

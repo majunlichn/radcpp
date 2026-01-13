@@ -92,70 +92,70 @@ public:
     };
     std::string ToString(TextFormat format = TextFormat::Dec, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {});
 
-    Tensor& Fill(Scalar value);
+    Tensor& Fill(const Scalar& value);
 
-    [[nodiscard]] Tensor Add(Scalar other) const;
-    Tensor& AddInPlace(Scalar other);
-    [[nodiscard]] Tensor Add(const Tensor& other, Scalar alpha = 1) const;
-    Tensor& AddInPlace(const Tensor& other, Scalar alpha = 1);
+    [[nodiscard]] Tensor Add(const Scalar& other) const;
+    Tensor& AddInPlace(const Scalar& other);
+    [[nodiscard]] Tensor Add(const Tensor& other, const Scalar& alpha = 1) const;
+    Tensor& AddInPlace(const Tensor& other, const Scalar& alpha = 1);
 
-    Tensor& Add_(Scalar other) { return AddInPlace(other); }
-    Tensor& Add_(const Tensor& other, Scalar alpha = 1) { return AddInPlace(other); }
+    Tensor& Add_(const Scalar& other) { return AddInPlace(other); }
+    Tensor& Add_(const Tensor& other, const Scalar& alpha = 1) { return AddInPlace(other); }
 
-    [[nodiscard]] Tensor Subtract(Scalar other) const;
-    Tensor& SubtractInPlace(Scalar other);
-    [[nodiscard]] Tensor Subtract(const Tensor& other, Scalar alpha = 1) const;
-    Tensor& SubtractInPlace(const Tensor& other, Scalar alpha = 1);
+    [[nodiscard]] Tensor Subtract(const Scalar& other) const;
+    Tensor& SubtractInPlace(const Scalar& other);
+    [[nodiscard]] Tensor Subtract(const Tensor& other, const Scalar& alpha = 1) const;
+    Tensor& SubtractInPlace(const Tensor& other, const Scalar& alpha = 1);
 
-    [[nodiscard]] Tensor Sub(Scalar other) const { return Subtract(other); }
-    Tensor& Sub_(Scalar other) { return SubtractInPlace(other); }
-    [[nodiscard]] Tensor Sub(const Tensor& other, Scalar alpha = 1) const { return Subtract(other); }
-    Tensor& Sub_(const Tensor& other, Scalar alpha = 1) { return SubtractInPlace(other); }
+    [[nodiscard]] Tensor Sub(const Scalar& other) const { return Subtract(other); }
+    Tensor& Sub_(const Scalar& other) { return SubtractInPlace(other); }
+    [[nodiscard]] Tensor Sub(const Tensor& other, const Scalar& alpha = 1) const { return Subtract(other); }
+    Tensor& Sub_(const Tensor& other, const Scalar& alpha = 1) { return SubtractInPlace(other); }
 
-    [[nodiscard]] Tensor Multiply(Scalar other) const;
-    Tensor& MultiplyInPlace(Scalar other);
+    [[nodiscard]] Tensor Multiply(const Scalar& other) const;
+    Tensor& MultiplyInPlace(const Scalar& other);
     [[nodiscard]] Tensor Multiply(const Tensor& other) const;
     Tensor& MultiplyInPlace(const Tensor& other);
 
-    [[nodiscard]] Tensor Mul(Scalar other) const { return Multiply(other); }
-    Tensor& Mul_(Scalar other) { return MultiplyInPlace(other); }
+    [[nodiscard]] Tensor Mul(const Scalar& other) const { return Multiply(other); }
+    Tensor& Mul_(const Scalar& other) { return MultiplyInPlace(other); }
     [[nodiscard]] Tensor Mul(const Tensor& other) const { return Multiply(other); }
     Tensor& Mul_(const Tensor& other) { return MultiplyInPlace(other); }
 
-    [[nodiscard]] Tensor Divide(Scalar other) const;
-    Tensor& DivideInPlace(Scalar other);
+    [[nodiscard]] Tensor Divide(const Scalar& other) const;
+    Tensor& DivideInPlace(const Scalar& other);
     [[nodiscard]] Tensor Divide(const Tensor& other) const;
     Tensor& DivideInPlace(const Tensor& other);
 
-    [[nodiscard]] Tensor Div(Scalar other) const { return Divide(other); }
-    Tensor& Div_(Scalar other) { return DivideInPlace(other); }
+    [[nodiscard]] Tensor Div(const Scalar& other) const { return Divide(other); }
+    Tensor& Div_(const Scalar& other) { return DivideInPlace(other); }
     [[nodiscard]] Tensor Div(const Tensor& other) const { return Divide(other); }
     Tensor& Div_(const Tensor& other) { return DivideInPlace(other); }
 
-    [[nodiscard]] Tensor Remainder(Scalar other) const;
-    Tensor& Remainder_(Scalar other);
+    [[nodiscard]] Tensor Remainder(const Scalar& other) const;
+    Tensor& Remainder_(const Scalar& other);
     [[nodiscard]] Tensor Remainder(const Tensor& other) const;
     Tensor& Remainder_(const Tensor& other);
 
-    [[nodiscard]] Tensor BitwiseAnd(Scalar other) const;
-    Tensor& BitwiseAnd_(Scalar other);
+    [[nodiscard]] Tensor BitwiseAnd(const Scalar& other) const;
+    Tensor& BitwiseAnd_(const Scalar& other);
     [[nodiscard]] Tensor BitwiseAnd(const Tensor& other) const;
     Tensor& BitwiseAnd_(const Tensor& other);
 
-    [[nodiscard]] Tensor BitwiseOr(Scalar other) const;
-    Tensor& BitwiseOr_(Scalar other);
+    [[nodiscard]] Tensor BitwiseOr(const Scalar& other) const;
+    Tensor& BitwiseOr_(const Scalar& other);
     [[nodiscard]] Tensor BitwiseOr(const Tensor& other) const;
     Tensor& BitwiseOr_(const Tensor& other);
 
-    [[nodiscard]] Tensor BitwiseXor(Scalar other) const;
-    Tensor& BitwiseXor_(Scalar other);
+    [[nodiscard]] Tensor BitwiseXor(const Scalar& other) const;
+    Tensor& BitwiseXor_(const Scalar& other);
     [[nodiscard]] Tensor BitwiseXor(const Tensor& other) const;
     Tensor& BitwiseXor_(const Tensor& other);
 
-    Tensor& operator+=(Scalar other) { return Add_(other); }
-    Tensor& operator-=(Scalar other) { return Sub_(other); }
-    Tensor& operator*=(Scalar other) { return Mul_(other); }
-    Tensor& operator/=(Scalar other) { return Div_(other); }
+    Tensor& operator+=(const Scalar& other) { return Add_(other); }
+    Tensor& operator-=(const Scalar& other) { return Sub_(other); }
+    Tensor& operator*=(const Scalar& other) { return Mul_(other); }
+    Tensor& operator/=(const Scalar& other) { return Div_(other); }
 
     Tensor& operator+=(const Tensor& other) { return Add_(other); }
     Tensor& operator-=(const Tensor& other) { return Sub_(other); }

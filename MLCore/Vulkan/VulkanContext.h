@@ -40,30 +40,30 @@ public:
 
     VulkanDevice* GetDevice();
 
-    virtual void Fill(const Tensor& input, Scalar value) override;
+    virtual void Fill(const Tensor& input, const Scalar& value) override;
 
-    virtual void Add(const Tensor& input, const Scalar other, Tensor& output) override;
-    virtual void Add(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output) override;
+    virtual void Add(const Tensor& input, const Scalar& other, Tensor& output) override;
+    virtual void Add(const Tensor& input, const Tensor& other, const Scalar& alpha, Tensor& output) override;
 
-    virtual void Subtract(const Tensor& input, const Scalar other, Tensor& output) override;
-    virtual void Subtract(const Tensor& input, const Tensor& other, const Scalar alpha, Tensor& output) override;
+    virtual void Subtract(const Tensor& input, const Scalar& other, Tensor& output) override;
+    virtual void Subtract(const Tensor& input, const Tensor& other, const Scalar& alpha, Tensor& output) override;
 
-    virtual void Multiply(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void Multiply(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void Multiply(const Tensor& input, const Tensor& other, Tensor& output) override;
 
-    virtual void Divide(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void Divide(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void Divide(const Tensor& input, const Tensor& other, Tensor& output) override;
 
-    virtual void Remainder(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void Remainder(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void Remainder(const Tensor& input, const Tensor& other, Tensor& output) override;
 
-    virtual void BitwiseAnd(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void BitwiseAnd(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& output) override;
 
-    virtual void BitwiseOr(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void BitwiseOr(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void BitwiseOr(const Tensor& input, const Tensor& other, Tensor& output) override;
 
-    virtual void BitwiseXor(const Tensor& input, const Scalar other, Tensor& output) override;
+    virtual void BitwiseXor(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void BitwiseXor(const Tensor& input, const Tensor& other, Tensor& output) override;
 
 }; // class VulkanContext

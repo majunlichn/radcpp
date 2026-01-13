@@ -52,7 +52,7 @@ public:
 
 }; // class VulkanTensorOp
 
-struct ElementWiseParams
+struct ElementWiseShaderParams
 {
     union
     {
@@ -67,61 +67,7 @@ struct ElementWiseParams
         rad::Complex128 c128[4];
     } m_params;
 
-    void Set(DataType dataType, const Scalar& a, const Scalar& b = {}, const Scalar& c = {}, const Scalar& d = {})
-    {
-        switch (dataType)
-        {
-        case ML::DataType::Float16:
-        case ML::DataType::Float32:
-            m_params.f32 = glm::f32vec4(
-                static_cast<rad::Float32>(a), static_cast<rad::Float32>(b),
-                static_cast<rad::Float32>(c), static_cast<rad::Float32>(d));
-            break;
-        case ML::DataType::Float64:
-            m_params.f64 = glm::f64vec4(
-                static_cast<rad::Float64>(a), static_cast<rad::Float64>(b),
-                static_cast<rad::Float64>(c), static_cast<rad::Float64>(d));
-            break;
-        case ML::DataType::Sint8:
-        case ML::DataType::Sint16:
-        case ML::DataType::Sint32:
-            m_params.i32 = glm::i32vec4(static_cast<int32_t>(a), static_cast<int32_t>(b), static_cast<int32_t>(c), static_cast<int32_t>(d));
-            break;
-        case ML::DataType::Sint64:
-            m_params.i64 = glm::i64vec4(static_cast<int64_t>(a), static_cast<int64_t>(b), static_cast<int64_t>(c), static_cast<int64_t>(d));
-            break;
-        case ML::DataType::Uint8:
-        case ML::DataType::Uint16:
-        case ML::DataType::Uint32:
-            m_params.u32 = glm::u32vec4(static_cast<uint32_t>(a), static_cast<uint32_t>(b), static_cast<uint32_t>(c), static_cast<uint32_t>(d));
-            break;
-        case ML::DataType::Uint64:
-            m_params.u64 = glm::u64vec4(static_cast<uint64_t>(a), static_cast<uint64_t>(b), static_cast<uint64_t>(c), static_cast<uint64_t>(d));
-            break;
-        case ML::DataType::Bool:
-            m_params.u32 = glm::u32vec4(static_cast<bool>(a), static_cast<bool>(b), static_cast<bool>(c), static_cast<bool>(d));
-            break;
-        case ML::DataType::Complex32:
-            m_params.c32[0] = a;
-            m_params.c32[1] = b;
-            m_params.c32[2] = c;
-            m_params.c32[3] = d;
-            break;
-        case ML::DataType::Complex64:
-            m_params.c64[0] = a;
-            m_params.c64[1] = b;
-            m_params.c64[2] = c;
-            m_params.c64[3] = d;
-            break;
-        case ML::DataType::Complex128:
-            m_params.c128[0] = a;
-            m_params.c128[1] = b;
-            m_params.c128[2] = c;
-            m_params.c128[3] = d;
-            break;
-        }
-        RAD_UNREACHABLE();
-    }
+    void Set(DataType dataType, const Scalar& a, const Scalar& b = {}, const Scalar& c = {}, const Scalar& d = {});
 
 }; // struct ElementWiseShaderParams
 
@@ -134,7 +80,7 @@ public:
     {
         glm::uvec4 sizes;
         glm::uvec4 strides;
-        ElementWiseParams params;
+        ElementWiseShaderParams params;
     } m_shaderUniforms = {};
 
     static constexpr size_t DispatchDimCount = 4;
@@ -164,7 +110,7 @@ public:
         glm::uvec4 inputStrides;
         glm::uvec4 outputStrides;
         glm::uvec4 g_padding; // Unused, just for alignment
-        ElementWiseParams params;
+        ElementWiseShaderParams params;
     } m_shaderUniforms = {};
 
     static constexpr size_t DispatchDimCount = 4;
@@ -196,7 +142,7 @@ public:
         glm::uvec4 inputStrides;
         glm::uvec4 otherStrides;
         glm::uvec4 outputStrides;
-        ElementWiseParams params;
+        ElementWiseShaderParams params;
     } m_shaderUniforms = {};
 
     static constexpr size_t DispatchDimCount = 4;
