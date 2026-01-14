@@ -88,8 +88,19 @@
 
 #if ((DATA_TYPE_ID == DataTypeComplex32) || (DATA_TYPE_ID == DataTypeComplex64) || (DATA_TYPE_ID == DataTypeComplex128))
 #define DATA_TYPE_IS_COMPLEX 1
+#define COMPLEX DATA_TYPE
 #else
 #define DATA_TYPE_IS_COMPLEX 0
+#endif
+
+#if (DATA_TYPE_ID == DataTypeComplex32)
+#define COMPONENT_TYPE float16_t
+#elif (DATA_TYPE_ID == DataTypeComplex64)
+#define COMPONENT_TYPE float32_t
+#elif (DATA_TYPE_ID == DataTypeComplex128)
+#define COMPONENT_TYPE float64_t
+#else
+#define COMPONENT_TYPE DATA_TYPE
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeFloat32) || (DATA_TYPE_ID == DataTypeFloat64) || \

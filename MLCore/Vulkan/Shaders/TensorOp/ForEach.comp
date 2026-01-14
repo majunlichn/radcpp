@@ -10,7 +10,7 @@ layout(push_constant, std430) uniform PushConstants
 };
 
 #ifndef PARAM_TYPE
-    #if DATA_TYPE_IS_FLOATING_POINT && (!DATA_TYPE_IS_COMPLEX)
+    #if DATA_TYPE_IS_FLOATING_POINT
         #if ELEMENT_SIZE <= 4
             #define PARAM_TYPE f32vec4
         #elif DATA_TYPE_ID == DataTypeFloat64

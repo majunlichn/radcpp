@@ -11,7 +11,7 @@ layout(push_constant, std430) uniform PushConstants
 };
 
 #ifndef PARAM_TYPE
-    #if DATA_TYPE_IS_FLOATING_POINT && (!DATA_TYPE_IS_COMPLEX)
+    #if DATA_TYPE_IS_FLOATING_POINT
         #if ELEMENT_SIZE <= 4
             #define PARAM_TYPE f32vec4
         #elif DATA_TYPE_ID == DataTypeFloat64
@@ -52,38 +52,75 @@ layout(set = 0, binding = 2) buffer OutputTensor { DATA_TYPE g_outputTensor[]; }
 layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 #if defined(AddScalar)
+#if DATA_TYPE_IS_COMPLEX
+COMPLEX AddScalar(in COMPLEX x)
+{
+    const COMPLEX a = x;
+    const COMPLEX b = g_params.x;
+    return COMPLEX(a.real + b.real, a.imag + b.imag);
+}
+#else
 COMPUTE_TYPE AddScalar(COMPUTE_TYPE x)
 {
-    return x + COMPUTE_TYPE(g_params[0]);
+    return x + COMPUTE_TYPE(g_params.x);
 }
+#endif
 #endif
 
 #if defined(SubtractScalar)
+#if DATA_TYPE_IS_COMPLEX
+COMPLEX SubtractScalar(in COMPLEX x)
+{
+    const COMPLEX a = x;
+    const COMPLEX b = g_params.x;
+    return COMPLEX(a.real - b.real, a.imag - b.imag);
+}
+#else
 COMPUTE_TYPE SubtractScalar(COMPUTE_TYPE x)
 {
-    return x - COMPUTE_TYPE(g_params[0]);
+    return x - COMPUTE_TYPE(g_params.x);
 }
+#endif
 #endif
 
 #if defined(MultiplyScalar)
+#if DATA_TYPE_IS_COMPLEX
+COMPLEX MultiplyScalar(COMPLEX x)
+{
+    const COMPLEX a = x;
+    const COMPLEX b = g_params.x;
+    return COMPLEX(a.real * b.real - a.imag * b.imag, a.real * b.imag + a.imag * b.real);
+}
+#else
 COMPUTE_TYPE MultiplyScalar(COMPUTE_TYPE x)
 {
-    return x * COMPUTE_TYPE(g_params[0]);
+    return x * COMPUTE_TYPE(g_params.x);
 }
+#endif
 #endif
 
 #if defined(DivideScalar)
+#if DATA_TYPE_IS_COMPLEX
+COMPLEX DivideScalar(COMPLEX x)
+{
+    const COMPLEX a = x;
+    const COMPLEX b = g_params.x;
+    COMPONENT_TYPE denom = b.real * b.real + b.imag * b.imag;
+    return COMPLEX((a.real * b.real + a.imag * b.imag) / denom, (a.imag * b.real - a.real * b.imag) / denom);
+}
+#else
 COMPUTE_TYPE DivideScalar(COMPUTE_TYPE x)
 {
-    return x / COMPUTE_TYPE(g_params[0]);
+    return x / COMPUTE_TYPE(g_params.x);
 }
+#endif
 #endif
 
 #if defined(RemainderScalar)
 COMPUTE_TYPE RemainderScalar(COMPUTE_TYPE x)
 {
     const COMPUTE_TYPE a = x;
-    const COMPUTE_TYPE b = COMPUTE_TYPE(g_params[0]);
+    const COMPUTE_TYPE b = COMPUTE_TYPE(g_params.x);
 #if DATA_TYPE_IS_FLOATING_POINT
     return mod(a, b);
 #else
@@ -95,21 +132,21 @@ COMPUTE_TYPE RemainderScalar(COMPUTE_TYPE x)
 #if defined(BitwiseAndScalar)
 COMPUTE_TYPE BitwiseAndScalar(COMPUTE_TYPE x)
 {
-    return x & COMPUTE_TYPE(g_params[0]);
+    return x & COMPUTE_TYPE(g_params.x);
 }
 #endif
 
 #if defined(BitwiseOrScalar)
 COMPUTE_TYPE BitwiseOrScalar(COMPUTE_TYPE x)
 {
-    return x | COMPUTE_TYPE(g_params[0]);
+    return x | COMPUTE_TYPE(g_params.x);
 }
 #endif
 
 #if defined(BitwiseXorScalar)
 COMPUTE_TYPE BitwiseXorScalar(COMPUTE_TYPE x)
 {
-    return x ^ COMPUTE_TYPE(g_params[0]);
+    return x ^ COMPUTE_TYPE(g_params.x);
 }
 #endif
 
@@ -132,7 +169,12 @@ void main()
                             h * g_inputStrides[2] + w * g_inputStrides[3];
         uint outputIndex = g_outputIndexOffset + n * g_outputStrides[0] + c * g_outputStrides[1] +
                             h * g_outputStrides[2] + w * g_outputStrides[3];
-        COMPUTE_TYPE x = g_inputTensor[inputIndex];
+#if DATA_TYPE_IS_COMPLEX
+        const COMPLEX x = g_inputTensor[inputIndex];
+        g_outputTensor[outputIndex] = ElementOp(x);
+#else
+        const COMPUTE_TYPE x = COMPUTE_TYPE(g_inputTensor[inputIndex]);
         g_outputTensor[outputIndex] = DATA_TYPE(ElementOp(x));
+#endif
     }
 }

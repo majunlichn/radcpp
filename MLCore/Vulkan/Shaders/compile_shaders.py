@@ -116,6 +116,7 @@ def main() -> int:
     uint_types =[
         DataType.Uint8, DataType.Uint16, DataType.Uint32, DataType.Uint64,
     ]
+    complex_types = [ DataType.Complex32, DataType.Complex64, DataType.Complex128 ]
 
     try:
         original_working_dir = os.getcwd()
@@ -125,17 +126,17 @@ def main() -> int:
         if compile_all or any(name in ['Fill'] for name in cmd_args.targets):
             compile_tensor_op_fill(types)
         if compile_all or any(name in ['Add'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('AddScalar', computable_types)
-            compile_tensor_op_element_wise_binary('Add', computable_types)
+            compile_tensor_op_element_wise_unary('AddScalar', computable_types + complex_types)
+            compile_tensor_op_element_wise_binary('Add', computable_types + complex_types)
         if compile_all or any(name in ['Subtract'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('SubtractScalar', computable_types)
-            compile_tensor_op_element_wise_binary('Subtract', computable_types)
+            compile_tensor_op_element_wise_unary('SubtractScalar', computable_types + complex_types)
+            compile_tensor_op_element_wise_binary('Subtract', computable_types + complex_types)
         if compile_all or any(name in ['Multiply'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('MultiplyScalar', computable_types)
-            compile_tensor_op_element_wise_binary('Multiply', computable_types)
+            compile_tensor_op_element_wise_unary('MultiplyScalar', computable_types + complex_types)
+            compile_tensor_op_element_wise_binary('Multiply', computable_types + complex_types)
         if compile_all or any(name in ['Divide'] for name in cmd_args.targets):
-            compile_tensor_op_element_wise_unary('DivideScalar', computable_types)
-            compile_tensor_op_element_wise_binary('Divide', computable_types)
+            compile_tensor_op_element_wise_unary('DivideScalar', computable_types + complex_types)
+            compile_tensor_op_element_wise_binary('Divide', computable_types + complex_types)
         if compile_all or any(name in ['Remainder'] for name in cmd_args.targets):
             compile_tensor_op_element_wise_unary('RemainderScalar', computable_types)
             compile_tensor_op_element_wise_binary('Remainder', computable_types)
