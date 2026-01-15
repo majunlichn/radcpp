@@ -121,63 +121,36 @@ std::string ToStringFixedWidthDec(const void* data, DataType dataType)
     if (dataType == DataType::Float16)
     {
         uint16_t bits = *reinterpret_cast<const uint16_t*>(data);
-        return std::format("{:11.4f}", rad::fp16_ieee_to_fp32_value(bits));
+        float value = rad::fp16_ieee_to_fp32_value(bits);
+        return std::format("{:11.4e}", value);
     }
     else if (dataType == DataType::Float32)
     {
         float value = *reinterpret_cast<const float*>(data);
-        if (std::abs(value) < 1000)
-        {
-            return std::format("{:11.4f}", value);
-        }
-        else
-        {
-            return std::format("{:11.4e}", value);
-        }
+        return std::format("{:11.4e}", value);
     }
     else if (dataType == DataType::Float64)
     {
         double value = *reinterpret_cast<const double*>(data);
-        if (std::abs(value) < 1000)
-        {
-            return std::format("{:12.4f}", value);
-        }
-        else
-        {
-            return std::format("{:12.4e}", value);
-        }
+        return std::format("{:12.4e}", value);
     }
     else if (dataType == DataType::BFloat16)
     {
         uint16_t bits = *reinterpret_cast<const uint16_t*>(data);
         float value = rad::bf16_to_fp32(bits);
-        if (value < 1000)
-        {
-            return std::format("{:11.4f}", value);
-        }
-        else
-        {
-            return std::format("{:11.4e}", value);
-        }
+        return std::format("{:11.4e}", value);
     }
     else if (dataType == DataType::Float8E4M3)
     {
         uint8_t bits = *reinterpret_cast<const uint8_t*>(data);
         float value = rad::fp8e4m3fn_to_fp32_value(bits);
-        return std::format("{:7.2f}", value);
+        return std::format("{:9.2e}", value);
     }
     else if (dataType == DataType::Float8E5M2)
     {
         uint8_t bits = *reinterpret_cast<const uint8_t*>(data);
         float value = rad::fp8e5m2_to_fp32_value(bits);
-        if (value < 1000)
-        {
-            return std::format("{:9.2f}", value);
-        }
-        else
-        {
-            return std::format("{:9.2e}", value);
-        }
+        return std::format("{:9.2e}", value);
     }
     else if (dataType == DataType::Sint8)
     {
@@ -222,79 +195,22 @@ std::string ToStringFixedWidthDec(const void* data, DataType dataType)
     else if (dataType == DataType::Bool)
     {
         Bool value = *reinterpret_cast<const Bool*>(data);
-        return std::format("{}", value ? 'T' : 'F');
+        return std::format("{}", value ? '1' : '0');
     }
     else if (dataType == DataType::Complex32)
     {
         rad::Complex32 value = *reinterpret_cast<const rad::Complex32*>(data);
-        std::string str = "(";
-        if (std::abs(value.real()) < 1000)
-        {
-            str += std::format("{:11.4f}", float(value.real()));
-        }
-        else
-        {
-            str += std::format("{:11.4e}", float(value.real()));
-        }
-        str += ',';
-        if (std::abs(value.imag()) < 1000)
-        {
-            str += std::format("{:11.4f}", float(value.imag()));
-        }
-        else
-        {
-            str += std::format("{:11.4e}", float(value.imag()));
-        }
-        str += ")";
-        return str;
+        return std::format("({:11.4e}, {:11.4e})", float(value.real()), float(value.imag()));
     }
     else if (dataType == DataType::Complex64)
     {
         rad::Complex64 value = *reinterpret_cast<const rad::Complex64*>(data);
-        std::string str = "(";
-        if (std::abs(value.real()) < 1000)
-        {
-            str += std::format("{:11.4f}", value.real());
-        }
-        else
-        {
-            str += std::format("{:11.4e}", value.real());
-        }
-        str += ',';
-        if (std::abs(value.imag()) < 1000)
-        {
-            str += std::format("{:11.4f}", value.imag());
-        }
-        else
-        {
-            str += std::format("{:11.4e}", value.imag());
-        }
-        str += ")";
-        return str;
+        return std::format("({:11.4e}, {:11.4e})", float(value.real()), float(value.imag()));
     }
     else if (dataType == DataType::Complex128)
     {
         rad::Complex128 value = *reinterpret_cast<const rad::Complex128*>(data);
-        std::string str = "(";
-        if (std::abs(value.real()) < 1000)
-        {
-            str += std::format("{:12.4f}", value.real());
-        }
-        else
-        {
-            str += std::format("{:12.4e}", value.real());
-        }
-        str += ',';
-        if (std::abs(value.imag()) < 1000)
-        {
-            str += std::format("{:12.4f}", value.imag());
-        }
-        else
-        {
-            str += std::format("{:12.4e}", value.imag());
-        }
-        str += ")";
-        return str;
+        return std::format("({:12.4e}, {:12.4e})", value.real(), value.imag());
     }
     else
     {
