@@ -16,14 +16,23 @@ size_t TableFormatter::GetMaxColCount() const
     return maxColCount;
 }
 
-std::string TableFormatter::Align(const std::string& formatted, const size_t colWidth, CellAlignment alignment)
+void TableFormatter::SetColAlignment(size_t colIndex, ColAlignment alignment)
+{
+    if (colIndex >= GetMaxColCount())
+    {
+        ResizeCols(colIndex + 1);
+    }
+    m_colAlignments[colIndex] = alignment;
+}
+
+std::string TableFormatter::Align(const std::string& formatted, const size_t colWidth, ColAlignment alignment)
 {
     assert(formatted.size() <= colWidth);
-    if (alignment == CellAlignment::Left)
+    if (alignment == ColAlignment::Left)
     {
         return formatted + std::string(colWidth - formatted.size(), ' ');
     }
-    else if (alignment == CellAlignment::Right)
+    else if (alignment == ColAlignment::Right)
     {
         return std::string(colWidth - formatted.size(), ' ') + formatted;
     }
@@ -102,7 +111,7 @@ std::string TableFormatter::Print(const PrintOptions& options)
         {
             const auto& cell = m_rows[row][col];
             size_t colWidth = options.unifiedColumnWidth ? maxColWidth : m_colWidths[col];
-            CellAlignment alignment = m_colAlignments[col];
+            ColAlignment alignment = m_colAlignments[col];
             buffer += Align(cell.formatted, colWidth, alignment) + options.columnSeparator;
         }
         buffer += '\n';

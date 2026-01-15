@@ -17,9 +17,9 @@ TEST(IO, TableFormatter)
     }
     rad::TableFormatter::PrintOptions printOptions = {};
     printOptions.unifiedColumnWidth = true;
-    table.m_colAlignments[0] = rad::TableFormatter::CellAlignment::Right;
-    table.m_colAlignments[1] = rad::TableFormatter::CellAlignment::Right;
-    table.m_colAlignments[2] = rad::TableFormatter::CellAlignment::Right;
-    table.m_colAlignments[3] = rad::TableFormatter::CellAlignment::Right;
+    table.SetColAlignment(0, rad::TableFormatter::ColAlignment::Right);
+    table.SetColAlignment(1, rad::TableFormatter::ColAlignment::Right);
+    table.SetColAlignment(2, rad::TableFormatter::ColAlignment::Right);
+    table.SetColAlignment(3, rad::TableFormatter::ColAlignment::Right);
     RAD_LOG(info, "TableFormatter: \n{}", table.Print(printOptions));
 }

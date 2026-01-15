@@ -48,7 +48,7 @@ public:
         std::string stringFormat = "{}";
     } m_format;
 
-    enum class CellAlignment
+    enum class ColAlignment
     {
         Left,
         Right,
@@ -56,7 +56,7 @@ public:
     };
 
     std::vector<size_t> m_colWidths;
-    std::vector<CellAlignment> m_colAlignments;
+    std::vector<ColAlignment> m_colAlignments;
 
     TableFormatter() = default;
     ~TableFormatter() = default;
@@ -93,7 +93,7 @@ public:
         m_rows.resize(numRows);
     }
 
-    void ResizeColumns(size_t numCols)
+    void ResizeCols(size_t numCols)
     {
         for (auto& row : m_rows)
         {
@@ -106,7 +106,7 @@ public:
     void Resize(size_t numRows, size_t numCols)
     {
         ResizeRows(numRows);
-        ResizeColumns(numCols);
+        ResizeCols(numCols);
     }
 
     void Clear()
@@ -123,26 +123,47 @@ public:
     template <typename T>
     T GetValue(size_t rowIndex, size_t colIndex) const;
 
-    void SetCurrentCell(size_t rowIndex, size_t colIndex)
+    void NextRow()
     {
-        m_currRowIndex = rowIndex;
-        m_currColIndex = colIndex;
+        m_currRowIndex += 1;
+        m_currColIndex = 0;
+    }
+
+    void NextCol()
+    {
+        m_currColIndex += 1;
+    }
+
+    template <typename T>
+    void SetValue(const T& value)
+    {
+        SetValue(m_currRowIndex, m_currColIndex, value);
+    }
+
+    void AddRow()
+    {
+        m_currRowIndex += 1;
+        m_currColIndex = 0;
+        if (m_currRowIndex >= m_rows.size())
+        {
+            ResizeRows(m_currRowIndex + 1);
+        }
     }
 
     template <typename T>
     void AddCell(const T& value)
     {
+        m_currColIndex += 1;
+        if (m_currColIndex >= m_rows[m_currRowIndex].size())
+        {
+            ResizeCols(m_currColIndex + 1);
+        }
         SetValue(m_currRowIndex, m_currColIndex, value);
-        m_currColIndex++;
     }
 
-    void NextRow()
-    {
-        m_currRowIndex++;
-        m_currColIndex = 0;
-    }
+    void SetColAlignment(size_t colIndex, ColAlignment alignment);
 
-    static std::string Align(const std::string& formatted, const size_t colWidth, CellAlignment alignment);
+    static std::string Align(const std::string& formatted, const size_t colWidth, ColAlignment alignment);
     void Format(size_t rowIndex, size_t colIndex);
 
     struct PrintOptions
@@ -164,7 +185,7 @@ inline void TableFormatter::SetValue(size_t rowIndex, size_t colIndex, const T& 
     }
     if (colIndex >= m_rows[rowIndex].size())
     {
-        ResizeColumns(colIndex + 1);
+        ResizeCols(colIndex + 1);
     }
 
     if constexpr (is_floating_point_v<T>)
