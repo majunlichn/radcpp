@@ -35,48 +35,53 @@ std::string TableFormatter::Align(const std::string& formatted, const size_t col
     }
 }
 
+void TableFormatter::Format(size_t rowIndex, size_t colIndex)
+{
+    const auto& cell = m_rows[rowIndex][colIndex];
+    switch (cell.type)
+    {
+    case CellType::Float:
+    {
+        double value = std::get<double>(cell.value);
+        if (m_format.floatAdaptiveSci && (value != 0) &&
+            ((std::abs(value) >= m_format.floatSciThreshold) || (std::abs(value) < 1.0 / m_format.floatSciThreshold)))
+        {
+            m_rows[rowIndex][colIndex].formatted = std::vformat("{:.4e}", std::make_format_args(value));
+            break;
+        }
+        else
+        {
+            m_rows[rowIndex][colIndex].formatted = std::vformat("{:.4f}", std::make_format_args(value));
+            break;
+        }
+        break;
+    }
+    case CellType::Int64:
+        m_rows[rowIndex][colIndex].formatted = std::vformat(m_format.intFormat, std::make_format_args(std::get<int64_t>(cell.value)));
+        break;
+    case CellType::UInt64:
+        m_rows[rowIndex][colIndex].formatted = std::vformat(m_format.uintFormat, std::make_format_args(std::get<uint64_t>(cell.value)));
+        break;
+    case CellType::Bool:
+        m_rows[rowIndex][colIndex].formatted = std::get<bool>(cell.value) ? m_format.boolTrueString : m_format.boolFalseString;
+        break;
+    case CellType::String:
+        m_rows[rowIndex][colIndex].formatted = std::vformat(m_format.stringFormat, std::make_format_args(std::get<std::string>(cell.value)));
+        break;
+    }
+    if (m_rows[rowIndex][colIndex].formatted.size() > m_colWidths[colIndex])
+    {
+        m_colWidths[colIndex] = m_rows[rowIndex][colIndex].formatted.size();
+    }
+}
+
 std::string TableFormatter::Print(const PrintOptions& options)
 {
-    for (size_t row = 0; row < m_rows.size(); ++row)
+    for (size_t rowIndex = 0; rowIndex < m_rows.size(); ++rowIndex)
     {
-        for (size_t col = 0; col < m_rows[row].size(); ++col)
+        for (size_t colIndex = 0; colIndex < m_rows[rowIndex].size(); ++colIndex)
         {
-            const auto& cell = m_rows[row][col];
-            switch (cell.type)
-            {
-            case CellType::Float:
-            {
-                double value = std::get<double>(cell.value);
-                if (m_format.floatAdaptiveSci && (value != 0) &&
-                    ((std::abs(value) >= m_format.floatSciThreshold) || (std::abs(value) < 1.0 / m_format.floatSciThreshold)))
-                {
-                    m_rows[row][col].formatted = std::vformat("{:.4e}", std::make_format_args(value));
-                    break;
-                }
-                else
-                {
-                    m_rows[row][col].formatted = std::vformat("{:.4f}", std::make_format_args(value));
-                    break;
-                }
-                break;
-            }
-            case CellType::Int64:
-                m_rows[row][col].formatted = std::vformat(m_format.intFormat, std::make_format_args(std::get<int64_t>(cell.value)));
-                break;
-            case CellType::UInt64:
-                m_rows[row][col].formatted = std::vformat(m_format.uintFormat, std::make_format_args(std::get<uint64_t>(cell.value)));
-                break;
-            case CellType::Bool:
-                m_rows[row][col].formatted = std::get<bool>(cell.value) ? m_format.boolTrueString : m_format.boolFalseString;
-                break;
-            case CellType::String:
-                m_rows[row][col].formatted = std::vformat(m_format.stringFormat, std::make_format_args(std::get<std::string>(cell.value)));
-                break;
-            }
-            if (m_rows[row][col].formatted.size() > m_colWidths[col])
-            {
-                m_colWidths[col] = m_rows[row][col].formatted.size();
-            }
+            Format(rowIndex, colIndex);
         }
     }
 

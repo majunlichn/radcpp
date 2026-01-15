@@ -88,9 +88,13 @@ public:
         m_colAlignments.reserve(numCols);
     }
 
-    void Resize(size_t numRows, size_t numCols)
+    void ResizeRows(size_t numRows)
     {
         m_rows.resize(numRows);
+    }
+
+    void ResizeColumns(size_t numCols)
+    {
         for (auto& row : m_rows)
         {
             row.resize(numCols);
@@ -99,72 +103,25 @@ public:
         m_colAlignments.resize(numCols);
     }
 
-    template <typename T>
-    void SetValue(size_t rowIndex, size_t colIndex, const T& value)
+    void Resize(size_t numRows, size_t numCols)
     {
-        if (rowIndex >= m_rows.size())
-        {
-            m_rows.resize(rowIndex + 1);
-        }
-        if (colIndex >= m_rows[rowIndex].size())
-        {
-            m_rows[rowIndex].resize(colIndex + 1);
-        }
+        ResizeRows(numRows);
+        ResizeColumns(numCols);
+    }
 
-        if constexpr (is_floating_point_v<T>)
-        {
-            m_rows[rowIndex][colIndex].type = CellType::Float;
-            m_rows[rowIndex][colIndex].value = double(value);
-        }
-        else if constexpr (is_signed_integer_v<T>)
-        {
-            m_rows[rowIndex][colIndex].type = CellType::Int64;
-            m_rows[rowIndex][colIndex].value = int64_t(value);
-        }
-        else if constexpr (std::is_same_v<T, bool>)
-        {
-            m_rows[rowIndex][colIndex].type = CellType::Bool;
-            m_rows[rowIndex][colIndex].value = bool(value);
-        }
-        else if constexpr (is_unsigned_integer_v<T>)
-        {
-            m_rows[rowIndex][colIndex].type = CellType::UInt64;
-            m_rows[rowIndex][colIndex].value = uint64_t(value);
-        }
-        else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, const char*>)
-        {
-            m_rows[rowIndex][colIndex].type = CellType::String;
-            m_rows[rowIndex][colIndex].value = value;
-        }
-        else
-        {
-            RAD_UNREACHABLE();
-            return;
-        }
+    void Clear()
+    {
+        m_rows.clear();
+        m_currRowIndex = 0;
+        m_currColIndex = 0;
+        m_colWidths.clear();
+        m_colAlignments.clear();
     }
 
     template <typename T>
-    T GetValue(size_t rowIndex, size_t colIndex) const
-    {
-        assert(rowIndex < m_rows.size());
-        assert(colIndex < m_rows[rowIndex].size());
-
-        switch (m_rows[rowIndex][colIndex].type)
-        {
-        case CellType::Float:
-            return static_cast<T>(std::get<double>(m_rows[rowIndex][colIndex].value));
-        case CellType::Int64:
-            return static_cast<T>(std::get<int64_t>(m_rows[rowIndex][colIndex].value));
-        case CellType::UInt64:
-            return static_cast<T>(std::get<uint64_t>(m_rows[rowIndex][colIndex].value));
-        case CellType::Bool:
-            return static_cast<T>(std::get<bool>(m_rows[rowIndex][colIndex].value));
-        case CellType::String:
-            return static_cast<T>(std::get<std::string>(m_rows[rowIndex][colIndex].value));
-        }
-        RAD_UNREACHABLE();
-        return T();
-    }
+    void SetValue(size_t rowIndex, size_t colIndex, const T& value);
+    template <typename T>
+    T GetValue(size_t rowIndex, size_t colIndex) const;
 
     void SetCurrentCell(size_t rowIndex, size_t colIndex)
     {
@@ -186,6 +143,7 @@ public:
     }
 
     static std::string Align(const std::string& formatted, const size_t colWidth, CellAlignment alignment);
+    void Format(size_t rowIndex, size_t colIndex);
 
     struct PrintOptions
     {
@@ -193,8 +151,75 @@ public:
         char columnSeparator = ',';
     } m_printOptions;
 
-    std::string Print(const PrintOptions& options);
+    std::string Print(const PrintOptions& options = {});
 
 }; // class TableFormatter
+
+template<typename T>
+inline void TableFormatter::SetValue(size_t rowIndex, size_t colIndex, const T& value)
+{
+    if (rowIndex >= m_rows.size())
+    {
+        ResizeRows(rowIndex + 1);
+    }
+    if (colIndex >= m_rows[rowIndex].size())
+    {
+        ResizeColumns(colIndex + 1);
+    }
+
+    if constexpr (is_floating_point_v<T>)
+    {
+        m_rows[rowIndex][colIndex].type = CellType::Float;
+        m_rows[rowIndex][colIndex].value = double(value);
+    }
+    else if constexpr (is_signed_integer_v<T>)
+    {
+        m_rows[rowIndex][colIndex].type = CellType::Int64;
+        m_rows[rowIndex][colIndex].value = int64_t(value);
+    }
+    else if constexpr (std::is_same_v<T, bool>)
+    {
+        m_rows[rowIndex][colIndex].type = CellType::Bool;
+        m_rows[rowIndex][colIndex].value = bool(value);
+    }
+    else if constexpr (is_unsigned_integer_v<T>)
+    {
+        m_rows[rowIndex][colIndex].type = CellType::UInt64;
+        m_rows[rowIndex][colIndex].value = uint64_t(value);
+    }
+    else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, const char*>)
+    {
+        m_rows[rowIndex][colIndex].type = CellType::String;
+        m_rows[rowIndex][colIndex].value = value;
+    }
+    else
+    {
+        RAD_UNREACHABLE();
+        return;
+    }
+}
+
+template<typename T>
+inline T TableFormatter::GetValue(size_t rowIndex, size_t colIndex) const
+{
+    assert(rowIndex < m_rows.size());
+    assert(colIndex < m_rows[rowIndex].size());
+
+    switch (m_rows[rowIndex][colIndex].type)
+    {
+    case CellType::Float:
+        return static_cast<T>(std::get<double>(m_rows[rowIndex][colIndex].value));
+    case CellType::Int64:
+        return static_cast<T>(std::get<int64_t>(m_rows[rowIndex][colIndex].value));
+    case CellType::UInt64:
+        return static_cast<T>(std::get<uint64_t>(m_rows[rowIndex][colIndex].value));
+    case CellType::Bool:
+        return static_cast<T>(std::get<bool>(m_rows[rowIndex][colIndex].value));
+    case CellType::String:
+        return static_cast<T>(std::get<std::string>(m_rows[rowIndex][colIndex].value));
+    }
+    RAD_UNREACHABLE();
+    return T();
+}
 
 } // namespace rad

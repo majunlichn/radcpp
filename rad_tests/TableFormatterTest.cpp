@@ -15,5 +15,11 @@ TEST(IO, TableFormatter)
         table.SetValue<uint64_t>(row, 2, 200 + row);
         table.SetValue<bool>(row, 3, (row % 2) == 0);
     }
-    RAD_LOG(info, "TableFormatter: \n{}", table.Print());
+    rad::TableFormatter::PrintOptions printOptions = {};
+    printOptions.unifiedColumnWidth = true;
+    table.m_colAlignments[0] = rad::TableFormatter::CellAlignment::Right;
+    table.m_colAlignments[1] = rad::TableFormatter::CellAlignment::Right;
+    table.m_colAlignments[2] = rad::TableFormatter::CellAlignment::Right;
+    table.m_colAlignments[3] = rad::TableFormatter::CellAlignment::Right;
+    RAD_LOG(info, "TableFormatter: \n{}", table.Print(printOptions));
 }
