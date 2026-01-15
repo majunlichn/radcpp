@@ -3,14 +3,27 @@
 namespace rad
 {
 
-std::string TableFormatter::Align(const std::string& formatted, const size_t colWidth, Alignment alignment)
+size_t TableFormatter::GetMaxColCount() const
+{
+    size_t maxColCount = 0;
+    for (const auto& row : m_rows)
+    {
+        if (maxColCount < row.size())
+        {
+            maxColCount = row.size();
+        }
+    }
+    return maxColCount;
+}
+
+std::string TableFormatter::Align(const std::string& formatted, const size_t colWidth, CellAlignment alignment)
 {
     assert(formatted.size() <= colWidth);
-    if (alignment == Alignment::Left)
+    if (alignment == CellAlignment::Left)
     {
         return formatted + std::string(colWidth - formatted.size(), ' ');
     }
-    else if (alignment == Alignment::Right)
+    else if (alignment == CellAlignment::Right)
     {
         return std::string(colWidth - formatted.size(), ' ') + formatted;
     }
@@ -22,7 +35,7 @@ std::string TableFormatter::Align(const std::string& formatted, const size_t col
     }
 }
 
-std::string TableFormatter::Print()
+std::string TableFormatter::Print(const PrintOptions& options)
 {
     for (size_t row = 0; row < m_rows.size(); ++row)
     {
@@ -32,8 +45,21 @@ std::string TableFormatter::Print()
             switch (cell.type)
             {
             case CellType::Float:
-                m_rows[row][col].formatted = std::vformat(m_format.floatFormat, std::make_format_args(std::get<double>(cell.value)));
+            {
+                double value = std::get<double>(cell.value);
+                if (m_format.floatAdaptiveSci && (value != 0) &&
+                    ((std::abs(value) >= m_format.floatSciThreshold) || (std::abs(value) < 1.0 / m_format.floatSciThreshold)))
+                {
+                    m_rows[row][col].formatted = std::vformat("{:.4e}", std::make_format_args(value));
+                    break;
+                }
+                else
+                {
+                    m_rows[row][col].formatted = std::vformat("{:.4f}", std::make_format_args(value));
+                    break;
+                }
                 break;
+            }
             case CellType::Int64:
                 m_rows[row][col].formatted = std::vformat(m_format.intFormat, std::make_format_args(std::get<int64_t>(cell.value)));
                 break;
@@ -54,6 +80,15 @@ std::string TableFormatter::Print()
         }
     }
 
+    size_t maxColWidth = 0;
+    for (const auto& width : m_colWidths)
+    {
+        if (maxColWidth < width)
+        {
+            maxColWidth = width;
+        }
+    }
+
     std::string buffer;
     buffer.reserve(4 * 1024 * 1024);
     for (size_t row = 0; row < m_rows.size(); ++row)
@@ -61,7 +96,9 @@ std::string TableFormatter::Print()
         for (size_t col = 0; col < m_rows[row].size(); ++col)
         {
             const auto& cell = m_rows[row][col];
-            buffer += Align(cell.formatted, m_colWidths[col], m_colAlignments[col]) + ',';
+            size_t colWidth = options.unifiedColumnWidth ? maxColWidth : m_colWidths[col];
+            CellAlignment alignment = m_colAlignments[col];
+            buffer += Align(cell.formatted, colWidth, alignment) + options.columnSeparator;
         }
         buffer += '\n';
     }

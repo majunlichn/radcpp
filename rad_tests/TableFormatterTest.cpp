@@ -10,10 +10,10 @@ TEST(IO, TableFormatter)
     rad::TableFormatter table(numRows, numCols);
     for (size_t row  = 0; row < numRows; ++row)
     {
-        table.Set<double>(row, 0, 1.2345 + row);
-        table.Set<int64_t>(row, 1, 100 + row);
-        table.Set<uint64_t>(row, 2, 200 + row);
-        table.Set<bool>(row, 3, (row % 2) == 0);
+        table.SetValue<double>(row, 0, 1.2345 + row);
+        table.SetValue<int64_t>(row, 1, 100 + row);
+        table.SetValue<uint64_t>(row, 2, 200 + row);
+        table.SetValue<bool>(row, 3, (row % 2) == 0);
     }
     RAD_LOG(info, "TableFormatter: \n{}", table.Print());
 }
