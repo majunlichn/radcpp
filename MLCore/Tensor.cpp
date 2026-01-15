@@ -270,6 +270,9 @@ std::string Tensor::ToString(rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t
         return {};
     }
     std::stringstream ss;
+    ss << std::format("#Sizes=[{}]; Strides=[{}]; DumpOffsets=[{}]; DumpSizes=[{}]\n",
+        rad::ToString(m_sizes, ", "), rad::ToString(m_strides, ", "),
+        rad::ToString(offsets, ", "), rad::ToString(sizes, ", "));
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(GetDataSize());
     m_storage->Read(dataBuffer.data(), 0, dataBuffer.size());
@@ -293,7 +296,7 @@ std::string Tensor::ToString(rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t
             size_t offsetW = iter.m_offsets[dimCount - 1];
             size_t sizeH = iter.m_sizes[dimCount - 2];
             size_t sizeW = iter.m_sizes[dimCount - 1];
-            ss << std::format("Indices = [{}]\n", rad::ToString(iter.m_coord, ", "));
+            ss << std::format("#Offsets=[{}]\n", rad::ToString(iter.m_coord, ", "));
             for (size_t h = offsetH; h < offsetH + sizeH; ++h)
             {
                 iter.m_coord[dimCount - 2] = h;
@@ -310,7 +313,7 @@ std::string Tensor::ToString(rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t
                         ss << ToStringFixedWidthHex(data + bufferIndex * GetElementSize(m_dataType), m_dataType) + ", ";
                     }
                 }
-                ss << std::endl;
+                ss <<'\n';
             }
         } while (iter.Next2D());
     }

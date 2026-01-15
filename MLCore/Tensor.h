@@ -28,6 +28,12 @@ public:
 
 }; // class TensorStorage
 
+enum class TextFormat
+{
+    Dec,
+    Hex,
+};
+
 // Same as torch.Tensor, a multi-dimensional matrix containing elements of a single data type.
 // Tensor is actually a view over a reference counted TensorStorage.
 class Tensor : public rad::RefCounted<Tensor>
@@ -87,11 +93,6 @@ public:
     bool IsNCDHW() const;
     bool IsNDHWC() const;
 
-    enum class TextFormat
-    {
-        Dec,
-        Hex,
-    };
     std::string ToString(rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {}, TextFormat format = TextFormat::Dec);
 
     Tensor& Fill(const Scalar& value);

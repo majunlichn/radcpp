@@ -64,7 +64,8 @@ void VulkanContext::Fill(const Tensor& input, const Scalar& value)
 
 void VulkanContext::Add(const Tensor& input, const Scalar& other, Tensor& output)
 {
-    assert(input.IsFloatingPoint() == other.IsFloatingPoint());
+    assert((input.IsFloatingPoint() == other.IsFloatingPoint()) ||
+        (input.IsComplex() && (other.IsFloatingPoint() || other.IsComplex())));
     m_opAddScalar->SetTensor(1, input);
     m_opAddScalar->SetTensor(2, output ? output : input);
     m_opAddScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
@@ -85,7 +86,8 @@ void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar& 
 
 void VulkanContext::Subtract(const Tensor& input, const Scalar& other, Tensor& output)
 {
-    assert(input.IsFloatingPoint() == other.IsFloatingPoint());
+    assert((input.IsFloatingPoint() == other.IsFloatingPoint()) ||
+        (input.IsComplex() && (other.IsFloatingPoint() || other.IsComplex())));
     m_opSubtractScalar->SetTensor(1, input);
     m_opSubtractScalar->SetTensor(2, output ? output : input);
     m_opSubtractScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
@@ -95,7 +97,8 @@ void VulkanContext::Subtract(const Tensor& input, const Scalar& other, Tensor& o
 void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Scalar& alpha, Tensor& output)
 {
     assert(input.m_dataType == other.m_dataType);
-    assert(input.IsFloatingPoint() == alpha.IsFloatingPoint());
+    assert((input.IsFloatingPoint() == alpha.IsFloatingPoint()) ||
+        (input.IsComplex() && (alpha.IsFloatingPoint() || alpha.IsComplex())));
     m_opSubtract->SetTensor(1, input);
     m_opSubtract->SetTensor(2, other);
     m_opSubtract->SetTensor(3, output ? output : input);
@@ -105,6 +108,8 @@ void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Sca
 
 void VulkanContext::Multiply(const Tensor& input, const Scalar& other, Tensor& output)
 {
+    assert((input.IsFloatingPoint() == other.IsFloatingPoint()) ||
+        (input.IsComplex() && (other.IsFloatingPoint() || other.IsComplex())));
     m_opMultiplyScalar->SetTensor(1, input);
     m_opMultiplyScalar->SetTensor(2, output ? output : input);
     m_opMultiplyScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
@@ -121,6 +126,8 @@ void VulkanContext::Multiply(const Tensor& input, const Tensor& other, Tensor& o
 
 void VulkanContext::Divide(const Tensor& input, const Scalar& other, Tensor& output)
 {
+    assert((input.IsFloatingPoint() == other.IsFloatingPoint()) ||
+        (input.IsComplex() && (other.IsFloatingPoint() || other.IsComplex())));
     m_opDivideScalar->SetTensor(1, input);
     m_opDivideScalar->SetTensor(2, output ? output : input);
     m_opDivideScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
