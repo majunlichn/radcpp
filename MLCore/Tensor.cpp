@@ -125,6 +125,16 @@ bool Tensor::IsUnsignedInteger() const
     return IsUnsignedIntegerType(m_dataType);
 }
 
+bool Tensor::IsBool() const
+{
+    return (m_dataType == DataType::Bool);
+}
+
+bool Tensor::IsComplex() const
+{
+    return IsComplexType(m_dataType);
+}
+
 size_t Tensor::GetElementCount() const
 {
     return GetTensorElementCount(m_sizes);
@@ -253,7 +263,7 @@ bool Tensor::IsNDHWC() const
     return false;
 }
 
-std::string Tensor::ToString(TextFormat format, rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t> sizes)
+std::string Tensor::ToString(rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t> sizes, TextFormat format)
 {
     if (m_sizes.empty())
     {
@@ -284,15 +294,13 @@ std::string Tensor::ToString(TextFormat format, rad::ArrayRef<size_t> offsets, r
             size_t sizeH = iter.m_sizes[dimCount - 2];
             size_t sizeW = iter.m_sizes[dimCount - 1];
             ss << std::format("Indices = [{}]\n", rad::ToString(iter.m_coord, ", "));
-            size_t bufferIndex = iter.m_bufferIndex;
             for (size_t h = offsetH; h < offsetH + sizeH; ++h)
             {
                 iter.m_coord[dimCount - 2] = h;
-                bufferIndex += h * m_strides[dimCount - 2];
                 for (size_t w = offsetW; w < offsetW + sizeW; ++w)
                 {
                     iter.m_coord[dimCount - 1] = w;
-                    bufferIndex += w * m_strides[dimCount - 1];
+                    size_t bufferIndex = iter.m_bufferIndex + h * m_strides[dimCount - 2] + w * m_strides[dimCount - 1];
                     if (format == TextFormat::Dec)
                     {
                         ss << ToStringFixedWidthDec(data + bufferIndex * GetElementSize(m_dataType), m_dataType) + ", ";

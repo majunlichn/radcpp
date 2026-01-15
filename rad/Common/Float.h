@@ -258,12 +258,30 @@ struct Complex32
     {
     }
 
+    Float16 real() const { return m_real; }
+    Float16 imag() const { return m_imag; }
+
     Float16 m_real;
     Float16 m_imag;
 
     operator Complex64() const
     {
         return Complex64(static_cast<Float32>(m_real), static_cast<Float32>(m_imag));
+    }
+
+    bool operator==(const Complex32& other) const
+    {
+        return rad::AlmostEqual<float>(m_real, other.real()) && rad::AlmostEqual<float>(m_imag, other.imag());
+    }
+
+    bool operator==(const Complex64& other) const
+    {
+        return rad::AlmostEqual<float>(m_real, other.real()) && rad::AlmostEqual<float>(m_imag, other.imag());
+    }
+
+    bool operator==(const Complex128& other) const
+    {
+        return rad::AlmostEqual<double>(m_real, other.real()) && rad::AlmostEqual<double>(m_imag, other.imag());
     }
 
 }; // struct Complex32

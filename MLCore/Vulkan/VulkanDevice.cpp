@@ -51,7 +51,10 @@ bool VulkanDevice::IsDataTypeSupported(DataType dataType) const
         (dataType == DataType::Uint8) ||
         (dataType == DataType::Uint16) ||
         (dataType == DataType::Uint32) ||
-        (dataType == DataType::Uint64))
+        (dataType == DataType::Uint64) ||
+        (dataType == DataType::Complex32) ||
+        (dataType == DataType::Complex64) ||
+        (dataType == DataType::Complex128))
     {
         return true;
     }
@@ -82,7 +85,10 @@ bool VulkanDevice::IsDataTypeComputable(DataType dataType) const
         (dataType == DataType::Uint8) ||
         (dataType == DataType::Uint16) ||
         (dataType == DataType::Uint32) ||
-        (dataType == DataType::Uint64))
+        (dataType == DataType::Uint64) ||
+        (dataType == DataType::Complex32) ||
+        (dataType == DataType::Complex64) ||
+        (dataType == DataType::Complex128))
     {
         return true;
     }

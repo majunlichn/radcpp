@@ -4,6 +4,7 @@
 
 
 template <typename T>
+    requires(rad::is_floating_point_v<T> || rad::is_integer_v<T>)
 void TestTensorOpAdd(ML::DataType dataType)
 {
     ML::Device* device = ML::GetCurrentDevice();
@@ -17,17 +18,14 @@ void TestTensorOpAdd(ML::DataType dataType)
         return;
     }
 
-    static_assert(rad::is_floating_point_v<T> || std::is_integral_v<T>);
-    using ScalarType = std::conditional_t<rad::is_floating_point_v<T>, float, int>;
-
     ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
     ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
 
-    a.Fill(ScalarType(1));
-    b.Fill(ScalarType(1));
-    ML::Tensor c = a.Add(b, ScalarType(2));
+    a.Fill(T(1));
+    b.Fill(T(1));
+    ML::Tensor c = a.Add(b, T(2));
 
-    c += ScalarType(1);
+    c += T(1);
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -35,7 +33,46 @@ void TestTensorOpAdd(ML::DataType dataType)
     const T* results = reinterpret_cast<const T*>(dataBuffer.data());
     for (size_t i = 0; i < c.GetElementCount(); ++i)
     {
-        ASSERT_EQ(results[i], 4);
+        ASSERT_EQ(results[i], T(4));
+    }
+}
+
+template <typename T>
+    requires(rad::is_complex_v<T>)
+void TestTensorOpAdd(ML::DataType dataType)
+{
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "TensorOp.Add({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Add({}): not supported!", ML::GetDataTypeName(dataType));
+        return;
+    }
+
+    ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+
+    a.Fill(T(1.0f, 1.0f));
+    b.Fill(T(1.0f, 1.0f));
+    ML::Tensor c = a.Add(b, 2.0f);
+    ML_LOG(info, "A: \n{}", a.ToString({}, { 1, 1, 4, 4 }));
+    ML_LOG(info, "B: \n{}", b.ToString({}, { 1, 1, 4, 4 }));
+    ML_LOG(info, "C: \n{}", c.ToString({}, { 1, 1, 4, 4 }));
+    c += T(1.0f, 1.0f);
+    ML_LOG(info, "A: \n{}", a.ToString({}, {1, 1, 4, 4}));
+    ML_LOG(info, "B: \n{}", b.ToString({}, {1, 1, 4, 4}));
+    ML_LOG(info, "C: \n{}", c.ToString({}, {1, 1, 4, 4}));
+
+    std::vector<uint8_t> dataBuffer;
+    dataBuffer.resize(c.GetDataSize());
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    const T* results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], T(4.0f, 4.0f));
     }
 }
 
@@ -48,6 +85,9 @@ TEST(TensorOp, Add)
     TestTensorOpAdd<rad::Sint16>(ML::DataType::Sint16);
     TestTensorOpAdd<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpAdd<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpAdd<rad::Complex32>(ML::DataType::Complex32);
+    TestTensorOpAdd<rad::Complex64>(ML::DataType::Complex64);
+    TestTensorOpAdd<rad::Complex128>(ML::DataType::Complex128);
 }
 
 template <typename T>

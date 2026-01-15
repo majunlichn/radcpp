@@ -61,6 +61,8 @@ public:
     bool IsInteger() const;
     bool IsSignedInteger() const;
     bool IsUnsignedInteger() const;
+    bool IsBool() const;
+    bool IsComplex() const;
 
     size_t GetDimCount() const { return m_sizes.size(); }
 
@@ -90,7 +92,7 @@ public:
         Dec,
         Hex,
     };
-    std::string ToString(TextFormat format = TextFormat::Dec, rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {});
+    std::string ToString(rad::ArrayRef<size_t> offsets = {}, rad::ArrayRef<size_t> sizes = {}, TextFormat format = TextFormat::Dec);
 
     Tensor& Fill(const Scalar& value);
 

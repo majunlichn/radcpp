@@ -21,6 +21,15 @@ using Uint16 = uint16_t;
 using Uint32 = uint32_t;
 using Uint64 = uint64_t;
 
+template <class T>
+constexpr bool is_integer_v = std::is_integral_v<T>;
+
+template <class T>
+constexpr bool is_signed_integer_v = std::is_integral_v<T> && std::is_signed_v<T>;
+
+template <class T>
+constexpr bool is_unsigned_integer_v = std::is_integral_v<T> && std::is_unsigned_v<T>;
+
 template<std::integral T>
 constexpr bool HasBits(T mask, T bits) noexcept
 {

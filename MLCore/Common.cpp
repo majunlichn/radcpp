@@ -18,12 +18,13 @@ uint32_t GetElementSize(DataType type)
     case DataType::Uint16: return 2;
     case DataType::Uint32: return 4;
     case DataType::Uint64: return 8;
-    case DataType::BFloat16: return 2;
-    case DataType::Float8E4M3: return 1;
-    case DataType::Float8E5M2: return 1;
+    case DataType::Bool: return 1;
     case DataType::Complex32: return 4;
     case DataType::Complex64: return 8;
     case DataType::Complex128: return 16;
+    case DataType::BFloat16: return 2;
+    case DataType::Float8E4M3: return 1;
+    case DataType::Float8E5M2: return 1;
     default: RAD_UNREACHABLE();
     }
 }
@@ -78,6 +79,13 @@ bool IsUnsignedIntegerType(DataType type)
 bool IsIntegerType(DataType type)
 {
     return IsSignedIntegerType(type) || IsUnsignedIntegerType(type);
+}
+
+bool IsComplexType(DataType type)
+{
+    return (type == DataType::Complex32) ||
+           (type == DataType::Complex64) ||
+        (type == DataType::Complex128);
 }
 
 const char* GetDataTypeName(DataType dataType)
@@ -204,6 +212,62 @@ std::string ToStringFixedWidthDec(const void* data, DataType dataType)
         uint64_t value = *reinterpret_cast<const uint64_t*>(data);
         return std::format("{:20d}", value);
     }
+    else if (dataType == DataType::Bool)
+    {
+        Bool value = *reinterpret_cast<const Bool*>(data);
+        return std::format("{}", value ? 'T' : 'F');
+    }
+    else if (dataType == DataType::Complex32)
+    {
+        rad::Complex32 value = *reinterpret_cast<const rad::Complex32*>(data);
+        return std::format("({:11.4f}, {:11.4f})", float(value.real()), float(value.imag()) );
+    }
+    else if (dataType == DataType::Complex64)
+    {
+        rad::Complex64 value = *reinterpret_cast<const rad::Complex64*>(data);
+        std::string str = "(";
+        if (std::abs(value.real()) < 1000000)
+        {
+            str += std::format("{:14.6f}", value.real());
+        }
+        else
+        {
+            str += std::format("{:14.6e}", value.real());
+        }
+        if (std::abs(value.imag()) < 1000000)
+        {
+            str += std::format("{:14.6f}", value.imag());
+        }
+        else
+        {
+            str += std::format("{:14.6e}", value.imag());
+        }
+        str += ")";
+        return str;
+    }
+    else if (dataType == DataType::Complex128)
+    {
+        rad::Complex128 value = *reinterpret_cast<const rad::Complex128*>(data);
+        std::string str = "(";
+        if (std::abs(value.real()) < 1000000)
+        {
+            str += std::format("{:14.6f}", value.real());
+        }
+        else
+        {
+            str += std::format("{:14.6e}", value.real());
+        }
+        if (std::abs(value.imag()) < 1000000)
+        {
+            str += std::format("{:14.6f}", value.imag());
+        }
+        else
+        {
+            str += std::format("{:14.6e}", value.imag());
+        }
+        str += ")";
+        return str;
+    }
     else
     {
         RAD_UNREACHABLE();
@@ -214,7 +278,22 @@ std::string ToStringFixedWidthDec(const void* data, DataType dataType)
 std::string ToStringFixedWidthHex(const void* data, DataType dataType)
 {
     size_t elementSize = GetElementSize(dataType);
-    if (elementSize == 1)
+    if (dataType == DataType::Complex32)
+    {
+        const uint16_t* value = reinterpret_cast<const uint16_t*>(data);
+        return std::format("(0x{:04X}, 0x{:04X})", value[0], value[1]);
+    }
+    else if (dataType == DataType::Complex64)
+    {
+        const uint32_t* value = reinterpret_cast<const uint32_t*>(data);
+        return std::format("(0x{:08X}, 0x{:08X})", value[0], value[1]);
+    }
+    else if (dataType == DataType::Complex128)
+    {
+        const uint64_t* value = reinterpret_cast<const uint64_t*>(data);
+        return std::format("(0x{:016X}, 0x{:016X})", value[0], value[1]);
+    }
+    else if (elementSize == 1)
     {
         uint8_t value = *reinterpret_cast<const uint8_t*>(data);
         return std::format("0x{:02X}", value);

@@ -17,6 +17,8 @@ class Device;
 class Context;
 class Tensor;
 
+using Bool = uint8_t;
+
 enum class DataType
 {
     Unknown,
@@ -46,6 +48,7 @@ bool IsFloatingPointType(DataType type);
 bool IsSignedIntegerType(DataType type);
 bool IsUnsignedIntegerType(DataType type);
 bool IsIntegerType(DataType type);
+bool IsComplexType(DataType type);
 
 const char* GetDataTypeName(DataType dataType);
 
@@ -69,6 +72,11 @@ public:
 
     Scalar() : m_type(Type::Undefined)
     {
+    }
+
+    Scalar(rad::Float16 value) : m_type(Type::Float)
+    {
+        m_value = static_cast<double>(value);
     }
 
     Scalar(float value) : m_type(Type::Float)
@@ -104,6 +112,16 @@ public:
     Scalar(bool value) : m_type(Type::Bool)
     {
         m_value = value;
+    }
+
+    Scalar(const rad::Complex32& value) : m_type(Type::Complex)
+    {
+        m_value = rad::Complex128(value.real(), value.imag());
+    }
+
+    Scalar(const rad::Complex64& value) : m_type(Type::Complex)
+    {
+        m_value = rad::Complex128(value.real(), value.imag());
     }
 
     Scalar(const rad::Complex128& value) : m_type(Type::Complex)
@@ -274,34 +292,42 @@ public:
 
     operator rad::Complex32() const
     {
-        assert(m_type == Type::Complex);
-        const auto& c = std::get<rad::Complex128>(m_value);
         switch (m_type)
         {
         case Type::Undefined: return rad::Complex32{ rad::Float16(0), rad::Float16(0) };
-        case Type::Complex: return rad::Complex64{ static_cast<rad::Float32>(c.real()), static_cast<rad::Float32>(c.imag()) };
+        case Type::Float: return rad::Complex32{ rad::Float16(float(std::get<double>(m_value))), rad::Float16(0) };
+        case Type::Sint: return rad::Complex32{ rad::Float16(float(std::get<int64_t>(m_value))), rad::Float16(0) };
+        case Type::Uint: return rad::Complex32{ rad::Float16(float(std::get<uint64_t>(m_value))), rad::Float16(0) };
+        case Type::Complex:
+            const auto& c = std::get<rad::Complex128>(m_value);
+            return rad::Complex32{ static_cast<rad::Float32>(c.real()), static_cast<rad::Float32>(c.imag()) };
         }
         RAD_UNREACHABLE();
     }
 
     operator rad::Complex64() const
     {
-        assert(m_type == Type::Complex);
-        const auto& c = std::get<rad::Complex128>(m_value);
         switch (m_type)
         {
         case Type::Undefined: return rad::Complex64{ rad::Float32(0), rad::Float32(0) };
-        case Type::Complex: return rad::Complex64{ static_cast<rad::Float32>(c.real()), static_cast<rad::Float32>(c.imag()) };
+        case Type::Float: return rad::Complex64{ float(std::get<double>(m_value)), rad::Float32(0) };
+        case Type::Sint: return rad::Complex64{ float(std::get<int64_t>(m_value)), rad::Float32(0) };
+        case Type::Uint: return rad::Complex64{ float(std::get<uint64_t>(m_value)), rad::Float32(0) };
+        case Type::Complex:
+            const auto& c = std::get<rad::Complex128>(m_value);
+            return rad::Complex64{ static_cast<rad::Float32>(c.real()), static_cast<rad::Float32>(c.imag()) };
         }
         RAD_UNREACHABLE();
     }
 
     operator rad::Complex128() const
     {
-        assert(m_type == Type::Complex);
         switch (m_type)
         {
         case Type::Undefined: return rad::Complex128{ rad::Float64(0), rad::Float64(0) };
+        case Type::Float: return rad::Complex128{ std::get<double>(m_value), rad::Float64(0) };
+        case Type::Sint: return rad::Complex128{ double(std::get<int64_t>(m_value)), rad::Float64(0) };
+        case Type::Uint: return rad::Complex128{ double(std::get<uint64_t>(m_value)), rad::Float64(0) };
         case Type::Complex: return std::get<rad::Complex128>(m_value);
         }
         RAD_UNREACHABLE();
