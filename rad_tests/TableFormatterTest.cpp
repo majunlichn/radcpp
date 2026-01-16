@@ -1,25 +1,47 @@
 #include <rad/IO/Format.h>
 #include <rad/IO/Logging.h>
 
+#include <random>
+
 #include <gtest/gtest.h>
 
 TEST(IO, TableFormatter)
 {
-    const size_t numRows = 4;
-    const size_t numCols = 4;
-    rad::TableFormatter table(numRows, numCols);
-    for (size_t row  = 0; row < numRows; ++row)
+    std::default_random_engine rng;
+    std::uniform_real_distribution<double> floatDist(0.0, 1000.0);
+    std::uniform_int_distribution<int64_t> intDist(0, 1000);
+    std::uniform_int_distribution<uint64_t> uintDist(0, 1000);
+
+    rad::TableFormatter table;
+
+    table.SetValue("ID");
+    table.NextCol();
+    table.SetValue("A");
+    table.NextCol();
+    table.SetValue("B");
+    table.NextCol();
+    table.SetValue("C");
+    table.NextCol();
+    table.SetValue("D");
+    table.NextRow();
+
+    for (size_t row  = 0; row < 8; ++row)
     {
-        table.SetValue<double>(row, 0, 1.2345 + row);
-        table.SetValue<int64_t>(row, 1, 100 + row);
-        table.SetValue<uint64_t>(row, 2, 200 + row);
-        table.SetValue<bool>(row, 3, (row % 2) == 0);
+        table.SetValue(row);
+        table.NextCol();
+        table.SetValue(floatDist(rng));
+        table.NextCol();
+        table.SetValue(intDist(rng));
+        table.NextCol();
+        table.SetValue(uintDist(rng));
+        table.NextCol();
+        table.SetValue((row % 4) == 0);
+        table.NextRow();
     }
-    rad::TableFormatter::PrintOptions printOptions = {};
-    printOptions.unifiedColumnWidth = true;
-    table.SetColAlignment(0, rad::TableFormatter::ColAlignment::Right);
-    table.SetColAlignment(1, rad::TableFormatter::ColAlignment::Right);
-    table.SetColAlignment(2, rad::TableFormatter::ColAlignment::Right);
-    table.SetColAlignment(3, rad::TableFormatter::ColAlignment::Right);
-    RAD_LOG(info, "TableFormatter: \n{}", table.Print(printOptions));
+    table.SetAlignment(rad::TableFormatter::ColAlignment::Right);
+    table.SetHeaderBorder();
+    table.SetBottomBorder();
+    table.SetColInnerBorder(',');
+    table.m_unifiedColumnWidth = true;
+    RAD_LOG(info, "TableFormatter: \n{}", table.Print());
 }

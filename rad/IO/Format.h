@@ -17,23 +17,37 @@ class TableFormatter
 public:
     enum class CellType
     {
+        String,
         Float,
         Int64,
         UInt64,
         Bool,
-        String,
     }; // enum class CellType
 
     struct Cell
     {
-        CellType type;
-        std::variant<double, int64_t, uint64_t, bool, std::string> value;
+        CellType type = CellType::String;
+        std::variant<double, int64_t, uint64_t, bool, std::string> value = "";
         std::string formatted;
-    };
+    }; // struct Cell
 
     std::vector<std::vector<Cell>> m_rows;
     size_t m_currRowIndex = 0;
     size_t m_currColIndex = 0;
+    std::vector<size_t> m_colWidths;
+    size_t m_minColWidth = 0;
+    size_t m_colMargin = 1;
+    bool m_unifiedColumnWidth = false;
+    enum class ColAlignment
+    {
+        Left,
+        Right,
+        Center,
+    };
+    std::vector<ColAlignment> m_colAlignments;
+    std::vector<std::string> m_rowSeparators;
+    std::vector<std::string> m_colSeparators;
+
     struct TextFormat
     {
         std::string floatFormat = "{:.4f}";
@@ -47,16 +61,6 @@ public:
         std::string boolFalseString = "False";
         std::string stringFormat = "{}";
     } m_format;
-
-    enum class ColAlignment
-    {
-        Left,
-        Right,
-        Center,
-    };
-
-    std::vector<size_t> m_colWidths;
-    std::vector<ColAlignment> m_colAlignments;
 
     TableFormatter() = default;
     ~TableFormatter() = default;
@@ -77,51 +81,26 @@ public:
 
     size_t GetMaxColCount() const;
 
-    void Reserve(size_t numRows, size_t numCols)
-    {
-        m_rows.reserve(numRows);
-        for (auto& row : m_rows)
-        {
-            row.reserve(numCols);
-        }
-        m_colWidths.reserve(numCols);
-        m_colAlignments.reserve(numCols);
-    }
+    void ReserveRows(size_t numRows);
+    void ReserveCols(size_t numCols);
+    void Reserve(size_t numRows, size_t numCols);
 
-    void ResizeRows(size_t numRows)
-    {
-        m_rows.resize(numRows);
-    }
+    void ResizeRows(size_t numRows);
+    void ResizeCols(size_t numCols);
+    void Resize(size_t numRows, size_t numCols);
 
-    void ResizeCols(size_t numCols)
-    {
-        for (auto& row : m_rows)
-        {
-            row.resize(numCols);
-        }
-        m_colWidths.resize(numCols);
-        m_colAlignments.resize(numCols);
-    }
-
-    void Resize(size_t numRows, size_t numCols)
-    {
-        ResizeRows(numRows);
-        ResizeCols(numCols);
-    }
-
-    void Clear()
-    {
-        m_rows.clear();
-        m_currRowIndex = 0;
-        m_currColIndex = 0;
-        m_colWidths.clear();
-        m_colAlignments.clear();
-    }
+    void Clear();
 
     template <typename T>
     void SetValue(size_t rowIndex, size_t colIndex, const T& value);
     template <typename T>
     T GetValue(size_t rowIndex, size_t colIndex) const;
+
+    void Select(size_t rowIndex, size_t colIndex)
+    {
+        m_currRowIndex = rowIndex;
+        m_currColIndex = colIndex;
+    }
 
     void NextRow()
     {
@@ -140,39 +119,50 @@ public:
         SetValue(m_currRowIndex, m_currColIndex, value);
     }
 
-    void AddRow()
-    {
-        m_currRowIndex += 1;
-        m_currColIndex = 0;
-        if (m_currRowIndex >= m_rows.size())
-        {
-            ResizeRows(m_currRowIndex + 1);
-        }
-    }
-
-    template <typename T>
-    void AddCell(const T& value)
-    {
-        m_currColIndex += 1;
-        if (m_currColIndex >= m_rows[m_currRowIndex].size())
-        {
-            ResizeCols(m_currColIndex + 1);
-        }
-        SetValue(m_currRowIndex, m_currColIndex, value);
-    }
-
     void SetColAlignment(size_t colIndex, ColAlignment alignment);
+    void SetAlignment(ColAlignment alignment);
+
+    void SetLeftBorder(const char border = '|')
+    {
+        m_colSeparators[0] = border;
+    }
+
+    void SetRightBorder(const char border = '|')
+    {
+        m_colSeparators.back() = border;
+    }
+
+    void SetTopBorder(const char border = '-')
+    {
+        m_rowSeparators[0] = border;
+    }
+
+    void SetBottomBorder(const char border = '-')
+    {
+        m_rowSeparators.back() = border;
+    }
+
+    void SetHeaderBorder(const char border = '-')
+    {
+        if (m_rows.size() >= 1)
+        {
+            m_rowSeparators[0] = border;
+            m_rowSeparators[1] = border;
+        }
+    }
+
+    void SetColInnerBorder(const char border = ',')
+    {
+        for (size_t colIndex = 1; colIndex < m_colSeparators.size() - 1; ++colIndex)
+        {
+            m_colSeparators[colIndex] = border;
+        }
+    }
 
     static std::string Align(const std::string& formatted, const size_t colWidth, ColAlignment alignment);
     void Format(size_t rowIndex, size_t colIndex);
 
-    struct PrintOptions
-    {
-        bool unifiedColumnWidth = false;
-        char columnSeparator = ',';
-    } m_printOptions;
-
-    std::string Print(const PrintOptions& options = {});
+    std::string Print();
 
 }; // class TableFormatter
 
@@ -208,15 +198,10 @@ inline void TableFormatter::SetValue(size_t rowIndex, size_t colIndex, const T& 
         m_rows[rowIndex][colIndex].type = CellType::UInt64;
         m_rows[rowIndex][colIndex].value = uint64_t(value);
     }
-    else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, const char*>)
-    {
-        m_rows[rowIndex][colIndex].type = CellType::String;
-        m_rows[rowIndex][colIndex].value = value;
-    }
     else
     {
-        RAD_UNREACHABLE();
-        return;
+        m_rows[rowIndex][colIndex].type = CellType::String;
+        m_rows[rowIndex][colIndex].value = std::string(value);
     }
 }
 
@@ -228,6 +213,8 @@ inline T TableFormatter::GetValue(size_t rowIndex, size_t colIndex) const
 
     switch (m_rows[rowIndex][colIndex].type)
     {
+    case CellType::String:
+        return static_cast<T>(std::get<std::string>(m_rows[rowIndex][colIndex].value));
     case CellType::Float:
         return static_cast<T>(std::get<double>(m_rows[rowIndex][colIndex].value));
     case CellType::Int64:
@@ -236,8 +223,6 @@ inline T TableFormatter::GetValue(size_t rowIndex, size_t colIndex) const
         return static_cast<T>(std::get<uint64_t>(m_rows[rowIndex][colIndex].value));
     case CellType::Bool:
         return static_cast<T>(std::get<bool>(m_rows[rowIndex][colIndex].value));
-    case CellType::String:
-        return static_cast<T>(std::get<std::string>(m_rows[rowIndex][colIndex].value));
     }
     RAD_UNREACHABLE();
     return T();
