@@ -114,9 +114,10 @@ public:
     }
 
     template <typename T>
-    void SetValue(const T& value)
+    void AddCol(const T& value)
     {
         SetValue(m_currRowIndex, m_currColIndex, value);
+        NextCol();
     }
 
     void SetColAlignment(size_t colIndex, ColAlignment alignment);

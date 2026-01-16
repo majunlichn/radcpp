@@ -14,34 +14,25 @@ TEST(IO, TableFormatter)
 
     rad::TableFormatter table;
 
-    table.SetValue("ID");
-    table.NextCol();
-    table.SetValue("A");
-    table.NextCol();
-    table.SetValue("B");
-    table.NextCol();
-    table.SetValue("C");
-    table.NextCol();
-    table.SetValue("D");
+    table.AddCol("ID");
+    table.AddCol("A");
+    table.AddCol("B");
+    table.AddCol("C");
+    table.AddCol("D");
     table.NextRow();
 
     for (size_t row  = 0; row < 8; ++row)
     {
-        table.SetValue(row);
-        table.NextCol();
-        table.SetValue(floatDist(rng));
-        table.NextCol();
-        table.SetValue(intDist(rng));
-        table.NextCol();
-        table.SetValue(uintDist(rng));
-        table.NextCol();
-        table.SetValue((row % 4) == 0);
+        table.AddCol(row);
+        table.AddCol(floatDist(rng));
+        table.AddCol(intDist(rng));
+        table.AddCol(uintDist(rng));
+        table.AddCol((row % 4) == 0);
         table.NextRow();
     }
     table.SetAlignment(rad::TableFormatter::ColAlignment::Right);
     table.SetHeaderBorder();
     table.SetBottomBorder();
     table.SetColInnerBorder(',');
-    table.m_unifiedColumnWidth = true;
     RAD_LOG(info, "TableFormatter: \n{}", table.Print());
 }
