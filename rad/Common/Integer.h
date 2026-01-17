@@ -28,7 +28,7 @@ template <class T>
 constexpr bool is_signed_integer_v = std::is_integral_v<T> && std::is_signed_v<T>;
 
 template <class T>
-constexpr bool is_unsigned_integer_v = std::is_integral_v<T> && std::is_unsigned_v<T>;
+constexpr bool is_unsigned_integer_v = std::is_integral_v<T> && std::is_unsigned_v<T> && !std::is_same_v<T, bool>;
 
 template<std::integral T>
 constexpr bool HasBits(T mask, T bits) noexcept

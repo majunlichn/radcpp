@@ -35,6 +35,7 @@ list(APPEND RAD_HEADERS
     IO/Image.h
     IO/Json.h
     IO/Logging.h
+    IO/Table.h
     System/Application.h
     System/CpuInfo.h
     System/OS.h
@@ -64,6 +65,7 @@ list(APPEND RAD_PRIVATE_SOURCES
     IO/Image.cpp
     IO/Json.cpp
     IO/Logging.cpp
+    IO/Table.cpp
     System/Application.cpp
     System/CpuInfo.cpp
     System/OS.cpp
