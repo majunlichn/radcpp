@@ -403,7 +403,7 @@
 #else
 #define RAD_FORCE_INLINE
 #define RAD_ASSUME(expr)
-#define RAD_UNREACHABLE()
+#define RAD_UNREACHABLE() assert(false && "should not reach here!")
 #define RAD_DEPRECATED(message)
 #define RAD_RESTRICT
 #endif
