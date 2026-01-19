@@ -60,7 +60,7 @@ class Scalar
 public:
     enum class Type
     {
-        Undefined,
+        None,
         Float,
         Sint,
         Uint,
@@ -70,7 +70,7 @@ public:
 
     std::variant<double, int64_t, uint64_t, bool, rad::Complex128> m_value;
 
-    Scalar() : m_type(Type::Undefined)
+    Scalar() : m_type(Type::None)
     {
     }
 
@@ -163,7 +163,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<float>(std::get<double>(m_value));
         case Type::Sint: return static_cast<float>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<float>(std::get<uint64_t>(m_value));
@@ -175,7 +175,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<double>(std::get<double>(m_value));
         case Type::Sint: return static_cast<double>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<double>(std::get<uint64_t>(m_value));
@@ -187,7 +187,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<int8_t>(std::get<double>(m_value));
         case Type::Sint: return static_cast<int8_t>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<int8_t>(std::get<uint64_t>(m_value));
@@ -199,7 +199,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<int16_t>(std::get<double>(m_value));
         case Type::Sint: return static_cast<int16_t>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<int16_t>(std::get<uint64_t>(m_value));
@@ -211,7 +211,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<int32_t>(std::get<double>(m_value));
         case Type::Sint: return static_cast<int32_t>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<int32_t>(std::get<uint64_t>(m_value));
@@ -223,7 +223,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<int64_t>(std::get<double>(m_value));
         case Type::Sint: return static_cast<int64_t>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<int64_t>(std::get<uint64_t>(m_value));
@@ -235,7 +235,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<uint8_t>(std::get<double>(m_value));
         case Type::Sint: return static_cast<uint8_t>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<uint8_t>(std::get<uint64_t>(m_value));
@@ -247,7 +247,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<uint16_t>(std::get<double>(m_value));
         case Type::Sint: return static_cast<uint16_t>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<uint16_t>(std::get<uint64_t>(m_value));
@@ -259,7 +259,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<uint32_t>(std::get<double>(m_value));
         case Type::Sint: return static_cast<uint32_t>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<uint32_t>(std::get<uint64_t>(m_value));
@@ -271,7 +271,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return 0;
+        case Type::None: return 0;
         case Type::Float: return static_cast<uint64_t>(std::get<double>(m_value));
         case Type::Sint: return static_cast<uint64_t>(std::get<int64_t>(m_value));
         case Type::Uint: return static_cast<uint64_t>(std::get<uint64_t>(m_value));
@@ -284,7 +284,7 @@ public:
         assert(m_type == Type::Bool);
         switch (m_type)
         {
-        case Type::Undefined: return false;
+        case Type::None: return false;
         case Type::Bool: return std::get<bool>(m_value);
         }
         RAD_UNREACHABLE();
@@ -294,7 +294,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return rad::Complex32{ rad::Float16(0), rad::Float16(0) };
+        case Type::None: return rad::Complex32{ rad::Float16(0), rad::Float16(0) };
         case Type::Float: return rad::Complex32{ rad::Float16(float(std::get<double>(m_value))), rad::Float16(0) };
         case Type::Sint: return rad::Complex32{ rad::Float16(float(std::get<int64_t>(m_value))), rad::Float16(0) };
         case Type::Uint: return rad::Complex32{ rad::Float16(float(std::get<uint64_t>(m_value))), rad::Float16(0) };
@@ -309,7 +309,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return rad::Complex64{ rad::Float32(0), rad::Float32(0) };
+        case Type::None: return rad::Complex64{ rad::Float32(0), rad::Float32(0) };
         case Type::Float: return rad::Complex64{ float(std::get<double>(m_value)), rad::Float32(0) };
         case Type::Sint: return rad::Complex64{ float(std::get<int64_t>(m_value)), rad::Float32(0) };
         case Type::Uint: return rad::Complex64{ float(std::get<uint64_t>(m_value)), rad::Float32(0) };
@@ -324,7 +324,7 @@ public:
     {
         switch (m_type)
         {
-        case Type::Undefined: return rad::Complex128{ rad::Float64(0), rad::Float64(0) };
+        case Type::None: return rad::Complex128{ rad::Float64(0), rad::Float64(0) };
         case Type::Float: return rad::Complex128{ std::get<double>(m_value), rad::Float64(0) };
         case Type::Sint: return rad::Complex128{ double(std::get<int64_t>(m_value)), rad::Float64(0) };
         case Type::Uint: return rad::Complex128{ double(std::get<uint64_t>(m_value)), rad::Float64(0) };

@@ -127,7 +127,7 @@ std::string VulkanTensorOp::GetShaderBinaryDir() const
     return shaderBinaryDir;
 }
 
-void ElementWiseShaderParams::Set(DataType dataType, const Scalar& a, const Scalar& b, const Scalar& c, const Scalar& d)
+void VulkanElementWiseParams::Set(DataType dataType, const Scalar& a, const Scalar& b, const Scalar& c, const Scalar& d)
 {
     switch (dataType)
     {
