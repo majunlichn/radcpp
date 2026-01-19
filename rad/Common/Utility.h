@@ -3,6 +3,9 @@
 #include <rad/Common/Platform.h>
 #include <utility>
 
+// https://github.com/microsoft/GSL
+#include <gsl/gsl>
+
 namespace rad
 {
 

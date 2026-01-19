@@ -16,3 +16,6 @@
 [submodule "imported/argparse"]
 	path = imported/argparse
 	url = https://github.com/p-ranav/argparse.git
+[submodule "imported/GSL"]
+	path = imported/GSL
+	url = https://github.com/microsoft/GSL.git
