@@ -22,6 +22,6 @@ public:
 
 }; // class CpuBackend
 
-Backend* InitCpuBackend(std::string_view name = "CPU");
+rad::Ref<CpuBackend> CreateCpuBackend();
 
 } // namespace ML

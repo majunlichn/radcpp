@@ -17,26 +17,10 @@ bool RegisterBackend(std::string_view name, rad::Ref<Backend> backend);
 void UnregisterBackend(std::string_view name);
 Backend* GetBackend(std::string_view name);
 
-class ContextPool : public rad::RefCounted<ContextPool>
-{
-public:
-    std::map<Device*, rad::Ref<Context>> m_contexts;
-
-    ContextPool();
-    virtual ~ContextPool();
-
-    // Create default contexts for all devices of the backend.
-    bool CreateContextsForBackend(Backend* backend);
-    bool SetDeviceContext(Device* device, rad::Ref<Context> context);
-
-    void Clear();
-
-    Context* GetContext(Device* device);
-
-}; // class ContextPool
-
-// The global context pool.
-extern rad::Ref<ContextPool> g_contextPool;
+Device* GetDevice(std::string_view backendName, size_t deviceIndex);
+void SetDefaultContext(Device* device, rad::Ref<Context> context);
+Context* GetDefaultContext(Device* device);
+Context* GetDefaultContext(std::string_view backendName, size_t deviceIndex);
 
 // Set the default global device of the current thread.
 void SetCurrentDevice(rad::Ref<Device> device);

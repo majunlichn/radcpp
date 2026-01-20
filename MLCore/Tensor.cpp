@@ -87,10 +87,9 @@ Tensor::~Tensor()
 
 Tensor MakeTensor(rad::ArrayRef<size_t> sizes, DataType dataType, const TensorOptions& options)
 {
-    rad::Ref<Device> device = GetCurrentDevice();
+    Device* device = GetCurrentDevice();
     rad::Ref<TensorStorage> storage = device->CreateTensorStorage(sizes, dataType, options);
-    rad::Ref<Context> context = g_contextPool->GetContext(device.get());
-    return Tensor(storage, context);
+    return Tensor(storage, GetCurrentContext());
 }
 
 Tensor MakeTensorLike(const Tensor& ref)

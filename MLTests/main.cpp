@@ -34,32 +34,21 @@ int main(int argc, char* argv[])
     }
 
     ML::Initialize();
-    ML::Backend* backend = nullptr;
-    if (rad::StrCaseEqual(g_options.backend, "CPU"))
+    rad::Ref<ML::Backend> backend;
+    if (rad::StrCaseEqual(g_options.backend, "Vulkan"))
     {
-        if (backend = ML::InitCpuBackend("CPU"))
+        if (backend = ML::CreateVulkanBackend())
         {
-            ML_LOG(info, "CPU backend initialized: {}", backend->GetName());
+            ML::RegisterBackend("Vulkan", backend);
+            ML_LOG(info, "Vulkan backend initialized.");
         }
         else
         {
-            ML_LOG(err, "Failed to init the CPU backend!");
+            ML_LOG(err, "Failed to create the Vulkan backend!");
             return -1;
         }
     }
-    else if (rad::StrCaseEqual(g_options.backend, "Vulkan"))
-    {
-        if (backend = ML::InitVulkanBackend("Vulkan"))
-        {
-            ML_LOG(info, "Vulkan backend initialized: {}", backend->GetName());
-        }
-        else
-        {
-            ML_LOG(err, "Failed to init the Vulkan backend!");
-            return -1;
-        }
-    }
-    else
+    else if (!ML::GetBackend(g_options.backend))
     {
         ML_LOG(err, "Backend '{}' is not supported!", g_options.backend);
         return -1;

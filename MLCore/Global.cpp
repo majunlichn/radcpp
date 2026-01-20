@@ -2,21 +2,24 @@
 #include <MLCore/Backend.h>
 #include <MLCore/Logging.h>
 
+#include <MLCore/CPU/CpuBackend.h>
+
 namespace ML
 {
 
 static std::map<std::string, rad::Ref<Backend>, rad::StringLess> g_backends;
 
+std::map<Device*, rad::Ref<Context>> g_defaultContexts;
+
 thread_local rad::Ref<Device> g_currentDevice;
 thread_local rad::Ref<Context> g_currentContext;
 
-rad::Ref<ContextPool> g_contextPool;
-
 bool Initialize()
 {
-    if (!g_contextPool)
+    if (auto cpuBackend = CreateCpuBackend())
     {
-        g_contextPool = RAD_NEW ContextPool();
+        RegisterBackend("CPU", cpuBackend);
+        SetCurrentDevice(cpuBackend->GetDevice(0));
     }
     return true;
 }
@@ -25,7 +28,7 @@ void Finalize()
 {
     g_currentContext.reset();
     g_currentDevice.reset();
-    g_contextPool.reset();
+    g_defaultContexts.clear();
     g_backends.clear();
 }
 
@@ -55,10 +58,47 @@ Backend* GetBackend(std::string_view name)
     }
 }
 
+Device* GetDevice(std::string_view backendName, size_t deviceIndex)
+{
+    return GetBackend(backendName)->GetDevice(deviceIndex);
+}
+
+void SetDefaultContext(Device* device, rad::Ref<Context> context)
+{
+    g_defaultContexts[device] = context;
+}
+
+Context* GetDefaultContext(Device* device)
+{
+    auto iter = g_defaultContexts.find(device);
+    if (iter != g_defaultContexts.end())
+    {
+        return iter->second.get();
+    }
+    else
+    {
+        auto [iter, inserted] = g_defaultContexts.emplace(device, device->CreateContext());
+        return iter->second.get();
+    }
+}
+
+Context* GetDefaultContext(std::string_view backendName, size_t deviceIndex)
+{
+    Device* device = GetDevice(backendName, deviceIndex);
+    if (device)
+    {
+        return GetDefaultContext(device);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 void SetCurrentDevice(rad::Ref<Device> device)
 {
     g_currentDevice = std::move(device);
-    SetCurrentContext(g_contextPool->GetContext(g_currentDevice.get()));
+    SetCurrentContext(GetDefaultContext(g_currentDevice.get()));
 }
 
 Device* GetCurrentDevice()
@@ -75,62 +115,6 @@ void SetCurrentContext(rad::Ref<Context> context)
 Context* GetCurrentContext()
 {
     return g_currentContext.get();
-}
-
-ContextPool* GetGlobalContextPool()
-{
-    return g_contextPool.get();
-}
-
-ContextPool::ContextPool()
-{
-}
-
-ContextPool::~ContextPool()
-{
-    Clear();
-}
-
-bool ContextPool::CreateContextsForBackend(Backend* backend)
-{
-    for (size_t i = 0; i < backend->GetDeviceCount(); ++i)
-    {
-        Device* device = backend->GetDevice(i);
-        if (device != nullptr)
-        {
-            m_contexts[device] = device->CreateContext();
-        }
-    }
-    return true;
-}
-
-bool ContextPool::SetDeviceContext(Device* device, rad::Ref<Context> context)
-{
-    m_contexts[device] = device->CreateContext();
-    return true;
-}
-
-void ContextPool::Clear()
-{
-    m_contexts.clear();
-}
-
-Context* ContextPool::GetContext(Device* device)
-{
-    if (device == nullptr)
-    {
-        device = GetCurrentDevice();
-    }
-    auto iter = m_contexts.find(device);
-    if (iter != m_contexts.end())
-    {
-        return iter->second.get();
-    }
-    else
-    {
-        auto [iter, inserted] = m_contexts.emplace(device, device->CreateContext());
-        return iter->second.get();
-    }
 }
 
 } // namespace ML

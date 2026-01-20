@@ -25,6 +25,6 @@ public:
 
 }; // class VulkanBackend
 
-Backend* InitVulkanBackend(std::string_view name = "Vulkan");
+rad::Ref<VulkanBackend> CreateVulkanBackend();
 
 } // namespace ML

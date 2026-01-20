@@ -41,6 +41,23 @@ bool VulkanBackend::Init()
         deviceConfig.enableFloat8 = true;
         m_devices.push_back(RAD_NEW VulkanDevice(m_instance->CreateDevice(physicalDevice, deviceConfig)));
     }
+
+    for (size_t i = 0; i < GetDeviceCount(); ++i)
+    {
+        Device* device = GetDevice(i);
+        if (device != nullptr)
+        {
+            if (auto context = device->CreateContext())
+            {
+                SetDefaultContext(device, context);
+            }
+            else
+            {
+                ML_LOG(err, "Failed to create context for device#{}: {}", i, device->GetName());
+                return false;
+            }
+        }
+    }
     return true;
 }
 
@@ -61,22 +78,18 @@ Device* VulkanBackend::GetDevice(size_t index)
     }
 }
 
-Backend* InitVulkanBackend(std::string_view name)
+rad::Ref<VulkanBackend> CreateVulkanBackend()
 {
-    rad::Ref<VulkanBackend> vulkanBackend = RAD_NEW VulkanBackend();
-    if (vulkanBackend->Init())
+    rad::Ref<VulkanBackend> backend = RAD_NEW VulkanBackend();
+    if (backend->Init())
     {
-        if (RegisterBackend("Vulkan", vulkanBackend))
+        ML_LOG(info, "Vulkan backend created.");
+        for (size_t i = 0; i < backend->GetDeviceCount(); ++i)
         {
-            g_contextPool->CreateContextsForBackend(vulkanBackend.get());
-            ML_LOG(info, "Vulkan backend initialized.");
-            for (size_t i =0;i < vulkanBackend->GetDeviceCount();++i)
-            {
-                Device* device = vulkanBackend->GetDevice(i);
-                ML_LOG(info, "Vulkan.Device#{}: {} (Driver {})", i, device->m_name, device->m_driverVersion);
-            }
-            return vulkanBackend.get();
+            Device* device = backend->GetDevice(i);
+            ML_LOG(info, "Device#{}: {} (Driver {})", i, device->m_name, device->m_driverVersion);
         }
+        return backend.get();
     }
     return nullptr;
 }
