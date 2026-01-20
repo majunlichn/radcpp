@@ -55,11 +55,17 @@ VulkanDevice* VulkanContext::GetDevice()
     return static_cast<VulkanDevice*>(m_device.get());
 }
 
-void VulkanContext::Fill(const Tensor& input, const Scalar& value)
+void VulkanContext::Fill(Tensor& input, const Scalar& value)
 {
     m_opFill->SetTensor(1, input);
     m_opFill->m_shaderUniforms.params.Set(input.m_dataType, value);
     m_opFill->Execute();
+}
+
+void VulkanContext::Random(Tensor& input, const Scalar& from, const Scalar& to)
+{
+    // TODO: not implemented
+    RAD_UNREACHABLE();
 }
 
 void VulkanContext::Add(const Tensor& input, const Scalar& other, Tensor& output)

@@ -1,5 +1,6 @@
 #include <MLCore/CPU/CpuContext.h>
 #include <MLCore/CPU/CpuTensorOp.h>
+#include <random>
 
 namespace ML
 {
@@ -13,7 +14,7 @@ CpuContext::~CpuContext()
 {
 }
 
-void CpuContext::Fill(const Tensor& input, const Scalar& value)
+void CpuContext::Fill(Tensor& input, const Scalar& value)
 {
 #define ML_CPU_DISPATCH_FILL_CONSTANT(DataType)   \
     CpuTensorOpForEach<DataType>()(input, [&]() { return DataType(value); })
@@ -35,6 +36,70 @@ void CpuContext::Fill(const Tensor& input, const Scalar& value)
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_FILL_CONSTANT(rad::Float8E5M2); return;
     }
 #undef ML_CPU_DISPATCH_FILL_CONSTANT
+    RAD_UNREACHABLE();
+}
+
+void CpuContext::Random(Tensor& input, const Scalar& from, const Scalar& to)
+{
+    thread_local std::default_random_engine rng;
+#define ML_CPU_DISPATCH_RANDOM(DataType, ComputeType, Distribution, DefaultMaxValue)                \
+    {                                                                                               \
+        ComputeType min = ComputeType(from);                                                        \
+        ComputeType max = ComputeType(to);                                                          \
+        if ((min == 0) && to.IsNone())                                                              \
+        {                                                                                           \
+            max = ComputeType(DefaultMaxValue);                                                     \
+        }                                                                                           \
+        Distribution dist(min, max);                                                                \
+        CpuTensorOpForEach<DataType>()(input, [&]() { return DataType(dist(rng)); });               \
+    }
+
+    switch (input.m_dataType)
+    {
+    case DataType::Float16:
+        ML_CPU_DISPATCH_RANDOM(rad::Float16, rad::Float32, std::uniform_real_distribution<rad::Float32>, std::pow(2.0, 11.0));
+        return;
+    case DataType::Float32:
+        ML_CPU_DISPATCH_RANDOM(rad::Float32, rad::Float32, std::uniform_real_distribution<rad::Float32>, std::pow(2.0, 24.0));
+        return;
+    case DataType::Float64:
+        ML_CPU_DISPATCH_RANDOM(rad::Float64, rad::Float64, std::uniform_real_distribution<rad::Float64>, std::pow(2.0, 53.0));
+        return;
+    case DataType::Sint8:
+        ML_CPU_DISPATCH_RANDOM(rad::Sint8, rad::Sint32, std::uniform_int_distribution<int32_t>, INT8_MAX);
+        return;
+    case DataType::Sint16:
+        ML_CPU_DISPATCH_RANDOM(rad::Sint16, rad::Sint32, std::uniform_int_distribution<int32_t>, INT16_MAX);
+        return;
+    case DataType::Sint32:
+        ML_CPU_DISPATCH_RANDOM(rad::Sint32, rad::Sint32, std::uniform_int_distribution<int32_t>, INT32_MAX);
+        return;
+    case DataType::Sint64:
+        ML_CPU_DISPATCH_RANDOM(rad::Sint64, rad::Sint64, std::uniform_int_distribution<int64_t>, INT64_MAX);
+        return;
+    case DataType::Uint8:
+        ML_CPU_DISPATCH_RANDOM(rad::Uint8, rad::Uint32, std::uniform_int_distribution<uint32_t>, UINT8_MAX);
+        return;
+    case DataType::Uint16:
+        ML_CPU_DISPATCH_RANDOM(rad::Uint16, rad::Uint32, std::uniform_int_distribution<uint32_t>, UINT16_MAX);
+        return;
+    case DataType::Uint32:
+        ML_CPU_DISPATCH_RANDOM(rad::Uint32, rad::Uint32, std::uniform_int_distribution<uint32_t>, UINT32_MAX);
+        return;
+    case DataType::Uint64:
+        ML_CPU_DISPATCH_RANDOM(rad::Uint64, rad::Uint64, std::uniform_int_distribution<uint64_t>, UINT64_MAX);
+        return;
+    case DataType::BFloat16:
+        ML_CPU_DISPATCH_RANDOM(rad::BFloat16, rad::Float32, std::uniform_real_distribution<rad::Float32>, std::pow(2.0, 8.0));
+        return;
+    case DataType::Float8E4M3:
+        ML_CPU_DISPATCH_RANDOM(rad::Float8E4M3, rad::Float32, std::uniform_real_distribution<rad::Float32>, std::pow(2.0, 4.0));
+        return;
+    case DataType::Float8E5M2:
+        ML_CPU_DISPATCH_RANDOM(rad::Float8E5M2, rad::Float32, std::uniform_real_distribution<rad::Float32>, std::pow(2.0, 3.0));
+        return;
+    }
+#undef ML_CPU_DISPATCH_RANDOM
     RAD_UNREACHABLE();
 }
 

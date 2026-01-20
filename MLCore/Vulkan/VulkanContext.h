@@ -40,7 +40,8 @@ public:
 
     VulkanDevice* GetDevice();
 
-    virtual void Fill(const Tensor& input, const Scalar& value) override;
+    virtual void Fill(Tensor& input, const Scalar& value) override;
+    virtual void Random(Tensor& input, const Scalar& from, const Scalar& to) override;
 
     virtual void Add(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void Add(const Tensor& input, const Tensor& other, const Scalar& alpha, Tensor& output) override;

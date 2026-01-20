@@ -129,6 +129,11 @@ public:
         m_value = value;
     }
 
+    bool IsNone() const
+    {
+        return m_type == Type::None;
+    }
+
     bool IsFloatingPoint() const
     {
         return m_type == Type::Float;
