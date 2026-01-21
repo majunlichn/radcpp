@@ -61,7 +61,20 @@ void Table::Clear()
     m_selectedColIndex = 0;
 }
 
+TableFormatter::TableFormatter()
+{
+}
+
 TableFormatter::TableFormatter(const Table& table)
+{
+    SetTable(table);
+}
+
+TableFormatter::~TableFormatter()
+{
+}
+
+void TableFormatter::SetTable(const Table& table)
 {
     m_table = &table;
     m_colMargins.resize(m_table->GetMaxColCount(), 1);
@@ -70,10 +83,6 @@ TableFormatter::TableFormatter(const Table& table)
     m_colSeparators.resize(m_table->GetMaxColCount() + 1, ",");
     m_colSeparators[0].clear();
     m_colSeparators.back().clear();
-}
-
-TableFormatter::~TableFormatter()
-{
 }
 
 void TableFormatter::SetColMargin(size_t colMargin)
@@ -264,6 +273,14 @@ std::string TableFormatter::Format()
     const auto& rows = m_table->m_rows;
     std::vector<size_t> colWidths(m_table->GetMaxColCount(), 0);
     std::vector<std::vector<std::string>> values = FormatValues(colWidths);
+    if (m_normalizeColWidth)
+    {
+        size_t maxColWidth = GetMaxColWidth(colWidths);
+        for (auto& colWidth : colWidths)
+        {
+            colWidth = maxColWidth;
+        }
+    }
     return Format(values, colWidths);
 }
 

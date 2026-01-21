@@ -116,81 +116,166 @@ const char* GetDataTypeName(DataType dataType)
     return nullptr;
 }
 
-std::string ToStringFixedWidthDec(const void* data, DataType dataType)
+static std::string Format(rad::Float32 value)
+{
+    std::string str;
+    if ((value == 0) || ((std::abs(value) > 1e-4f) && (std::abs(value) < 1e4f)))
+    {
+        str = std::format("{:.4f}", value);
+    }
+    else
+    {
+        str = std::format("{:.4e}", value);
+    }
+    return str;
+}
+
+static std::string FormatWithPositiveSign(rad::Float32 value)
+{
+    std::string str;
+    if ((value == 0) || ((std::abs(value) > 1e-4f) && (std::abs(value) < 1e4f)))
+    {
+        str = std::format("{:+.4f}", value);
+    }
+    else
+    {
+        str = std::format("{:+.4e}", value);
+    }
+    return str;
+}
+
+static std::string Format(rad::Float64 value)
+{
+    std::string str;
+    if ((value == 0) || ((std::abs(value) > 1e-4) && (std::abs(value) < 1e4)))
+    {
+        str = std::format("{:.4f}", value);
+    }
+    else
+    {
+        str = std::format("{:.4e}", value);
+    }
+    return str;
+}
+
+static std::string FormatWithPositiveSign(rad::Float64 value)
+{
+    std::string str;
+    if ((value == 0) || ((std::abs(value) > 1e-4) && (std::abs(value) < 1e4)))
+    {
+        str = std::format("{:+.4f}", value);
+    }
+    else
+    {
+        str = std::format("{:+.4e}", value);
+    }
+    return str;
+}
+
+static std::string Format(rad::Sint64 value)
+{
+    std::string str;
+    if (std::abs(value) <= INT32_MAX)
+    {
+        str = std::format("{}", value);
+    }
+    else
+    {
+        str = std::format("{:.4e}", double(value));
+    }
+    return str;
+}
+
+static std::string Format(rad::Uint64 value)
+{
+    std::string str;
+    if (value <= UINT32_MAX)
+    {
+        str = std::format("{:d}", value);
+    }
+    else
+    {
+        str = std::format("{:.4e}", double(value));
+    }
+    assert(str.size() == 11);
+    return str;
+}
+
+std::string FormatDec(const void* data, DataType dataType)
 {
     if (dataType == DataType::Float16)
     {
         uint16_t bits = *reinterpret_cast<const uint16_t*>(data);
         float value = rad::fp16_ieee_to_fp32_value(bits);
-        return std::format("{:11.4e}", value);
+        return Format(value);
     }
     else if (dataType == DataType::Float32)
     {
         float value = *reinterpret_cast<const float*>(data);
-        return std::format("{:11.4e}", value);
+        return Format(value);
     }
     else if (dataType == DataType::Float64)
     {
         double value = *reinterpret_cast<const double*>(data);
-        return std::format("{:12.4e}", value);
+        return Format(value);
     }
     else if (dataType == DataType::BFloat16)
     {
         uint16_t bits = *reinterpret_cast<const uint16_t*>(data);
         float value = rad::bf16_to_fp32(bits);
-        return std::format("{:11.4e}", value);
+        return Format(value);
     }
     else if (dataType == DataType::Float8E4M3)
     {
         uint8_t bits = *reinterpret_cast<const uint8_t*>(data);
         float value = rad::fp8e4m3fn_to_fp32_value(bits);
-        return std::format("{:9.2e}", value);
+        return std::format("{:.2f}", value);
     }
     else if (dataType == DataType::Float8E5M2)
     {
         uint8_t bits = *reinterpret_cast<const uint8_t*>(data);
         float value = rad::fp8e5m2_to_fp32_value(bits);
-        return std::format("{:9.2e}", value);
+        return std::format("{:.2f}", value);
     }
     else if (dataType == DataType::Sint8)
     {
         int8_t value = *reinterpret_cast<const int8_t*>(data);
-        return std::format("{:4d}", value);
+        return std::format("{}", value);
     }
     else if (dataType == DataType::Sint16)
     {
         int16_t value = *reinterpret_cast<const int16_t*>(data);
-        return std::format("{:6d}", value);
+        return std::format("{}", value);
     }
     else if (dataType == DataType::Sint32)
     {
         int32_t value = *reinterpret_cast<const int32_t*>(data);
-        return std::format("{:11d}", value);
+        return std::format("{}", value);
     }
     else if (dataType == DataType::Sint64)
     {
         int64_t value = *reinterpret_cast<const int64_t*>(data);
-        return std::format("{:20d}", value);
+        return Format(value);
     }
     else if (dataType == DataType::Uint8)
     {
         uint8_t value = *reinterpret_cast<const uint8_t*>(data);
-        return std::format("{:3d}", value);
+        return std::format("{}", value);
     }
     else if (dataType == DataType::Uint16)
     {
         uint16_t value = *reinterpret_cast<const uint16_t*>(data);
-        return std::format("{:5d}", value);
+        return std::format("{}", value);
     }
     else if (dataType == DataType::Uint32)
     {
         uint32_t value = *reinterpret_cast<const uint32_t*>(data);
-        return std::format("{:10d}", value);
+        return std::format("{}", value);
     }
     else if (dataType == DataType::Uint64)
     {
         uint64_t value = *reinterpret_cast<const uint64_t*>(data);
-        return std::format("{:20d}", value);
+        return Format(value);
     }
     else if (dataType == DataType::Bool)
     {
@@ -200,17 +285,17 @@ std::string ToStringFixedWidthDec(const void* data, DataType dataType)
     else if (dataType == DataType::Complex32)
     {
         rad::Complex32 value = *reinterpret_cast<const rad::Complex32*>(data);
-        return std::format("({:11.4e}, {:11.4e})", float(value.real()), float(value.imag()));
+        return std::format("{}{}j", Format(value.real()), FormatWithPositiveSign(value.imag()));
     }
     else if (dataType == DataType::Complex64)
     {
         rad::Complex64 value = *reinterpret_cast<const rad::Complex64*>(data);
-        return std::format("({:11.4e}, {:11.4e})", float(value.real()), float(value.imag()));
+        return std::format("{}{}j", Format(value.real()), FormatWithPositiveSign(value.imag()));
     }
     else if (dataType == DataType::Complex128)
     {
         rad::Complex128 value = *reinterpret_cast<const rad::Complex128*>(data);
-        return std::format("({:12.4e}, {:12.4e})", value.real(), value.imag());
+        return std::format("{}{}j", Format(value.real()), FormatWithPositiveSign(value.imag()));
     }
     else
     {
@@ -219,23 +304,23 @@ std::string ToStringFixedWidthDec(const void* data, DataType dataType)
     }
 }
 
-std::string ToStringFixedWidthHex(const void* data, DataType dataType)
+std::string FormatHex(const void* data, DataType dataType)
 {
     size_t elementSize = GetElementSize(dataType);
     if (dataType == DataType::Complex32)
     {
         const uint16_t* value = reinterpret_cast<const uint16_t*>(data);
-        return std::format("(0x{:04X}, 0x{:04X})", value[0], value[1]);
+        return std::format("0x{:04X} 0x{:04X}j", value[0], value[1]);
     }
     else if (dataType == DataType::Complex64)
     {
         const uint32_t* value = reinterpret_cast<const uint32_t*>(data);
-        return std::format("(0x{:08X}, 0x{:08X})", value[0], value[1]);
+        return std::format("0x{:08X} 0x{:08X}j", value[0], value[1]);
     }
     else if (dataType == DataType::Complex128)
     {
         const uint64_t* value = reinterpret_cast<const uint64_t*>(data);
-        return std::format("(0x{:016X}, 0x{:016X})", value[0], value[1]);
+        return std::format("0x{:016X} 0x{:016X}j", value[0], value[1]);
     }
     else if (elementSize == 1)
     {

@@ -27,6 +27,10 @@ void TestTensorOpAdd(ML::DataType dataType)
 
     c += T(1);
 
+    ML_LOG(info, "A: \n{}", a.ToString({}, { 1, 2, 4, 4 }));
+    ML_LOG(info, "B: \n{}", b.ToString({}, { 1, 2, 4, 4 }));
+    ML_LOG(info, "C: \n{}", c.ToString({}, { 1, 2, 4, 4 }));
+
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
     c.Read(dataBuffer.data(), 0, dataBuffer.size());
@@ -59,6 +63,10 @@ void TestTensorOpAdd(ML::DataType dataType)
     b.Fill(T(1.0f, 1.0f));
     ML::Tensor c = a.Add(b, 2.0f);
     c += T(1.0f, 1.0f);
+
+    ML_LOG(info, "A: \n{}", a.ToString({}, { 1, 2, 4, 4 }));
+    ML_LOG(info, "B: \n{}", b.ToString({}, { 1, 2, 4, 4 }));
+    ML_LOG(info, "C: \n{}", c.ToString({}, { 1, 2, 4, 4 }));
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
@@ -144,10 +152,6 @@ void TestTensorOpSubtract(ML::DataType dataType)
     ML::Tensor c = a.Subtract(b, 2.0f);
 
     c -= T(1.0f, 1.0f);
-
-    ML_LOG(info, "A: \n{}", a.ToString({}, { 1, 1, 4, 4 }));
-    ML_LOG(info, "B: \n{}", b.ToString({}, { 1, 1, 4, 4 }));
-    ML_LOG(info, "C: \n{}", c.ToString({}, { 1, 1, 4, 4 }));
 
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());

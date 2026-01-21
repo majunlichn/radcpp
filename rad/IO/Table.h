@@ -210,9 +210,13 @@ public:
     std::vector<ColAlignment> m_colAlignments;
     std::vector<std::string> m_rowSeparators;
     std::vector<std::string> m_colSeparators;
+    bool m_normalizeColWidth = false;
 
+    TableFormatter();
     TableFormatter(const Table& table);
     ~TableFormatter();
+
+    void SetTable(const Table& table);
 
     void SetColMargin(size_t colMargin);
     void SetColAlignment(size_t colIndex, ColAlignment alignment);
