@@ -14,6 +14,80 @@
 namespace rad
 {
 
+class StringTable
+{
+public:
+    std::vector<std::vector<std::string>> m_rows;
+    size_t m_selectedRowIndex = 0;
+    size_t m_selectedColIndex = 0;
+
+    StringTable() = default;
+    ~StringTable() = default;
+    size_t GetRowCount() const
+    {
+        return m_rows.size();
+    }
+    size_t GetColCount(size_t rowIndex) const
+    {
+        return m_rows[rowIndex].size();
+    }
+    size_t GetMaxColCount() const;
+    void ReserveRows(size_t rowCount);
+    void ReserveCols(size_t colCount);
+    void Reserve(size_t rowCount, size_t colCount);
+    void ResizeRows(size_t rowCount);
+    void ResizeCols(size_t colCount);
+    void Resize(size_t rowCount, size_t colCount);
+    void Clear();
+
+    StringTable& Select(size_t rowIndex, size_t colIndex)
+    {
+        m_selectedRowIndex = rowIndex;
+        m_selectedColIndex = colIndex;
+        return *this;
+    }
+
+    StringTable& NextRow()
+    {
+        m_selectedRowIndex += 1;
+        return *this;
+    }
+
+    StringTable& NextCol()
+    {
+        m_selectedColIndex += 1;
+        return *this;
+    }
+
+    StringTable& SetValue(size_t rowIndex, size_t colIndex, std::string_view value)
+    {
+        m_rows[rowIndex][colIndex] = value;
+        return *this;
+    }
+
+    StringTable& SetValue(std::string_view value)
+    {
+        return SetValue(m_selectedRowIndex, m_selectedColIndex, value);
+    }
+
+    StringTable& AddRow()
+    {
+        m_rows.emplace_back();
+        m_selectedRowIndex = m_rows.size() - 1;
+        return *this;
+    }
+
+    template <typename T>
+    StringTable& AddCol(const T& value)
+    {
+        m_rows[m_selectedRowIndex].emplace_back();
+        m_selectedColIndex = m_rows[m_selectedRowIndex].size() - 1;
+        SetValue(m_selectedRowIndex, m_selectedColIndex, value);
+        return *this;
+    }
+
+}; // class StringTable
+
 class Table : public RefCounted<Table>
 {
 public:
@@ -35,6 +109,17 @@ public:
     std::vector<std::vector<Cell>> m_rows;
     size_t m_selectedRowIndex = 0;
     size_t m_selectedColIndex = 0;
+
+    struct CellFormat
+    {
+        std::string stringFormat = "{}";
+        std::string floatFormat = "{:.4f}";
+        std::string intFormat = "{}";
+        std::string uintFormat = "{}";
+        std::string boolTrueString = "True";
+        std::string boolFalseString = "False";
+    };
+    std::vector<CellFormat> m_colFormats;
 
     Table() = default;
     ~Table() = default;
@@ -110,6 +195,10 @@ public:
         SetValue(m_selectedRowIndex, m_selectedColIndex, value);
         return *this;
     }
+
+    static std::string FormatCell(const Table::Cell& cell, const CellFormat& format);
+    std::string FormatCell(size_t rowIndex, size_t colIndex);
+    StringTable Format();
 
 }; // class Table
 
@@ -189,18 +278,12 @@ inline T Table::GetValue(size_t rowIndex, size_t colIndex) const
 class TableFormatter
 {
 public:
-    const Table* m_table = nullptr;
-    struct TextFormat
-    {
-        std::string floatFormat = "{:.4f}";
-        std::string intFormat = "{}";
-        std::string uintFormat = "{}";
-        std::string boolTrueString = "True";
-        std::string boolFalseString = "False";
-        std::string stringFormat = "{}";
-    } m_format;
-    std::vector<size_t> m_colMargins;
+    const StringTable* m_formatted = nullptr;
+
+    std::vector<size_t> m_colWidths;
     size_t m_minColWidth = 0;
+    std::vector<size_t> m_colMargins;
+
     enum class ColAlignment
     {
         Left,
@@ -208,17 +291,17 @@ public:
         Center,
     };
     std::vector<ColAlignment> m_colAlignments;
+
     std::vector<std::string> m_rowSeparators;
     std::vector<std::string> m_colSeparators;
-    bool m_normalizeColWidth = false;
 
     TableFormatter();
-    TableFormatter(const Table& table);
+    TableFormatter(const StringTable& table);
     ~TableFormatter();
 
-    void SetTable(const Table& table);
+    void SetTable(const StringTable& table);
 
-    void SetColMargin(size_t colMargin);
+    void SetColMargin(size_t colIndex, size_t colMargin);
     void SetColAlignment(size_t colIndex, ColAlignment alignment);
     void SetColAlignment(ColAlignment alignment);
 
@@ -270,12 +353,10 @@ public:
     }
 
     static std::string Align(const std::string& str, const size_t colWidth, ColAlignment alignment);
-    std::string FormatValue(size_t rowIndex, size_t colIndex) const;
-    std::vector<std::vector<std::string>> FormatValues(std::vector<size_t>& colWidths) const;
-    std::string FormatRow(size_t rowIndex, ArrayRef<size_t> colWidths) const;
-    size_t GetMaxColWidth(ArrayRef<size_t> colWidths) const;
-    size_t GetTableWidth(ArrayRef<size_t> colWidths) const;
-    std::string Format(const std::vector<std::vector<std::string>>& values, ArrayRef<size_t> colWidths);
+    size_t GetMaxColWidth() const;
+    size_t GetTableWidth() const;
+    void NormalizeColWidths(size_t colIndexMin, size_t colIndexMax);
+    void NormalizeColWidths();
     std::string Format();
 
 }; // class TableFormatter

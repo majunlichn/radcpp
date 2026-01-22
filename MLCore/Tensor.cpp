@@ -272,9 +272,8 @@ std::string Tensor::ToString(rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t
     }
     std::string ss;
     ss.reserve(1024 * 1024);
-    ss += std::format("#Sizes=[{}]; Strides=[{}]; DataType={}; DumpOffsets=[{}]; DumpSizes=[{}]\n",
-        rad::ToString(m_sizes, ", "), rad::ToString(m_strides, ", "), GetDataTypeName(m_dataType),
-        rad::ToString(offsets, ", "), rad::ToString(sizes, ", "));
+    ss += std::format("#Sizes=[{}]; Strides=[{}]; DataType={};\n",
+        rad::ToString(m_sizes, ", "), rad::ToString(m_strides, ", "), GetDataTypeName(m_dataType));
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(GetDataSize());
     m_storage->Read(dataBuffer.data(), 0, dataBuffer.size());
@@ -282,24 +281,26 @@ std::string Tensor::ToString(rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t
     TensorIterator iter(this, offsets, sizes);
     size_t dimCount = m_sizes.size();
 
-    rad::Table table;
+    rad::StringTable table;
     if (dimCount == 1)
     {
-        table.Reserve(1, m_sizes[0]);
+        size_t offsetW = iter.m_offsets[dimCount - 1];
+        size_t sizeW = iter.m_sizes[dimCount - 1];
+        table.Reserve(1, iter.m_sizes[0]);
         table.AddRow();
-        for (size_t w = 0; w < m_sizes[0]; ++w)
+        for (size_t w = offsetW; w < offsetW + sizeW; ++w)
         {
             iter.m_coord[0] = w;
             table.AddCol(FormatDec(data + w * GetElementSize(m_dataType), m_dataType));
         }
-        if (iter.m_coord[0] < m_sizes[0] - 1)
+        if (offsetW + sizeW < m_sizes[0])
         {
             table.AddCol("...");
         }
-        rad::TableFormatter tableFormatter(table);
-        tableFormatter.SetColAlignment(rad::TableFormatter::ColAlignment::Right);
-        tableFormatter.m_normalizeColWidth = true;
-        ss += tableFormatter.Format();
+        rad::TableFormatter formatter(table);
+        formatter.SetColAlignment(rad::TableFormatter::ColAlignment::Right);
+        formatter.NormalizeColWidths(0, sizeW - 1);
+        ss += formatter.Format();
         ss += '\n';
     }
     else
@@ -330,15 +331,15 @@ std::string Tensor::ToString(rad::ArrayRef<size_t> offsets, rad::ArrayRef<size_t
                         table.AddCol(FormatHex(data + bufferIndex * GetElementSize(m_dataType), m_dataType));
                     }
                 }
-                if (iter.m_coord[dimCount - 1] < m_sizes[dimCount - 1] - 1)
+                if (offsetW + sizeW < m_sizes[dimCount - 1])
                 {
                     table.AddCol("...");
                 }
             }
-            rad::TableFormatter tableFormatter(table);
-            tableFormatter.SetColAlignment(rad::TableFormatter::ColAlignment::Right);
-            tableFormatter.m_normalizeColWidth = true;
-            ss += tableFormatter.Format();
+            rad::TableFormatter formatter(table);
+            formatter.SetColAlignment(rad::TableFormatter::ColAlignment::Right);
+            formatter.NormalizeColWidths(0, sizeW - 1);
+            ss += formatter.Format();
         } while (iter.Next2D());
     }
     return ss;

@@ -3,6 +3,64 @@
 namespace rad
 {
 
+size_t StringTable::GetMaxColCount() const
+{
+    size_t maxColCount = 0;
+    for (const auto& row : m_rows)
+    {
+        if (maxColCount < row.size())
+        {
+            maxColCount = row.size();
+        }
+    }
+    return maxColCount;
+}
+
+void StringTable::ReserveRows(size_t rowCount)
+{
+    m_rows.reserve(rowCount);
+}
+
+void StringTable::ReserveCols(size_t colCount)
+{
+    for (auto& row : m_rows)
+    {
+        row.reserve(colCount);
+    }
+}
+
+void StringTable::Reserve(size_t rowCount, size_t colCount)
+{
+    ReserveRows(rowCount);
+    ReserveCols(colCount);
+}
+
+void StringTable::ResizeRows(size_t rowCount)
+{
+    m_rows.resize(rowCount);
+}
+
+void StringTable::ResizeCols(size_t colCount)
+{
+    for (auto& row : m_rows)
+    {
+        row.resize(colCount);
+    }
+}
+
+void StringTable::Resize(size_t rowCount, size_t colCount)
+{
+    ResizeRows(rowCount);
+    ResizeCols(colCount);
+}
+
+void StringTable::Clear()
+{
+    m_rows.clear();
+    m_selectedRowIndex = 0;
+    m_selectedColIndex = 0;
+}
+
 size_t Table::GetMaxColCount() const
 {
     size_t maxColCount = 0;
@@ -61,11 +119,56 @@ void Table::Clear()
     m_selectedColIndex = 0;
 }
 
+std::string Table::FormatCell(const Table::Cell& cell, const CellFormat& format)
+{
+    switch (cell.type)
+    {
+    case Table::DataType::String:
+        return std::vformat(format.stringFormat, std::make_format_args(std::get<std::string>(cell.value)));
+        break;
+    case Table::DataType::Float:
+        return  std::vformat(format.floatFormat, std::make_format_args(std::get<double>(cell.value)));
+        break;
+    case Table::DataType::Int64:
+        return std::vformat(format.intFormat, std::make_format_args(std::get<int64_t>(cell.value)));
+        break;
+    case Table::DataType::UInt64:
+        return std::vformat(format.uintFormat, std::make_format_args(std::get<uint64_t>(cell.value)));
+        break;
+    case Table::DataType::Bool:
+        return std::get<bool>(cell.value) ? format.boolTrueString : format.boolFalseString;
+        break;
+    }
+    RAD_UNREACHABLE();
+    return {};
+}
+
+std::string Table::FormatCell(size_t rowIndex, size_t colIndex)
+{
+    return FormatCell(m_rows[rowIndex][colIndex], m_colFormats[colIndex]);
+}
+
+StringTable Table::Format()
+{
+    m_colFormats.resize(GetMaxColCount());
+    StringTable formatted;
+    formatted.ResizeRows(GetRowCount());
+    for (size_t rowIndex = 0; rowIndex < GetRowCount(); ++rowIndex)
+    {
+        formatted.m_rows[rowIndex].resize(GetColCount(rowIndex));
+        for (size_t colIndex = 0; colIndex < GetColCount(rowIndex); ++colIndex)
+        {
+            formatted.m_rows[rowIndex][colIndex] = FormatCell(m_rows[rowIndex][colIndex], m_colFormats[colIndex]);
+        }
+    }
+    return formatted;
+}
+
 TableFormatter::TableFormatter()
 {
 }
 
-TableFormatter::TableFormatter(const Table& table)
+TableFormatter::TableFormatter(const StringTable& table)
 {
     SetTable(table);
 }
@@ -74,19 +177,53 @@ TableFormatter::~TableFormatter()
 {
 }
 
-void TableFormatter::SetTable(const Table& table)
+void TableFormatter::SetTable(const StringTable& table)
 {
-    m_table = &table;
-    m_colMargins.resize(m_table->GetMaxColCount(), 1);
-    m_colAlignments.resize(m_table->GetMaxColCount(), ColAlignment::Left);
-    m_rowSeparators.resize(m_table->GetRowCount() + 1);
-    m_colSeparators.resize(m_table->GetMaxColCount() + 1, ",");
+    m_formatted = &table;
+
+    size_t rowCount = m_formatted->GetRowCount();
+    size_t maxColCount = m_formatted->GetMaxColCount();
+
+    m_colWidths.resize(maxColCount, 0);
+    m_colMargins.resize(maxColCount, 1);
+    m_colAlignments.resize(maxColCount, ColAlignment::Left);
+    m_rowSeparators.resize(rowCount + 1);
+    m_colSeparators.resize(maxColCount + 1, ",");
     m_colSeparators[0].clear();
     m_colSeparators.back().clear();
+
+    for (size_t rowIndex = 0; rowIndex < rowCount; ++rowIndex)
+    {
+        size_t colCount = m_formatted->GetColCount(rowIndex);
+        for (size_t colIndex = 0; colIndex < colCount; ++colIndex)
+        {
+            const auto& cell = m_formatted->m_rows[rowIndex][colIndex];
+            if (m_colWidths[colIndex] < cell.size())
+            {
+                m_colWidths[colIndex] = cell.size();
+            }
+        }
+    }
+
+    // Apply colMargin and minColWidth
+    for (size_t colIndex = 0; colIndex < m_colWidths.size(); ++colIndex)
+    {
+        m_colWidths[colIndex] += m_colMargins[colIndex];
+        if (m_colAlignments[colIndex] == ColAlignment::Center)
+        {
+            m_colWidths[colIndex] += m_colMargins[colIndex];
+        }
+        m_colWidths[colIndex] = std::max<size_t>(m_colWidths[colIndex], m_minColWidth);
+    }
 }
 
-void TableFormatter::SetColMargin(size_t colMargin)
+void TableFormatter::SetColMargin(size_t colIndex, size_t colMargin)
 {
+    if (m_colMargins.size() <= colIndex)
+    {
+        m_colMargins.resize(colIndex + 1, 1);
+    }
+    m_colMargins[colIndex] = colMargin;
 }
 
 void TableFormatter::SetColAlignment(size_t colIndex, ColAlignment alignment)
@@ -124,90 +261,10 @@ std::string TableFormatter::Align(const std::string& values, const size_t colWid
     }
 }
 
-std::string TableFormatter::FormatValue(size_t rowIndex, size_t colIndex) const
-{
-    const auto& rows = m_table->m_rows;
-    const auto& cell = rows[rowIndex][colIndex];
-    switch (cell.type)
-    {
-    case Table::DataType::String:
-        return std::vformat(m_format.stringFormat, std::make_format_args(std::get<std::string>(cell.value)));
-        break;
-    case Table::DataType::Float:
-        return  std::vformat(m_format.floatFormat, std::make_format_args(std::get<double>(cell.value)));
-        break;
-    case Table::DataType::Int64:
-        return std::vformat(m_format.intFormat, std::make_format_args(std::get<int64_t>(cell.value)));
-        break;
-    case Table::DataType::UInt64:
-        return std::vformat(m_format.uintFormat, std::make_format_args(std::get<uint64_t>(cell.value)));
-        break;
-    case Table::DataType::Bool:
-        return std::get<bool>(cell.value) ? m_format.boolTrueString : m_format.boolFalseString;
-        break;
-    }
-    RAD_UNREACHABLE();
-    return {};
-}
-
-std::string TableFormatter::FormatRow(size_t rowIndex, ArrayRef<size_t> colWidths) const
-{
-    std::string buffer;
-    std::vector<std::string> values(m_table->GetColCount(rowIndex));
-    for (size_t colIndex = 0; colIndex < m_table->GetColCount(rowIndex); ++colIndex)
-    {
-        values[colIndex] = FormatValue(rowIndex, colIndex);
-    }
-    const auto& rows = m_table->m_rows;
-    buffer += m_colSeparators[0];
-    for (size_t colIndex = 0; colIndex < rows[rowIndex].size(); ++colIndex)
-    {
-        const auto& cell = rows[rowIndex][colIndex];
-        size_t colWidth = colWidths[colIndex];
-        ColAlignment alignment = m_colAlignments[colIndex];
-        buffer += Align(values[colIndex], colWidth, alignment) + m_colSeparators[colIndex + 1];
-    }
-    return buffer;
-}
-
-std::vector<std::vector<std::string>> TableFormatter::FormatValues(std::vector<size_t>& colWidths) const
-{
-    std::vector<std::vector<std::string>> values;
-    values.resize(m_table->GetRowCount());
-    for (size_t rowIndex = 0; rowIndex < m_table->GetRowCount(); ++rowIndex)
-    {
-        values[rowIndex].resize(m_table->GetColCount(rowIndex));
-    }
-    colWidths.resize(m_table->GetMaxColCount(), 0);
-    for (size_t rowIndex = 0; rowIndex < m_table->GetRowCount(); ++rowIndex)
-    {
-        for (size_t colIndex = 0; colIndex < m_table->GetColCount(rowIndex); ++colIndex)
-        {
-            values[rowIndex][colIndex] = FormatValue(rowIndex, colIndex);
-            size_t colWidth = values[rowIndex][colIndex].size();
-            if (colWidths[colIndex] < colWidth)
-            {
-                colWidths[colIndex] = colWidth;
-            }
-        }
-    }
-    // Apply colMargin and minColWidth
-    for (size_t colIndex = 0; colIndex < colWidths.size(); ++colIndex)
-    {
-        colWidths[colIndex] += m_colMargins[colIndex];
-        if (m_colAlignments[colIndex] == ColAlignment::Center)
-        {
-            colWidths[colIndex] += m_colMargins[colIndex];
-        }
-        colWidths[colIndex] = std::max<size_t>(colWidths[colIndex], m_minColWidth);
-    }
-    return values;
-}
-
-size_t TableFormatter::GetMaxColWidth(ArrayRef<size_t> colWidths) const
+size_t TableFormatter::GetMaxColWidth() const
 {
     size_t maxColWidth = 0;
-    for (const auto& width : colWidths)
+    for (const auto& width : m_colWidths)
     {
         if (maxColWidth < width)
         {
@@ -217,23 +274,48 @@ size_t TableFormatter::GetMaxColWidth(ArrayRef<size_t> colWidths) const
     return maxColWidth;
 }
 
-size_t TableFormatter::GetTableWidth(ArrayRef<size_t> colWidths) const
+size_t TableFormatter::GetTableWidth() const
 {
     size_t tableWidth = m_colSeparators[0].size();
-    for (size_t colIndex = 0; colIndex < m_table->GetMaxColCount(); ++colIndex)
+    for (size_t colIndex = 0; colIndex < m_colWidths.size(); ++colIndex)
     {
-        tableWidth += colWidths[colIndex];
+        tableWidth += m_colWidths[colIndex];
         tableWidth += m_colSeparators[colIndex + 1].size();
     }
     return tableWidth;
 }
 
-std::string TableFormatter::Format(const std::vector<std::vector<std::string>>& values, ArrayRef<size_t> colWidths)
+void TableFormatter::NormalizeColWidths(size_t colIndexMin, size_t colIndexMax)
 {
-    const auto& rows = m_table->m_rows;
-    size_t maxColWidth = GetMaxColWidth(colWidths);
+    assert(colIndexMin < colIndexMax);
+    size_t maxColWidth = 0;
+    for (size_t colIndex = colIndexMin; colIndex < colIndexMax; ++colIndex)
+    {
+        if (maxColWidth < m_colWidths[colIndex])
+        {
+            maxColWidth = m_colWidths[colIndex];
+        }
+    }
+    for (size_t colIndex = colIndexMin; colIndex < colIndexMax; ++colIndex)
+    {
+        m_colWidths[colIndex] = maxColWidth;
+    }
+}
 
-    size_t tableWidth = GetTableWidth(colWidths);
+void TableFormatter::NormalizeColWidths()
+{
+    size_t maxColWidth = GetMaxColWidth();
+    for (auto& colWidth : m_colWidths)
+    {
+        colWidth = maxColWidth;
+    }
+}
+
+std::string TableFormatter::Format()
+{
+    const auto& rows = m_formatted->m_rows;
+    size_t maxColWidth = GetMaxColWidth();
+    size_t tableWidth = GetTableWidth();
 
     for (size_t rowIndex = 0; rowIndex < m_rowSeparators.size(); ++rowIndex)
     {
@@ -255,9 +337,9 @@ std::string TableFormatter::Format(const std::vector<std::vector<std::string>>& 
         for (size_t colIndex = 0; colIndex < rows[rowIndex].size(); ++colIndex)
         {
             const auto& cell = rows[rowIndex][colIndex];
-            size_t colWidth = colWidths[colIndex];
+            size_t colWidth = m_colWidths[colIndex];
             ColAlignment alignment = m_colAlignments[colIndex];
-            buffer += Align(values[rowIndex][colIndex], colWidth, alignment) + m_colSeparators[colIndex + 1];
+            buffer += Align(m_formatted->m_rows[rowIndex][colIndex], colWidth, alignment) + m_colSeparators[colIndex + 1];
         }
         buffer += '\n';
         if (!m_rowSeparators[rowIndex + 1].empty())
@@ -266,22 +348,6 @@ std::string TableFormatter::Format(const std::vector<std::vector<std::string>>& 
         }
     }
     return buffer;
-}
-
-std::string TableFormatter::Format()
-{
-    const auto& rows = m_table->m_rows;
-    std::vector<size_t> colWidths(m_table->GetMaxColCount(), 0);
-    std::vector<std::vector<std::string>> values = FormatValues(colWidths);
-    if (m_normalizeColWidth)
-    {
-        size_t maxColWidth = GetMaxColWidth(colWidths);
-        for (auto& colWidth : colWidths)
-        {
-            colWidth = maxColWidth;
-        }
-    }
-    return Format(values, colWidths);
 }
 
 } // namespace rad

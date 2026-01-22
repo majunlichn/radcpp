@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
     program.add_argument("--device-index").default_value(0).store_into(g_options.deviceIndex);
 
     try {
-        program.parse_args(argc, argv);
+        program.parse_known_args(argc, argv);
     }
     catch (const std::exception& err) {
         std::cerr << err.what() << std::endl;
