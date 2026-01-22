@@ -53,4 +53,14 @@ void CpuTensorStorage::Write(const void* data, size_t offset, size_t sizeInBytes
     std::memcpy(m_buffer.data() + offset, data, sizeInBytes);
 }
 
+void* CpuTensorStorage::MapMemory(size_t offset, size_t size)
+{
+    return m_buffer.data() + offset;
+}
+
+void CpuTensorStorage::UnmapMemory()
+{
+    // nothing to do
+}
+
 } // namespace ML

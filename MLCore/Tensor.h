@@ -26,6 +26,9 @@ public:
     std::vector<size_t> m_strides;
     DataType m_dataType = DataType::Unknown;
 
+    virtual void* MapMemory(size_t offset, size_t size) = 0;
+    virtual void UnmapMemory() = 0;
+
 }; // class TensorStorage
 
 enum class TextFormat

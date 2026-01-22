@@ -22,6 +22,9 @@ public:
     virtual void Read(void* data, size_t offset, size_t sizeInBytes) override;
     virtual void Write(const void* data, size_t offset, size_t sizeInBytes) override;
 
+    virtual void* MapMemory(size_t offset, size_t size) override;
+    virtual void UnmapMemory() override;
+
 }; // class VulkanTensorStorage
 
 } // namespace ML

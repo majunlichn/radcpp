@@ -55,4 +55,24 @@ void VulkanTensorStorage::Write(const void* data, size_t offset, size_t sizeInBy
     m_buffer->Write(data, offset, sizeInBytes);
 }
 
+void* VulkanTensorStorage::MapMemory(size_t offset, size_t size)
+{
+    if (m_buffer->IsHostVisible())
+    {
+        return static_cast<uint8_t*>(m_buffer->MapMemory()) + offset;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+void VulkanTensorStorage::UnmapMemory()
+{
+    if (m_buffer->IsHostVisible())
+    {
+        m_buffer->UnmapMemory();
+    }
+}
+
 } // namespace ML
