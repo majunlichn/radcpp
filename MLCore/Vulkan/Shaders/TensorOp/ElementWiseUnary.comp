@@ -10,40 +10,30 @@ layout(push_constant, std430) uniform PushConstants
     uint g_outputIndexOffset;
 };
 
-#ifndef PARAM_TYPE
-    #if DATA_TYPE_IS_FLOATING_POINT
-        #if ELEMENT_SIZE <= 4
-            #define PARAM_TYPE f32vec4
-        #elif DATA_TYPE_ID == DataTypeFloat64
-            #define PARAM_TYPE f64vec4
-        #endif
-    #elif DATA_TYPE_IS_SIGNED_INTEGRAL
-        #if ELEMENT_SIZE <= 4
-            #define PARAM_TYPE i32vec4
-        #else
-            #define PARAM_TYPE i64vec4
-        #endif
-    #elif DATA_TYPE_IS_UNSIGNED_INTEGRAL
-        #if ELEMENT_SIZE <= 4
-            #define PARAM_TYPE u32vec4
-        #else
-            #define PARAM_TYPE u64vec4
-        #endif
-    #elif DATA_TYPE_IS_BOOL
-        #define PARAM_TYPE u32vec4
-    #elif DATA_TYPE_IS_COMPLEX
-        struct Params { DATA_TYPE x; DATA_TYPE y; DATA_TYPE z; DATA_TYPE w; };
-        #define PARAM_TYPE Params
-    #endif // DATA_TYPE_IS_*
-#endif // PARAM_TYPE
+#if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeFloat32))
+    struct Params { float32_t s0; float32_t s1; float32_t s2; float32_t s3; };
+#elif (DATA_TYPE_ID == DataTypeFloat64)
+    struct Params { float64_t s0; float64_t s1; float64_t s2; float64_t s3; };
+#elif ((DATA_TYPE_ID == DataTypeSint8) || (DATA_TYPE_ID == DataTypeSint16) || (DATA_TYPE_ID == DataTypeSint32))
+    struct Params { int32_t s0; int32_t s1; int32_t s2; int32_t s3; };
+#elif (DATA_TYPE_ID == DataTypeSint64)
+    struct Params { int64_t s0; int64_t s1; int64_t s2; int64_t s3; };
+#elif ((DATA_TYPE_ID == DataTypeUint8) || (DATA_TYPE_ID == DataTypeUint16) || (DATA_TYPE_ID == DataTypeUint32))
+    struct Params { uint32_t s0; uint32_t s1; uint32_t s2; uint32_t s3; };
+#elif (DATA_TYPE_ID == DataTypeUint64)
+    struct Params { uint64_t s0; uint64_t s1; uint64_t s2; uint64_t s3; };
+#elif (DATA_TYPE_ID == DataTypeBool)
+    struct Params { uint32_t s0; uint32_t s1; uint32_t s2; uint32_t s3; };
+#elif DATA_TYPE_IS_COMPLEX
+    struct Params { COMPLEX s0; COMPLEX s1; COMPLEX s2; COMPLEX s3; };
+#endif
 
 layout(set = 0, binding = 0) uniform Uniforms
 {
     uvec4 g_sizes;
     uvec4 g_inputStrides;
     uvec4 g_outputStrides;
-    uvec4 g_padding; // Unused, just for alignment
-    PARAM_TYPE g_params;
+    Params g_params;
 };
 
 layout(set = 0, binding = 1) readonly buffer InputTensor { DATA_TYPE g_inputTensor[]; };
@@ -53,74 +43,69 @@ layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 #if defined(AddScalar)
 #if DATA_TYPE_IS_COMPLEX
-COMPLEX AddScalar(in COMPLEX x)
+COMPLEX AddScalar(const COMPLEX a)
 {
-    const COMPLEX a = x;
-    const COMPLEX b = g_params.x;
+    const COMPLEX b = g_params.s0;
     return COMPLEX(a.real + b.real, a.imag + b.imag);
 }
 #else
-COMPUTE_TYPE AddScalar(COMPUTE_TYPE x)
+COMPUTE_TYPE AddScalar(const COMPUTE_TYPE x)
 {
-    return x + COMPUTE_TYPE(g_params.x);
+    return x + COMPUTE_TYPE(g_params.s0);
 }
 #endif
 #endif
 
 #if defined(SubtractScalar)
 #if DATA_TYPE_IS_COMPLEX
-COMPLEX SubtractScalar(in COMPLEX x)
+COMPLEX SubtractScalar(const COMPLEX a)
 {
-    const COMPLEX a = x;
-    const COMPLEX b = g_params.x;
+    const COMPLEX b = g_params.s0;
     return COMPLEX(a.real - b.real, a.imag - b.imag);
 }
 #else
-COMPUTE_TYPE SubtractScalar(COMPUTE_TYPE x)
+COMPUTE_TYPE SubtractScalar(const COMPUTE_TYPE x)
 {
-    return x - COMPUTE_TYPE(g_params.x);
+    return x - COMPUTE_TYPE(g_params.s0);
 }
 #endif
 #endif
 
 #if defined(MultiplyScalar)
 #if DATA_TYPE_IS_COMPLEX
-COMPLEX MultiplyScalar(COMPLEX x)
+COMPLEX MultiplyScalar(const COMPLEX a)
 {
-    const COMPLEX a = x;
-    const COMPLEX b = g_params.x;
+    const COMPLEX b = g_params.s0;
     return COMPLEX(a.real * b.real - a.imag * b.imag, a.real * b.imag + a.imag * b.real);
 }
 #else
-COMPUTE_TYPE MultiplyScalar(COMPUTE_TYPE x)
+COMPUTE_TYPE MultiplyScalar(const COMPUTE_TYPE x)
 {
-    return x * COMPUTE_TYPE(g_params.x);
+    return x * COMPUTE_TYPE(g_params.s0);
 }
 #endif
 #endif
 
 #if defined(DivideScalar)
 #if DATA_TYPE_IS_COMPLEX
-COMPLEX DivideScalar(COMPLEX x)
+COMPLEX DivideScalar(const COMPLEX a)
 {
-    const COMPLEX a = x;
-    const COMPLEX b = g_params.x;
-    COMPONENT_TYPE denom = b.real * b.real + b.imag * b.imag;
+    const COMPLEX b = g_params.s0;
+    COMPLEX_COMPONENT_TYPE denom = b.real * b.real + b.imag * b.imag;
     return COMPLEX((a.real * b.real + a.imag * b.imag) / denom, (a.imag * b.real - a.real * b.imag) / denom);
 }
 #else
-COMPUTE_TYPE DivideScalar(COMPUTE_TYPE x)
+COMPUTE_TYPE DivideScalar(const COMPUTE_TYPE x)
 {
-    return x / COMPUTE_TYPE(g_params.x);
+    return x / COMPUTE_TYPE(g_params.s0);
 }
 #endif
 #endif
 
 #if defined(RemainderScalar)
-COMPUTE_TYPE RemainderScalar(COMPUTE_TYPE x)
+COMPUTE_TYPE RemainderScalar(const COMPUTE_TYPE a)
 {
-    const COMPUTE_TYPE a = x;
-    const COMPUTE_TYPE b = COMPUTE_TYPE(g_params.x);
+    const COMPUTE_TYPE b = COMPUTE_TYPE(g_params.s0);
 #if DATA_TYPE_IS_FLOATING_POINT
     return mod(a, b);
 #else
@@ -130,23 +115,23 @@ COMPUTE_TYPE RemainderScalar(COMPUTE_TYPE x)
 #endif
 
 #if defined(BitwiseAndScalar)
-COMPUTE_TYPE BitwiseAndScalar(COMPUTE_TYPE x)
+COMPUTE_TYPE BitwiseAndScalar(const COMPUTE_TYPE x)
 {
-    return x & COMPUTE_TYPE(g_params.x);
+    return x & COMPUTE_TYPE(g_params.s0);
 }
 #endif
 
 #if defined(BitwiseOrScalar)
-COMPUTE_TYPE BitwiseOrScalar(COMPUTE_TYPE x)
+COMPUTE_TYPE BitwiseOrScalar(const COMPUTE_TYPE x)
 {
-    return x | COMPUTE_TYPE(g_params.x);
+    return x | COMPUTE_TYPE(g_params.s0);
 }
 #endif
 
 #if defined(BitwiseXorScalar)
-COMPUTE_TYPE BitwiseXorScalar(COMPUTE_TYPE x)
+COMPUTE_TYPE BitwiseXorScalar(const COMPUTE_TYPE x)
 {
-    return x ^ COMPUTE_TYPE(g_params.x);
+    return x ^ COMPUTE_TYPE(g_params.s0);
 }
 #endif
 
@@ -171,10 +156,10 @@ void main()
                             h * g_outputStrides[2] + w * g_outputStrides[3];
 #if DATA_TYPE_IS_COMPLEX
         const COMPLEX x = g_inputTensor[inputIndex];
-        g_outputTensor[outputIndex] = ElementOp(x);
+        g_outputTensor[outputIndex] = ELEMENT_OP(x);
 #else
         const COMPUTE_TYPE x = COMPUTE_TYPE(g_inputTensor[inputIndex]);
-        g_outputTensor[outputIndex] = DATA_TYPE(ElementOp(x));
+        g_outputTensor[outputIndex] = DATA_TYPE(ELEMENT_OP(x));
 #endif
     }
 }

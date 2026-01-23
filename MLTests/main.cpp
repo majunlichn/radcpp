@@ -34,10 +34,9 @@ int main(int argc, char* argv[])
     }
 
     ML::Initialize();
-    rad::Ref<ML::Backend> backend;
     if (rad::StrCaseEqual(g_options.backend, "Vulkan"))
     {
-        if (backend = ML::CreateVulkanBackend())
+        if (rad::Ref<ML::Backend> backend = ML::CreateVulkanBackend())
         {
             ML::RegisterBackend("Vulkan", backend);
             ML_LOG(info, "Vulkan backend initialized.");
@@ -48,7 +47,9 @@ int main(int argc, char* argv[])
             return -1;
         }
     }
-    else if (!ML::GetBackend(g_options.backend))
+
+    ML::Backend* backend = ML::GetBackend(g_options.backend);
+    if (!backend)
     {
         ML_LOG(err, "Backend '{}' is not supported!", g_options.backend);
         return -1;

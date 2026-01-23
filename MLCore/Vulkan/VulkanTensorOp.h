@@ -52,7 +52,7 @@ public:
 
 }; // class VulkanTensorOp
 
-struct VulkanShaderParamVec4
+struct VulkanElementWiseShaderParams
 {
     union
     {
@@ -65,11 +65,11 @@ struct VulkanShaderParamVec4
         rad::Complex32 c32[4];
         rad::Complex64 c64[4];
         rad::Complex128 c128[4];
-    } m_params;
+    } m_scalars;
 
-    void Set(DataType dataType, const Scalar& a, const Scalar& b = {}, const Scalar& c = {}, const Scalar& d = {});
+    void SetScalars(DataType dataType, const Scalar& a, const Scalar& b = {}, const Scalar& c = {}, const Scalar& d = {});
 
-}; // struct VulkanShaderParamVec4
+}; // struct VulkanElementWiseShaderParams
 
 
 class VulkanTensorOpForEach : public VulkanTensorOp
@@ -80,7 +80,7 @@ public:
     {
         glm::uvec4 sizes;
         glm::uvec4 strides;
-        VulkanShaderParamVec4 params;
+        VulkanElementWiseShaderParams params;
     } m_shaderUniforms = {};
 
     static constexpr size_t DispatchDimCount = 4;
@@ -109,8 +109,7 @@ public:
         glm::uvec4 sizes;
         glm::uvec4 inputStrides;
         glm::uvec4 outputStrides;
-        glm::uvec4 g_padding; // Unused, just for alignment
-        VulkanShaderParamVec4 params;
+        VulkanElementWiseShaderParams params;
     } m_shaderUniforms = {};
 
     static constexpr size_t DispatchDimCount = 4;
@@ -142,7 +141,7 @@ public:
         glm::uvec4 inputStrides;
         glm::uvec4 otherStrides;
         glm::uvec4 outputStrides;
-        VulkanShaderParamVec4 params;
+        VulkanElementWiseShaderParams params;
     } m_shaderUniforms = {};
 
     static constexpr size_t DispatchDimCount = 4;

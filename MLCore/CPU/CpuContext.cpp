@@ -31,6 +31,9 @@ void CpuContext::Fill(Tensor& input, const Scalar& value)
     case DataType::Uint16:      ML_CPU_DISPATCH_FILL_CONSTANT(rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_FILL_CONSTANT(rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_FILL_CONSTANT(rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_FILL_CONSTANT(rad::Complex32); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_FILL_CONSTANT(rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_FILL_CONSTANT(rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_FILL_CONSTANT(rad::BFloat16); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_FILL_CONSTANT(rad::Float8E4M3); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_FILL_CONSTANT(rad::Float8E5M2); return;
@@ -120,6 +123,9 @@ void CpuContext::Add(const Tensor& input, const Scalar& other, Tensor& output)
     case DataType::Uint16:      ML_CPU_DISPATCH_ADD_SCALAR(rad::Uint16, rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_ADD_SCALAR(rad::Uint32, rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_ADD_SCALAR(rad::Uint64, rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_ADD_SCALAR(rad::Complex32, rad::Complex64); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_ADD_SCALAR(rad::Complex64, rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_ADD_SCALAR(rad::Complex128, rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_ADD_SCALAR(rad::BFloat16, rad::Float32); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_ADD_SCALAR(rad::Float8E4M3, rad::Float32); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_ADD_SCALAR(rad::Float8E5M2, rad::Float32); return;
@@ -145,6 +151,9 @@ void CpuContext::Add(const Tensor& input, const Tensor& other, const Scalar& alp
     case DataType::Uint16:      ML_CPU_DISPATCH_ADD(rad::Uint16, rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_ADD(rad::Uint32, rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_ADD(rad::Uint64, rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_ADD(rad::Complex32, rad::Complex64); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_ADD(rad::Complex64, rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_ADD(rad::Complex128, rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_ADD(rad::BFloat16, rad::Float32); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_ADD(rad::Float8E4M3, rad::Float32); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_ADD(rad::Float8E5M2, rad::Float32); return;
@@ -170,6 +179,9 @@ void CpuContext::Subtract(const Tensor& input, const Scalar& other, Tensor& outp
     case DataType::Uint16:      ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::Uint16, rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::Uint32, rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::Uint64, rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::Complex32, rad::Complex64); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::Complex64, rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::Complex128, rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::BFloat16, rad::Float32); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::Float8E4M3, rad::Float32); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_SUBTRACT_SCALAR(rad::Float8E5M2, rad::Float32); return;
@@ -195,6 +207,9 @@ void CpuContext::Subtract(const Tensor& input, const Tensor& other, const Scalar
     case DataType::Uint16:      ML_CPU_DISPATCH_SUBTRACT(rad::Uint16, rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_SUBTRACT(rad::Uint32, rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_SUBTRACT(rad::Uint64, rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_SUBTRACT(rad::Complex32, rad::Complex64); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_SUBTRACT(rad::Complex64, rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_SUBTRACT(rad::Complex128, rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_SUBTRACT(rad::BFloat16, rad::Float32); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_SUBTRACT(rad::Float8E4M3, rad::Float32); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_SUBTRACT(rad::Float8E5M2, rad::Float32); return;
@@ -220,6 +235,9 @@ void CpuContext::Multiply(const Tensor& input, const Scalar& other, Tensor& outp
     case DataType::Uint16:      ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::Uint16, rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::Uint32, rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::Uint64, rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::Complex32, rad::Complex64); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::Complex64, rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::Complex128, rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::BFloat16, rad::Float32); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::Float8E4M3, rad::Float32); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_MULTIPLY_SCALAR(rad::Float8E5M2, rad::Float32); return;
@@ -245,6 +263,9 @@ void CpuContext::Multiply(const Tensor& input, const Tensor& other, Tensor& outp
     case DataType::Uint16:      ML_CPU_DISPATCH_MULTIPLY(rad::Uint16, rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_MULTIPLY(rad::Uint32, rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_MULTIPLY(rad::Uint64, rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_MULTIPLY(rad::Complex32, rad::Complex64); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_MULTIPLY(rad::Complex64, rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_MULTIPLY(rad::Complex128, rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_MULTIPLY(rad::BFloat16, rad::Float32); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_MULTIPLY(rad::Float8E4M3, rad::Float32); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_MULTIPLY(rad::Float8E5M2, rad::Float32); return;
@@ -270,6 +291,9 @@ void CpuContext::Divide(const Tensor& input, const Scalar& other, Tensor& output
     case DataType::Uint16:      ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::Uint16, rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::Uint32, rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::Uint64, rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::Complex32, rad::Complex64); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::Complex64, rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::Complex128, rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::BFloat16, rad::Float32); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::Float8E4M3, rad::Float32); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_DIVIDE_SCALAR(rad::Float8E5M2, rad::Float32); return;
@@ -295,6 +319,9 @@ void CpuContext::Divide(const Tensor& input, const Tensor& other, Tensor& output
     case DataType::Uint16:      ML_CPU_DISPATCH_DIVIDE(rad::Uint16, rad::Uint16); return;
     case DataType::Uint32:      ML_CPU_DISPATCH_DIVIDE(rad::Uint32, rad::Uint32); return;
     case DataType::Uint64:      ML_CPU_DISPATCH_DIVIDE(rad::Uint64, rad::Uint64); return;
+    case DataType::Complex32:   ML_CPU_DISPATCH_DIVIDE(rad::Complex32, rad::Complex64); return;
+    case DataType::Complex64:   ML_CPU_DISPATCH_DIVIDE(rad::Complex64, rad::Complex64); return;
+    case DataType::Complex128:  ML_CPU_DISPATCH_DIVIDE(rad::Complex128, rad::Complex128); return;
     case DataType::BFloat16:    ML_CPU_DISPATCH_DIVIDE(rad::BFloat16, rad::Float32); return;
     case DataType::Float8E4M3:  ML_CPU_DISPATCH_DIVIDE(rad::Float8E4M3, rad::Float32); return;
     case DataType::Float8E5M2:  ML_CPU_DISPATCH_DIVIDE(rad::Float8E5M2, rad::Float32); return;

@@ -178,6 +178,7 @@ TEST(TensorOp, Subtract)
 }
 
 template <typename T>
+    requires(rad::is_floating_point_v<T> || rad::is_integer_v<T>)
 void TestTensorOpMultiply(ML::DataType dataType)
 {
     ML::Device* device = ML::GetCurrentDevice();
@@ -213,6 +214,38 @@ void TestTensorOpMultiply(ML::DataType dataType)
     }
 }
 
+template <typename T>
+    requires(rad::is_complex_v<T>)
+void TestTensorOpMultiply(ML::DataType dataType)
+{
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "TensorOp.Multiply({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Multiply({}): not supported!", ML::GetDataTypeName(dataType));
+        return;
+    }
+
+    ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+
+    a.Fill(T(3, 2));
+    b.Fill(T(1, 4));
+    ML::Tensor c = a * b;
+
+    std::vector<uint8_t> dataBuffer;
+    dataBuffer.resize(c.GetDataSize());
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    const T* results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], T(-5, 14));
+    }
+}
+
 TEST(TensorOp, Multiply)
 {
     TestTensorOpMultiply<rad::Float16>(ML::DataType::Float16);
@@ -222,9 +255,13 @@ TEST(TensorOp, Multiply)
     TestTensorOpMultiply<rad::Sint16>(ML::DataType::Sint16);
     TestTensorOpMultiply<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpMultiply<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpMultiply<rad::Complex32>(ML::DataType::Complex32);
+    TestTensorOpMultiply<rad::Complex64>(ML::DataType::Complex64);
+    TestTensorOpMultiply<rad::Complex128>(ML::DataType::Complex128);
 }
 
 template <typename T>
+    requires(rad::is_floating_point_v<T> || rad::is_integer_v<T>)
 void TestTensorOpDivide(ML::DataType dataType)
 {
     ML::Device* device = ML::GetCurrentDevice();
@@ -260,6 +297,38 @@ void TestTensorOpDivide(ML::DataType dataType)
     }
 }
 
+template <typename T>
+    requires(rad::is_complex_v<T>)
+void TestTensorOpDivide(ML::DataType dataType)
+{
+    ML::Device* device = ML::GetCurrentDevice();
+    if (device->IsDataTypeSupported(dataType))
+    {
+        ML_LOG(info, "TensorOp.Divide({}): start", ML::GetDataTypeName(dataType));
+    }
+    else
+    {
+        ML_LOG(info, "TensorOp.Divide({}): not supported!", ML::GetDataTypeName(dataType));
+        return;
+    }
+
+    ML::Tensor a = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+    ML::Tensor b = ML::MakeTensor({ 2, 4, 32, 32 }, dataType);
+
+    a.Fill(T(3, 4));
+    b.Fill(T(1, -2));
+    ML::Tensor c = a / b;
+
+    std::vector<uint8_t> dataBuffer;
+    dataBuffer.resize(c.GetDataSize());
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    const T* results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], T(-1, 2));
+    }
+}
+
 TEST(TensorOp, Divide)
 {
     TestTensorOpDivide<rad::Float16>(ML::DataType::Float16);
@@ -269,6 +338,9 @@ TEST(TensorOp, Divide)
     TestTensorOpDivide<rad::Sint16>(ML::DataType::Sint16);
     TestTensorOpDivide<rad::Sint32>(ML::DataType::Sint32);
     TestTensorOpDivide<rad::Sint64>(ML::DataType::Sint64);
+    TestTensorOpDivide<rad::Complex32>(ML::DataType::Complex32);
+    TestTensorOpDivide<rad::Complex64>(ML::DataType::Complex64);
+    TestTensorOpDivide<rad::Complex128>(ML::DataType::Complex128);
 }
 
 template <typename T>

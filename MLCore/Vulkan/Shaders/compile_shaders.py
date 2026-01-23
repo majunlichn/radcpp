@@ -63,7 +63,7 @@ def chdir(path: str):
 def run(command : str, env = os.environ):
     print(command)
     args = shlex.split(command)
-    subprocess.run(args, env=env)
+    subprocess.run(args, env=env, check=True)
 
 def remove_dir(dir : str):
     if os.path.isdir(dir):
@@ -76,7 +76,7 @@ def compile_tensor_op_fill(dtypes : list[DataType]):
         os.makedirs(output_dir)
     for dtype in dtypes:
         output = make_normpath(output_dir + f"/Fill-{dtype.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DFill=ElementOp -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DELEMENT_OP=Fill -DFill=Fill -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -87,7 +87,7 @@ def compile_tensor_op_element_wise_unary(opname : str, dtypes : list[DataType]):
         os.makedirs(output_dir)
     for dtype in dtypes:
         output = make_normpath(output_dir + f"/{opname}-{dtype.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -D{opname}=ElementOp -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DELEMENT_OP={opname} -D{opname}={opname} -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -98,7 +98,7 @@ def compile_tensor_op_element_wise_binary(opname : str, dtypes : list[DataType])
         os.makedirs(output_dir)
     for dtype in dtypes:
         output = make_normpath(output_dir + f"/{opname}-{dtype.name}.spv")
-        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -D{opname}=ElementOp -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
+        run(f'glslang "{source}" -o "{output}" -V --target-env spirv1.6 -DELEMENT_OP={opname} -D{opname}={opname} -DDATA_TYPE_ID={dtype.value} -I"{source_root}"')
         if cmd_args.enable_optimization:
             run(f'spirv-opt "{output}" -o "{output}" -O')
 
@@ -128,13 +128,13 @@ def main() -> int:
         if compile_all or any(name in ['Add'] for name in cmd_args.targets):
             compile_tensor_op_element_wise_unary('AddScalar', computable_types + complex_types)
             compile_tensor_op_element_wise_binary('Add', computable_types + complex_types)
-        if compile_all or any(name in ['Subtract'] for name in cmd_args.targets):
+        if compile_all or any(name in ['Sub','Subtract'] for name in cmd_args.targets):
             compile_tensor_op_element_wise_unary('SubtractScalar', computable_types + complex_types)
             compile_tensor_op_element_wise_binary('Subtract', computable_types + complex_types)
-        if compile_all or any(name in ['Multiply'] for name in cmd_args.targets):
+        if compile_all or any(name in ['Mul','Multiply'] for name in cmd_args.targets):
             compile_tensor_op_element_wise_unary('MultiplyScalar', computable_types + complex_types)
             compile_tensor_op_element_wise_binary('Multiply', computable_types + complex_types)
-        if compile_all or any(name in ['Divide'] for name in cmd_args.targets):
+        if compile_all or any(name in ['Div','Divide'] for name in cmd_args.targets):
             compile_tensor_op_element_wise_unary('DivideScalar', computable_types + complex_types)
             compile_tensor_op_element_wise_binary('Divide', computable_types + complex_types)
         if compile_all or any(name in ['Remainder'] for name in cmd_args.targets):

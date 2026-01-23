@@ -58,7 +58,7 @@ VulkanDevice* VulkanContext::GetDevice()
 void VulkanContext::Fill(Tensor& input, const Scalar& value)
 {
     m_opFill->SetTensor(1, input);
-    m_opFill->m_shaderUniforms.params.Set(input.m_dataType, value);
+    m_opFill->m_shaderUniforms.params.SetScalars(input.m_dataType, value);
     m_opFill->Execute();
 }
 
@@ -74,7 +74,7 @@ void VulkanContext::Add(const Tensor& input, const Scalar& other, Tensor& output
         (input.IsComplex() && (other.IsFloatingPoint() || other.IsComplex())));
     m_opAddScalar->SetTensor(1, input);
     m_opAddScalar->SetTensor(2, output ? output : input);
-    m_opAddScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
+    m_opAddScalar->m_shaderUniforms.params.SetScalars(input.m_dataType, other);
     m_opAddScalar->Execute();
 }
 
@@ -86,7 +86,7 @@ void VulkanContext::Add(const Tensor& input, const Tensor& other, const Scalar& 
     m_opAdd->SetTensor(1, input);
     m_opAdd->SetTensor(2, other);
     m_opAdd->SetTensor(3, output ? output : input);
-    m_opAdd->m_shaderUniforms.params.Set(input.m_dataType, alpha);
+    m_opAdd->m_shaderUniforms.params.SetScalars(input.m_dataType, alpha);
     m_opAdd->Execute();
 }
 
@@ -96,7 +96,7 @@ void VulkanContext::Subtract(const Tensor& input, const Scalar& other, Tensor& o
         (input.IsComplex() && (other.IsFloatingPoint() || other.IsComplex())));
     m_opSubtractScalar->SetTensor(1, input);
     m_opSubtractScalar->SetTensor(2, output ? output : input);
-    m_opSubtractScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
+    m_opSubtractScalar->m_shaderUniforms.params.SetScalars(input.m_dataType, other);
     m_opSubtractScalar->Execute();
 }
 
@@ -108,7 +108,7 @@ void VulkanContext::Subtract(const Tensor& input, const Tensor& other, const Sca
     m_opSubtract->SetTensor(1, input);
     m_opSubtract->SetTensor(2, other);
     m_opSubtract->SetTensor(3, output ? output : input);
-    m_opSubtract->m_shaderUniforms.params.Set(input.m_dataType, alpha);
+    m_opSubtract->m_shaderUniforms.params.SetScalars(input.m_dataType, alpha);
     m_opSubtract->Execute();
 }
 
@@ -118,7 +118,7 @@ void VulkanContext::Multiply(const Tensor& input, const Scalar& other, Tensor& o
         (input.IsComplex() && (other.IsFloatingPoint() || other.IsComplex())));
     m_opMultiplyScalar->SetTensor(1, input);
     m_opMultiplyScalar->SetTensor(2, output ? output : input);
-    m_opMultiplyScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
+    m_opMultiplyScalar->m_shaderUniforms.params.SetScalars(input.m_dataType, other);
     m_opMultiplyScalar->Execute();
 }
 
@@ -136,7 +136,7 @@ void VulkanContext::Divide(const Tensor& input, const Scalar& other, Tensor& out
         (input.IsComplex() && (other.IsFloatingPoint() || other.IsComplex())));
     m_opDivideScalar->SetTensor(1, input);
     m_opDivideScalar->SetTensor(2, output ? output : input);
-    m_opDivideScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
+    m_opDivideScalar->m_shaderUniforms.params.SetScalars(input.m_dataType, other);
     m_opDivideScalar->Execute();
 }
 
@@ -152,7 +152,7 @@ void VulkanContext::Remainder(const Tensor& input, const Scalar& other, Tensor& 
 {
     m_opRemainderScalar->SetTensor(1, input);
     m_opRemainderScalar->SetTensor(2, output ? output : input);
-    m_opRemainderScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
+    m_opRemainderScalar->m_shaderUniforms.params.SetScalars(input.m_dataType, other);
     m_opRemainderScalar->Execute();
 }
 
@@ -169,7 +169,7 @@ void VulkanContext::BitwiseAnd(const Tensor& input, const Scalar& other, Tensor&
     assert(input.IsInteger() && other.IsInteger());
     m_opBitwiseAndScalar->SetTensor(1, input);
     m_opBitwiseAndScalar->SetTensor(2, output ? output : input);
-    m_opBitwiseAndScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
+    m_opBitwiseAndScalar->m_shaderUniforms.params.SetScalars(input.m_dataType, other);
     m_opBitwiseAndScalar->Execute();
 }
 
@@ -187,7 +187,7 @@ void VulkanContext::BitwiseOr(const Tensor& input, const Scalar& other, Tensor& 
     assert(input.IsInteger() && other.IsInteger());
     m_opBitwiseOrScalar->SetTensor(1, input);
     m_opBitwiseOrScalar->SetTensor(2, output ? output : input);
-    m_opBitwiseOrScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
+    m_opBitwiseOrScalar->m_shaderUniforms.params.SetScalars(input.m_dataType, other);
     m_opBitwiseOrScalar->Execute();
 }
 
@@ -205,7 +205,7 @@ void VulkanContext::BitwiseXor(const Tensor& input, const Scalar& other, Tensor&
     assert(input.IsInteger() && other.IsInteger());
     m_opBitwiseXorScalar->SetTensor(1, input);
     m_opBitwiseXorScalar->SetTensor(2, output ? output : input);
-    m_opBitwiseXorScalar->m_shaderUniforms.params.Set(input.m_dataType, other);
+    m_opBitwiseXorScalar->m_shaderUniforms.params.SetScalars(input.m_dataType, other);
     m_opBitwiseXorScalar->Execute();
 }
 

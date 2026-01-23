@@ -9,38 +9,30 @@ layout(push_constant, std430) uniform PushConstants
     uint g_inputIndexOffset;
 };
 
-#ifndef PARAM_TYPE
-    #if DATA_TYPE_IS_FLOATING_POINT
-        #if ELEMENT_SIZE <= 4
-            #define PARAM_TYPE f32vec4
-        #elif DATA_TYPE_ID == DataTypeFloat64
-            #define PARAM_TYPE f64vec4
-        #endif
-    #elif DATA_TYPE_IS_SIGNED_INTEGRAL
-        #if ELEMENT_SIZE <= 4
-            #define PARAM_TYPE i32vec4
-        #else
-            #define PARAM_TYPE i64vec4
-        #endif
-    #elif DATA_TYPE_IS_UNSIGNED_INTEGRAL
-        #if ELEMENT_SIZE <= 4
-            #define PARAM_TYPE u32vec4
-        #else
-            #define PARAM_TYPE u64vec4
-        #endif
-    #elif DATA_TYPE_IS_BOOL
-        #define PARAM_TYPE u32vec4
-    #elif DATA_TYPE_IS_COMPLEX
-        struct Params { DATA_TYPE x; DATA_TYPE y; DATA_TYPE z; DATA_TYPE w; };
-        #define PARAM_TYPE Params
-    #endif // DATA_TYPE_IS_*
-#endif // PARAM_TYPE
+#if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeFloat32) ||\
+    (DATA_TYPE_ID == DataTypeBFloat16) || (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
+    struct Params { float32_t s0; float32_t s1; float32_t s2; float32_t s3; };
+#elif (DATA_TYPE_ID == DataTypeFloat64)
+    struct Params { float64_t s0; float64_t s1; float64_t s2; float64_t s3; };
+#elif ((DATA_TYPE_ID == DataTypeSint8) || (DATA_TYPE_ID == DataTypeSint16) || (DATA_TYPE_ID == DataTypeSint32))
+    struct Params { int32_t s0; int32_t s1; int32_t s2; int32_t s3; };
+#elif (DATA_TYPE_ID == DataTypeSint64)
+    struct Params { int64_t s0; int64_t s1; int64_t s2; int64_t s3; };
+#elif ((DATA_TYPE_ID == DataTypeUint8) || (DATA_TYPE_ID == DataTypeUint16) || (DATA_TYPE_ID == DataTypeUint32))
+    struct Params { uint32_t s0; uint32_t s1; uint32_t s2; uint32_t s3; };
+#elif (DATA_TYPE_ID == DataTypeUint64)
+    struct Params { uint64_t s0; uint64_t s1; uint64_t s2; uint64_t s3; };
+#elif (DATA_TYPE_ID == DataTypeBool)
+    struct Params { uint32_t s0; uint32_t s1; uint32_t s2; uint32_t s3; };
+#elif DATA_TYPE_IS_COMPLEX
+    struct Params { COMPLEX s0; COMPLEX s1; COMPLEX s2; COMPLEX s3; };
+#endif
 
 layout(set = 0, binding = 0) uniform Uniforms
 {
     uvec4 g_sizes;
     uvec4 g_strides;
-    PARAM_TYPE g_params;
+    Params g_params;
 };
 
 layout(set = 0, binding = 1) buffer InputTensor { DATA_TYPE g_inputTensor[]; };
@@ -51,9 +43,9 @@ layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 void Fill(uint n, uint c, uint h, uint w, uint bufferIndex)
 {
 #if DATA_TYPE_IS_COMPLEX
-    g_inputTensor[bufferIndex] = g_params.x;
+    g_inputTensor[bufferIndex] = g_params.s0;
 #else
-    g_inputTensor[bufferIndex] = DATA_TYPE(g_params.x);
+    g_inputTensor[bufferIndex] = DATA_TYPE(g_params.s0);
 #endif
 }
 #endif
@@ -75,6 +67,6 @@ void main()
     {
         uint bufferIndex = g_inputIndexOffset + n * g_strides[0] + c * g_strides[1] +
                             h * g_strides[2] + w * g_strides[3];
-        ElementOp(n, c, h, w, bufferIndex);
+        ELEMENT_OP(n, c, h, w, bufferIndex);
     }
 }

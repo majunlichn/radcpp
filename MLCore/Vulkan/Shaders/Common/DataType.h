@@ -94,13 +94,11 @@
 #endif
 
 #if (DATA_TYPE_ID == DataTypeComplex32)
-#define COMPONENT_TYPE float16_t
+#define COMPLEX_COMPONENT_TYPE float16_t
 #elif (DATA_TYPE_ID == DataTypeComplex64)
-#define COMPONENT_TYPE float32_t
+#define COMPLEX_COMPONENT_TYPE float32_t
 #elif (DATA_TYPE_ID == DataTypeComplex128)
-#define COMPONENT_TYPE float64_t
-#else
-#define COMPONENT_TYPE DATA_TYPE
+#define COMPLEX_COMPONENT_TYPE float64_t
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeFloat32) || (DATA_TYPE_ID == DataTypeFloat64) || \
@@ -146,28 +144,22 @@
 #endif
 
 #if (DATA_TYPE_ID == DataTypeComplex128)
-#define DATA_TYPE_IS_128_BIT 1
 #define ELEMENT_SIZE 16
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat64) || (DATA_TYPE_ID == DataTypeSint64) || (DATA_TYPE_ID == DataTypeUint64) || (DATA_TYPE_ID == DataTypeComplex64))
-#define DATA_TYPE_IS_64_BIT 1
 #define ELEMENT_SIZE 8
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat32) || (DATA_TYPE_ID == DataTypeSint32) || (DATA_TYPE_ID == DataTypeUint32) || (DATA_TYPE_ID == DataTypeComplex32))
-#define DATA_TYPE_IS_32_BIT 1
 #define ELEMENT_SIZE 4
 #endif
 
 #if ((DATA_TYPE_ID == DataTypeFloat16) || (DATA_TYPE_ID == DataTypeSint16) || (DATA_TYPE_ID == DataTypeUint16) || (DATA_TYPE_ID == DataTypeBFloat16))
-#define DATA_TYPE_IS_16_BIT 1
 #define ELEMENT_SIZE 2
 #endif
 
-#if ((DATA_TYPE_ID == DataTypeSint8) || (DATA_TYPE_ID == DataTypeUint8) || \
-    (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
-#define DATA_TYPE_IS_8_BIT 1
+#if ((DATA_TYPE_ID == DataTypeSint8) || (DATA_TYPE_ID == DataTypeUint8) || (DATA_TYPE_ID == DataTypeFloat8E4M3) || (DATA_TYPE_ID == DataTypeFloat8E5M2))
 #define ELEMENT_SIZE 1
 #endif
 
