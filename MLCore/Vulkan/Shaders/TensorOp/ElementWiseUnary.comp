@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 #extension GL_GOOGLE_include_directive : require
 
@@ -108,8 +108,15 @@ COMPUTE_TYPE RemainderScalar(const COMPUTE_TYPE a)
     const COMPUTE_TYPE b = COMPUTE_TYPE(g_params.s0);
 #if DATA_TYPE_IS_FLOATING_POINT
     return mod(a, b);
-#else
-    return COMPUTE_TYPE(int(a) % int(b));
+#elif DATA_TYPE_IS_SIGNED_INTEGRAL
+    COMPUTE_TYPE r = a - a / b * b;
+    if ((r != 0) && ((a < 0) != (b < 0)))
+    {
+        r += b;
+    }
+    return r;
+#elif DATA_TYPE_IS_UNSIGNED_INTEGRAL
+    return a % b;
 #endif
 }
 #endif

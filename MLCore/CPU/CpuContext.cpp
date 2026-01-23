@@ -331,31 +331,31 @@ void CpuContext::Divide(const Tensor& input, const Tensor& other, Tensor& output
 }
 
 template <std::floating_point T>
-T remainder(T x, T y)
+T remainder(T a, T b)
 {
-    T r = std::fmod(x, y);
-    if ((r != 0) && ((x < 0) != (y < 0)))
+    T r = std::fmod(a, b);
+    if ((r != 0) && ((a < 0) != (b < 0)))
     {
-        r += y;
+        r += b;
     }
     return r;
 }
 
 template <std::signed_integral T>
-T remainder(T x, T y)
+T remainder(T a, T b)
 {
-    T r = x % y;
-    if ((r != 0) && ((x < 0) != (y < 0)))
+    T r = a % b;
+    if ((r != 0) && ((a < 0) != (b < 0)))
     {
-        r += y;
+        r += b;
     }
     return r;
 }
 
 template <std::unsigned_integral T>
-T remainder(T x, T y)
+T remainder(T a, T b)
 {
-    return x % y;
+    return a % b;
 }
 
 void CpuContext::Remainder(const Tensor& input, const Scalar& other, Tensor& output)

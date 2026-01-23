@@ -376,6 +376,10 @@ void TestTensorOpRemainder(ML::DataType dataType)
     b.Fill(divisor);
     ML::Tensor c = a % b;
 
+    ML_LOG(info, "A: \n{}", a.ToString({ 0, 0, 4, 4 }, { 1, 2, 4, 4 }));
+    ML_LOG(info, "B: \n{}", b.ToString({ 0, 0, 4, 4 }, { 1, 2, 4, 4 }));
+    ML_LOG(info, "C: \n{}", c.ToString({ 0, 0, 4, 4 }, { 1, 2, 4, 4 }));
+
     std::vector<uint8_t> dataBuffer;
     dataBuffer.resize(c.GetDataSize());
     c.Read(dataBuffer.data(), 0, dataBuffer.size());
