@@ -143,6 +143,8 @@ def main() -> int:
         if compile_all or any(name in ['BitwiseAnd'] for name in cmd_args.targets):
             compile_tensor_op_element_wise_unary('BitwiseAndScalar', sint_types + uint_types)
             compile_tensor_op_element_wise_binary('BitwiseAnd', sint_types + uint_types)
+        if compile_all or any(name in ['BitwiseNot'] for name in cmd_args.targets):
+            compile_tensor_op_element_wise_unary('BitwiseNot', sint_types + uint_types)
         if compile_all or any(name in ['BitwiseOr'] for name in cmd_args.targets):
             compile_tensor_op_element_wise_unary('BitwiseOrScalar', sint_types + uint_types)
             compile_tensor_op_element_wise_binary('BitwiseOr', sint_types + uint_types)

@@ -34,6 +34,8 @@ public:
     virtual void BitwiseAnd(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& output) override;
 
+    virtual void BitwiseNot(const Tensor& input, Tensor& output) override;
+
     virtual void BitwiseOr(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void BitwiseOr(const Tensor& input, const Tensor& other, Tensor& output) override;
 

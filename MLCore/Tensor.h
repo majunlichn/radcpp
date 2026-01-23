@@ -148,6 +148,9 @@ public:
     [[nodiscard]] Tensor BitwiseAnd(const Tensor& other) const;
     Tensor& BitwiseAnd_(const Tensor& other);
 
+    [[nodiscard]] Tensor BitwiseNot() const;
+    Tensor& BitwiseNot_();
+
     [[nodiscard]] Tensor BitwiseOr(const Scalar& other) const;
     Tensor& BitwiseOr_(const Scalar& other);
     [[nodiscard]] Tensor BitwiseOr(const Tensor& other) const;

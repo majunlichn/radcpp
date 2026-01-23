@@ -121,6 +121,13 @@ COMPUTE_TYPE BitwiseAndScalar(const COMPUTE_TYPE x)
 }
 #endif
 
+#if defined(BitwiseNot)
+COMPUTE_TYPE BitwiseNot(const COMPUTE_TYPE x)
+{
+    return ~x;
+}
+#endif
+
 #if defined(BitwiseOrScalar)
 COMPUTE_TYPE BitwiseOrScalar(const COMPUTE_TYPE x)
 {

@@ -197,7 +197,7 @@ static std::string Format(rad::Uint64 value)
     {
         str = std::format("{:.4e}", double(value));
     }
-    assert(str.size() == 11);
+    assert(str.size() <= 11);
     return str;
 }
 

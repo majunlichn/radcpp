@@ -30,6 +30,7 @@ public:
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opRemainder;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseAndScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opBitwiseAnd;
+    rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseNot;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseOrScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opBitwiseOr;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseXorScalar;
@@ -60,6 +61,8 @@ public:
 
     virtual void BitwiseAnd(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& output) override;
+
+    virtual void BitwiseNot(const Tensor& input, Tensor& output) override;
 
     virtual void BitwiseOr(const Tensor& input, const Scalar& other, Tensor& output) override;
     virtual void BitwiseOr(const Tensor& input, const Tensor& other, Tensor& output) override;

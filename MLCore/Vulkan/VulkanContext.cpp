@@ -40,6 +40,7 @@ VulkanContext::VulkanContext(rad::Ref<VulkanDevice> device) :
     m_opRemainder = RAD_NEW VulkanTensorOpElementWiseBinary(this, "Remainder", computableTypes);
     m_opBitwiseAndScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "BitwiseAndScalar", intTypes);
     m_opBitwiseAnd = RAD_NEW VulkanTensorOpElementWiseBinary(this, "BitwiseAnd", intTypes);
+    m_opBitwiseNot = RAD_NEW VulkanTensorOpElementWiseUnary(this, "BitwiseNot", intTypes);
     m_opBitwiseOrScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "BitwiseOrScalar", intTypes);
     m_opBitwiseOr = RAD_NEW VulkanTensorOpElementWiseBinary(this, "BitwiseOr", intTypes);
     m_opBitwiseXorScalar = RAD_NEW VulkanTensorOpElementWiseUnary(this, "BitwiseXorScalar", intTypes);
@@ -180,6 +181,14 @@ void VulkanContext::BitwiseAnd(const Tensor& input, const Tensor& other, Tensor&
     m_opBitwiseAnd->SetTensor(2, other);
     m_opBitwiseAnd->SetTensor(3, output ? output : input);
     m_opBitwiseAnd->Execute();
+}
+
+void VulkanContext::BitwiseNot(const Tensor& input, Tensor& output)
+{
+    assert(input.IsInteger() && output.IsInteger());
+    m_opBitwiseNot->SetTensor(1, input);
+    m_opBitwiseNot->SetTensor(2, output ? output : input);
+    m_opBitwiseNot->Execute();
 }
 
 void VulkanContext::BitwiseOr(const Tensor& input, const Scalar& other, Tensor& output)

@@ -429,6 +429,18 @@ void TestTensorOpBitwise(ML::DataType dataType)
         ASSERT_EQ(results[i], 0b0010);
     }
 
+    auto context = ML::GetCurrentContext();
+    c = a.BitwiseNot();
+    c.Read(dataBuffer.data(), 0, dataBuffer.size());
+    results = reinterpret_cast<const T*>(dataBuffer.data());
+    for (size_t i = 0; i < c.GetElementCount(); ++i)
+    {
+        ASSERT_EQ(results[i], T(~0b1010));
+    }
+
+    ML_LOG(info, "A:\n{}", a.ToString({ 0, 0, 4, 4 }, { 1, 2, 4, 4 }, ML::TextFormat::Hex));
+    ML_LOG(info, "C=BitwiseNot(A):\n{}", c.ToString({ 0, 0, 4, 4 }, { 1, 2, 4, 4 }, ML::TextFormat::Hex));
+
     c = a | b;
     c.Read(dataBuffer.data(), 0, dataBuffer.size());
     results = reinterpret_cast<const T*>(dataBuffer.data());

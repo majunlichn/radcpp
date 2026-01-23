@@ -42,6 +42,8 @@ public:
     virtual void BitwiseAnd(const Tensor& input, const Scalar& other, Tensor& output) = 0;
     virtual void BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& output) = 0;
 
+    virtual void BitwiseNot(const Tensor& input, Tensor& output) = 0;
+
     virtual void BitwiseOr(const Tensor& input, const Scalar& other, Tensor& output) = 0;
     virtual void BitwiseOr(const Tensor& input, const Tensor& other, Tensor& output) = 0;
 
