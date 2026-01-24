@@ -4,6 +4,7 @@ list(APPEND rad_tests_SOURCES
     ContainerTest.cpp
     FloatTest.cpp
     IntegerTest.cpp
+    IteratorTest.cpp
     MemoryTest.cpp
     StackTraceTest.cpp
     TaskflowTest.cpp

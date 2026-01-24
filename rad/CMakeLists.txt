@@ -13,6 +13,7 @@ list(APPEND RAD_HEADERS
     Common/Float.h
     Common/Ignore.h
     Common/Integer.h
+    Common/Iterator.h
     Common/Literals.h
     Common/Math.h
     Common/Memory.h
