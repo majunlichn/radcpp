@@ -143,14 +143,16 @@ std::string Table::FormatCell(const Table::Cell& cell, const CellFormat& format)
     return {};
 }
 
-std::string Table::FormatCell(size_t rowIndex, size_t colIndex)
+std::string Table::FormatCell(size_t rowIndex, size_t colIndex, const CellFormat& format) const
 {
-    return FormatCell(m_rows[rowIndex][colIndex], m_colFormats[colIndex]);
+    assert(rowIndex < m_rows.size());
+    assert(colIndex < m_rows[rowIndex].size());
+    return FormatCell(m_rows[rowIndex][colIndex], format);
 }
 
-StringTable Table::Format()
+StringTable Table::ToStringTable(rad::ArrayRef<CellFormat> colFormats) const
 {
-    m_colFormats.resize(GetMaxColCount());
+    assert(colFormats.size() >= GetMaxColCount());
     StringTable formatted;
     formatted.ResizeRows(GetRowCount());
     for (size_t rowIndex = 0; rowIndex < GetRowCount(); ++rowIndex)
@@ -158,10 +160,16 @@ StringTable Table::Format()
         formatted.m_rows[rowIndex].resize(GetColCount(rowIndex));
         for (size_t colIndex = 0; colIndex < GetColCount(rowIndex); ++colIndex)
         {
-            formatted.m_rows[rowIndex][colIndex] = FormatCell(m_rows[rowIndex][colIndex], m_colFormats[colIndex]);
+            formatted.m_rows[rowIndex][colIndex] = FormatCell(m_rows[rowIndex][colIndex], colFormats[colIndex]);
         }
     }
     return formatted;
+}
+
+StringTable Table::ToStringTable() const
+{
+    std::vector<CellFormat> defaultFormats(GetMaxColCount());
+    return ToStringTable(defaultFormats);
 }
 
 TableFormatter::TableFormatter()
@@ -170,14 +178,14 @@ TableFormatter::TableFormatter()
 
 TableFormatter::TableFormatter(const StringTable& table)
 {
-    SetTable(table);
+    Init(table);
 }
 
 TableFormatter::~TableFormatter()
 {
 }
 
-void TableFormatter::SetTable(const StringTable& table)
+void TableFormatter::Init(const StringTable& table)
 {
     m_formatted = &table;
 
@@ -217,26 +225,29 @@ void TableFormatter::SetTable(const StringTable& table)
     }
 }
 
-void TableFormatter::SetColMargin(size_t colIndex, size_t colMargin)
+TableFormatter& TableFormatter::SetColMargin(size_t colIndex, size_t colMargin)
 {
     if (m_colMargins.size() <= colIndex)
     {
         m_colMargins.resize(colIndex + 1, 1);
     }
     m_colMargins[colIndex] = colMargin;
+    return *this;
 }
 
-void TableFormatter::SetColAlignment(size_t colIndex, ColAlignment alignment)
+TableFormatter& TableFormatter::SetColAlignment(size_t colIndex, ColAlignment alignment)
 {
     m_colAlignments[colIndex] = alignment;
+    return *this;
 }
 
-void TableFormatter::SetColAlignment(ColAlignment alignment)
+TableFormatter& TableFormatter::SetColAlignment(ColAlignment alignment)
 {
     for (size_t colIndex = 0; colIndex < m_colAlignments.size(); ++colIndex)
     {
         SetColAlignment(colIndex, alignment);
     }
+    return *this;
 }
 
 std::string TableFormatter::Align(const std::string& values, const size_t colWidth, ColAlignment alignment)

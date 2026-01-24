@@ -12,7 +12,7 @@ TEST(IO, Table)
 
     constexpr size_t recordCount = 8;
     rad::Table table;
-    table.Reserve(1 + recordCount, 5);
+    table.Reserve(1 + 4, 5);
     // Header
     table.AddRow().AddCol("VertexID").AddCol("x").AddCol("y").AddCol("z").AddCol("w");
     // Records
@@ -25,15 +25,11 @@ TEST(IO, Table)
     {
         table.SetValue(1.0).NextRow();
     }
-    rad::TableFormatter formatter(table);
-    formatter.SetColAlignment(rad::TableFormatter::ColAlignment::Right);
-    formatter.SetHeaderBorder('=');
-    formatter.SetBottomBorder('-');
-    formatter.SetColSeperator(',');
-    RAD_LOG(info, "TableFormatter: \n{}", formatter.Format());
-    std::vector<size_t> colWidths(table.GetMaxColCount(), 9);
-    for (size_t i = 0; i < recordCount / 2; ++i)
-    {
-        RAD_LOG(info, "FormatRow#{}: {}", i, formatter.FormatRow(i, colWidths));
-    }
+    RAD_LOG(info, "TableFormatter: \n{}",
+        rad::TableFormatter(table.ToStringTable())
+        .SetColAlignment(rad::TableFormatter::ColAlignment::Right)
+        .SetHeaderBorder('=')
+        .SetBottomBorder('-')
+        .SetColSeperator(',')
+        .Format());
 }

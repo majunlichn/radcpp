@@ -110,17 +110,6 @@ public:
     size_t m_selectedRowIndex = 0;
     size_t m_selectedColIndex = 0;
 
-    struct CellFormat
-    {
-        std::string stringFormat = "{}";
-        std::string floatFormat = "{:.4f}";
-        std::string intFormat = "{}";
-        std::string uintFormat = "{}";
-        std::string boolTrueString = "True";
-        std::string boolFalseString = "False";
-    };
-    std::vector<CellFormat> m_colFormats;
-
     Table() = default;
     ~Table() = default;
     Table(size_t rowCount, size_t colCount)
@@ -196,9 +185,19 @@ public:
         return *this;
     }
 
+    struct CellFormat
+    {
+        std::string stringFormat = "{}";
+        std::string floatFormat = "{:.4f}";
+        std::string intFormat = "{}";
+        std::string uintFormat = "{}";
+        std::string boolTrueString = "True";
+        std::string boolFalseString = "False";
+    };
     static std::string FormatCell(const Table::Cell& cell, const CellFormat& format);
-    std::string FormatCell(size_t rowIndex, size_t colIndex);
-    StringTable Format();
+    std::string FormatCell(size_t rowIndex, size_t colIndex, const CellFormat& format) const;
+    StringTable ToStringTable(rad::ArrayRef<CellFormat> colFormats) const;
+    StringTable ToStringTable() const;
 
 }; // class Table
 
@@ -299,57 +298,65 @@ public:
     TableFormatter(const StringTable& table);
     ~TableFormatter();
 
-    void SetTable(const StringTable& table);
+    void Init(const StringTable& table);
 
-    void SetColMargin(size_t colIndex, size_t colMargin);
-    void SetColAlignment(size_t colIndex, ColAlignment alignment);
-    void SetColAlignment(ColAlignment alignment);
+    TableFormatter& SetColMargin(size_t colIndex, size_t colMargin);
+    TableFormatter& SetColAlignment(size_t colIndex, ColAlignment alignment);
+    TableFormatter& SetColAlignment(ColAlignment alignment);
 
-    void SetLeftBorder(const char sep = '|')
+    TableFormatter& SetLeftBorder(const char sep = '|')
     {
         m_colSeparators[0] = sep;
+        return *this;
     }
 
-    void SetLeftBorder(std::string_view sep)
+    TableFormatter& SetLeftBorder(std::string_view sep)
     {
         m_colSeparators[0] = sep;
+        return *this;
     }
 
-    void SetRightBorder(const char sep = '|')
+    TableFormatter& SetRightBorder(const char sep = '|')
     {
         m_colSeparators.back() = sep;
+        return *this;
     }
 
-    void SetRightBorder(std::string_view sep)
+    TableFormatter& SetRightBorder(std::string_view sep)
     {
         m_colSeparators.back() = sep;
+        return *this;
     }
 
-    void SetTopBorder(const char sep = '-')
+    TableFormatter& SetTopBorder(const char sep = '-')
     {
         m_rowSeparators[0] = sep;
+        return *this;
     }
 
-    void SetBottomBorder(const char sep = '-')
+    TableFormatter& SetBottomBorder(const char sep = '-')
     {
         m_rowSeparators.back() = sep;
+        return *this;
     }
 
-    void SetHeaderBorder(const char sep = '-')
+    TableFormatter& SetHeaderBorder(const char sep = '-')
     {
         if (m_rowSeparators.size() >= 2)
         {
             m_rowSeparators[0] = sep;
             m_rowSeparators[1] = sep;
         }
+        return *this;
     }
 
-    void SetColSeperator(const char sep = ',')
+    TableFormatter& SetColSeperator(const char sep = ',')
     {
         for (size_t colIndex = 1; colIndex < m_colSeparators.size() - 1; ++colIndex)
         {
             m_colSeparators[colIndex] = sep;
         }
+        return *this;
     }
 
     static std::string Align(const std::string& str, const size_t colWidth, ColAlignment alignment);

@@ -481,6 +481,19 @@ Tensor& Tensor::Remainder_(const Tensor& other)
     return *this;
 }
 
+Tensor Tensor::BitwiseNot() const
+{
+    Tensor output = MakeTensorLike(this);
+    m_context->BitwiseNot(*this, output);
+    return output;
+}
+
+Tensor& Tensor::BitwiseNot_()
+{
+    m_context->BitwiseNot(*this, *this);
+    return *this;
+}
+
 Tensor Tensor::BitwiseAnd(const Scalar& other) const
 {
     Tensor output = MakeTensorLike(this);
@@ -504,19 +517,6 @@ Tensor Tensor::BitwiseAnd(const Tensor& other) const
 Tensor& Tensor::BitwiseAnd_(const Tensor& other)
 {
     m_context->BitwiseAnd(*this, other, *this);
-    return *this;
-}
-
-Tensor Tensor::BitwiseNot() const
-{
-    Tensor output = MakeTensorLike(this);
-    m_context->BitwiseNot(*this, output);
-    return output;
-}
-
-Tensor& Tensor::BitwiseNot_()
-{
-    m_context->BitwiseNot(*this, *this);
     return *this;
 }
 

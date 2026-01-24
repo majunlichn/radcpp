@@ -408,6 +408,26 @@ void CpuContext::Remainder(const Tensor& input, const Tensor& other, Tensor& out
     RAD_UNREACHABLE();
 }
 
+void CpuContext::BitwiseNot(const Tensor& input, Tensor& output)
+{
+    assert(input.IsInteger() && output.IsInteger());
+#define ML_CPU_DISPATCH_BITWISE_NOT(DataType, ComputeType)    \
+    CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return (~x); });
+    switch (input.m_dataType)
+    {
+    case DataType::Sint8:       ML_CPU_DISPATCH_BITWISE_NOT(rad::Sint8, rad::Sint8); return;
+    case DataType::Sint16:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Sint16, rad::Sint16); return;
+    case DataType::Sint32:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Sint32, rad::Sint32); return;
+    case DataType::Sint64:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Sint64, rad::Sint64); return;
+    case DataType::Uint8:       ML_CPU_DISPATCH_BITWISE_NOT(rad::Uint8, rad::Uint8); return;
+    case DataType::Uint16:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Uint16, rad::Uint16); return;
+    case DataType::Uint32:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Uint32, rad::Uint32); return;
+    case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Uint64, rad::Uint64); return;
+    }
+#undef ML_CPU_DISPATCH_BITWISE_NOT
+    RAD_UNREACHABLE();
+}
+
 void CpuContext::BitwiseAnd(const Tensor& input, const Scalar& other, Tensor& output)
 {
     assert(input.IsInteger() && other.IsInteger());
@@ -445,26 +465,6 @@ void CpuContext::BitwiseAnd(const Tensor& input, const Tensor& other, Tensor& ou
     case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_AND(rad::Uint64, rad::Uint64); return;
     }
 #undef ML_CPU_DISPATCH_BITWISE_AND
-    RAD_UNREACHABLE();
-}
-
-void CpuContext::BitwiseNot(const Tensor& input, Tensor& output)
-{
-    assert(input.IsInteger() && output.IsInteger());
-#define ML_CPU_DISPATCH_BITWISE_NOT(DataType, ComputeType)    \
-    CpuTensorOpElementWiseUnary<DataType, ComputeType>()(input, output, [&](ComputeType x) { return (~x); });
-    switch (input.m_dataType)
-    {
-    case DataType::Sint8:       ML_CPU_DISPATCH_BITWISE_NOT(rad::Sint8, rad::Sint8); return;
-    case DataType::Sint16:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Sint16, rad::Sint16); return;
-    case DataType::Sint32:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Sint32, rad::Sint32); return;
-    case DataType::Sint64:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Sint64, rad::Sint64); return;
-    case DataType::Uint8:       ML_CPU_DISPATCH_BITWISE_NOT(rad::Uint8, rad::Uint8); return;
-    case DataType::Uint16:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Uint16, rad::Uint16); return;
-    case DataType::Uint32:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Uint32, rad::Uint32); return;
-    case DataType::Uint64:      ML_CPU_DISPATCH_BITWISE_NOT(rad::Uint64, rad::Uint64); return;
-    }
-#undef ML_CPU_DISPATCH_BITWISE_NOT
     RAD_UNREACHABLE();
 }
 

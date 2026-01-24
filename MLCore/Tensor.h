@@ -143,13 +143,13 @@ public:
     [[nodiscard]] Tensor Remainder(const Tensor& other) const;
     Tensor& Remainder_(const Tensor& other);
 
+    [[nodiscard]] Tensor BitwiseNot() const;
+    Tensor& BitwiseNot_();
+
     [[nodiscard]] Tensor BitwiseAnd(const Scalar& other) const;
     Tensor& BitwiseAnd_(const Scalar& other);
     [[nodiscard]] Tensor BitwiseAnd(const Tensor& other) const;
     Tensor& BitwiseAnd_(const Tensor& other);
-
-    [[nodiscard]] Tensor BitwiseNot() const;
-    Tensor& BitwiseNot_();
 
     [[nodiscard]] Tensor BitwiseOr(const Scalar& other) const;
     Tensor& BitwiseOr_(const Scalar& other);

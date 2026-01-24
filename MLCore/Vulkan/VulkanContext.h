@@ -28,9 +28,9 @@ public:
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opDivide;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opRemainderScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opRemainder;
+    rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseNot;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseAndScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opBitwiseAnd;
-    rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseNot;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseOrScalar;
     rad::Ref<VulkanTensorOpElementWiseBinary> m_opBitwiseOr;
     rad::Ref<VulkanTensorOpElementWiseUnary> m_opBitwiseXorScalar;
