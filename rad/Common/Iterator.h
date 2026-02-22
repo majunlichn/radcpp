@@ -10,6 +10,12 @@
 namespace rad
 {
 
+template< typename Iterator >
+using iterator_value_t = typename std::iterator_traits< Iterator >::value_type;
+
+template< typename Iterator >
+using iterator_reference_t = typename std::iterator_traits< Iterator >::reference;
+
 template <typename... Ptrs>
     requires(std::is_pointer_v<Ptrs> && ...)
 class ZipPointer
