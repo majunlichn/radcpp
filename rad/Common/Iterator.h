@@ -25,7 +25,7 @@ public:
     using element_ref_t = std::add_lvalue_reference_t<std::remove_pointer_t<T>>;
 
     using iterator_category = std::random_access_iterator_tag;
-    using reference = std::tuple<typename element_ref_t<Ptrs>...>;
+    using reference = std::tuple<element_ref_t<Ptrs>...>;
     using value_type = reference;
     using difference_type = std::ptrdiff_t;
 
