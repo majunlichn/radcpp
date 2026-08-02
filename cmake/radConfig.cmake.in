@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(boost_exception CONFIG)
+find_dependency(CpuFeatures CONFIG)
+find_dependency(Imath CONFIG)
+find_dependency(Threads)
+find_dependency(xxHash CONFIG)
+if(WIN32)
+    find_dependency(boost_stacktrace_windbg CONFIG)
+else()
+    find_dependency(boost_stacktrace_basic CONFIG)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/radTargets.cmake")
+
+check_required_components(rad)

@@ -1,0 +1,36 @@
+# https://clang.llvm.org/docs/ClangFormat.html
+# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+ColumnLimit: 100
+
+IndentWidth: 4
+ContinuationIndentWidth: 4
+UseTab: Never
+TabWidth: 4
+
+NamespaceIndentation: None
+AccessModifierOffset: -4
+BracedInitializerIndentWidth: 4
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+BreakBeforeBraces: Allman
+BreakConstructorInitializers: AfterColon
+PackConstructorInitializers: Never
+BreakTemplateDeclarations: Yes
+
+AllowShortFunctionsOnASingleLine: InlineOnly
+
+PenaltyReturnTypeOnItsOwnLine: 1000
+
+IncludeBlocks: Preserve
+SortIncludes: false
+
+SortUsingDeclarations: Never
+
+ReflowComments: false
+...
