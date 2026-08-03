@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -105,6 +106,26 @@ TEST(Core, StrTrim)
     EXPECT_EQ(rad::StrTrim("alpha  beta"), "alpha  beta");
     EXPECT_EQ(rad::StrTrim(" \t\r\n"), "");
     EXPECT_EQ(rad::StrTrim("alpha"), "alpha");
+}
+
+TEST(Core, StrToValue)
+{
+    EXPECT_EQ(rad::StrToBool("1"), true);
+    EXPECT_EQ(rad::StrToBool("true"), true);
+    EXPECT_EQ(rad::StrToBool("TRUE"), true);
+    EXPECT_EQ(rad::StrToBool("on"), true);
+    EXPECT_EQ(rad::StrToBool(" On "), true);
+
+    EXPECT_EQ(rad::StrToBool("0"), false);
+    EXPECT_EQ(rad::StrToBool("false"), false);
+    EXPECT_EQ(rad::StrToBool("FALSE"), false);
+    EXPECT_EQ(rad::StrToBool("off"), false);
+    EXPECT_EQ(rad::StrToBool("\toff\n"), false);
+
+    EXPECT_EQ(rad::StrToBool(""), std::nullopt);
+    EXPECT_EQ(rad::StrToBool("2"), std::nullopt);
+    EXPECT_EQ(rad::StrToBool("yes"), std::nullopt);
+    EXPECT_EQ(rad::StrToBool("ture"), std::nullopt);
 }
 
 TEST(Core, StringLess)

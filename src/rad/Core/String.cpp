@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
+#include <optional>
 
 namespace rad
 {
@@ -108,6 +109,20 @@ std::string StrTrim(std::string_view value)
     std::string result{value};
     boost::algorithm::trim(result);
     return result;
+}
+
+std::optional<bool> StrToBool(std::string_view value)
+{
+    const std::string normalized = StrLower(StrTrim(value));
+    if (normalized == "1" || normalized == "true" || normalized == "on")
+    {
+        return true;
+    }
+    if (normalized == "0" || normalized == "false" || normalized == "off")
+    {
+        return false;
+    }
+    return std::nullopt;
 }
 
 } // namespace rad

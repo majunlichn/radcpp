@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -20,6 +21,8 @@ namespace rad
 [[nodiscard]] std::string StrUpper(std::string_view value);
 [[nodiscard]] std::string StrLower(std::string_view value);
 [[nodiscard]] std::string StrTrim(std::string_view value);
+// Accepts "1"/"true"/"on" and "0"/"false"/"off" (case-insensitive, trimmed).
+[[nodiscard]] std::optional<bool> StrToBool(std::string_view value);
 
 struct StringLess
 {
