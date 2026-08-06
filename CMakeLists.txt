@@ -59,6 +59,7 @@ set(RAD_SOURCES
     src/rad/Core/Float16.cpp
     src/rad/Core/Float8.h
     src/rad/Core/Float8.cpp
+    src/rad/Core/Flags.h
     src/rad/Core/Hash.h
     src/rad/Core/Hash.cpp
     src/rad/Core/Integer.h
@@ -104,6 +105,7 @@ set(RAD_TEST_SOURCES
     src/rad/Core/BFloat16.test.cpp
     src/rad/Core/Float.test.cpp
     src/rad/Core/Float8.test.cpp
+    src/rad/Core/Flags.test.cpp
     src/rad/Core/Integer.test.cpp
     src/rad/Core/Memory.test.cpp
     src/rad/Core/Platform.test.cpp
