@@ -72,9 +72,9 @@ static_assert((readWrite ^ TestFlagBits::eWrite) == TestFlagBits::eRead);
 static_assert((~TestFlagBits::eRead) == (TestFlagBits::eWrite | TestFlagBits::eExecute));
 static_assert(TestFlagBits::eRead < (TestFlagBits::eRead | TestFlagBits::eWrite));
 static_assert(!readWrite.Empty());
-static_assert(readWrite.HasBits(TestFlagBits::eRead));
-static_assert(readWrite.HasBits(TestFlagBits::eRead | TestFlagBits::eWrite));
-static_assert(!readWrite.HasBits(TestFlagBits::eExecute));
+static_assert(readWrite.HasAllBits(TestFlagBits::eRead));
+static_assert(readWrite.HasAllBits(TestFlagBits::eRead | TestFlagBits::eWrite));
+static_assert(!readWrite.HasAllBits(TestFlagBits::eExecute));
 static_assert(readWrite.HasAnyBits(TestFlagBits::eWrite | TestFlagBits::eExecute));
 static_assert(!readWrite.HasAnyBits(TestFlagBits::eExecute));
 static_assert(readWrite.HasNoBits(TestFlagBits::eExecute));
@@ -89,8 +89,8 @@ TEST(Core, Flags)
     flags |= TestFlagBits::eRead;
     flags |= TestFlagBits::eWrite;
     EXPECT_EQ(flags, readWrite);
-    EXPECT_TRUE(flags.HasBits(TestFlagBits::eRead));
-    EXPECT_TRUE(flags.HasBits(readWrite));
+    EXPECT_TRUE(flags.HasAllBits(TestFlagBits::eRead));
+    EXPECT_TRUE(flags.HasAllBits(readWrite));
     EXPECT_TRUE(flags.HasAnyBits(TestFlagBits::eWrite | TestFlagBits::eExecute));
     EXPECT_TRUE(flags.HasNoBits(TestFlagBits::eExecute));
 

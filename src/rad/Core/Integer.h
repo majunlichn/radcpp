@@ -81,7 +81,7 @@ template <Integer T>
 }
 
 template <UnsignedInteger T>
-[[nodiscard]] constexpr bool HasBits(T mask, T bits) noexcept
+[[nodiscard]] constexpr bool HasAllBits(T mask, T bits) noexcept
 {
     return (mask & bits) == bits;
 }

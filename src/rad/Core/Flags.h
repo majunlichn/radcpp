@@ -62,7 +62,7 @@ public:
     [[nodiscard]] static constexpr Flags FromMask(Mask mask) noexcept
         requires Bitmask<BitType>
     {
-        assert(FlagTraits<BitType>::allFlags.HasBits(Flags(mask)));
+        assert(FlagTraits<BitType>::allFlags.HasAllBits(Flags(mask)));
         return Flags(mask);
     }
 
@@ -97,7 +97,7 @@ public:
 
     [[nodiscard]] constexpr bool Empty() const noexcept { return m_mask == 0; }
 
-    [[nodiscard]] constexpr bool HasBits(Flags bits) const noexcept
+    [[nodiscard]] constexpr bool HasAllBits(Flags bits) const noexcept
     {
         return (m_mask & bits.m_mask) == bits.m_mask;
     }

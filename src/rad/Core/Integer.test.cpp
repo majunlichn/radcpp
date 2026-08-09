@@ -27,7 +27,7 @@ TEST(Core, IntegerBitOperations)
     EXPECT_FALSE(rad::IsPowerOfTwo(0));
     EXPECT_TRUE(rad::IsPowerOfTwo(8));
 
-    EXPECT_TRUE(rad::HasBits(0b1110u, 0b0110u));
+    EXPECT_TRUE(rad::HasAllBits(0b1110u, 0b0110u));
     EXPECT_TRUE(rad::HasAnyBits(0b1000u, 0b1010u));
     EXPECT_TRUE(rad::HasNoBits(0b1000u, 0b0110u));
 
