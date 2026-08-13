@@ -7,6 +7,7 @@
     "boost-filesystem",
     "boost-locale",
     "boost-nowide",
+    "boost-outcome",
     "boost-process",
     "boost-smart-ptr",
     "boost-stacktrace",

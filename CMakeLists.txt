@@ -72,6 +72,7 @@ set(RAD_SOURCES
     src/rad/Core/Random.h
     src/rad/Core/Random.cpp
     src/rad/Core/RefCounted.h
+    src/rad/Core/Result.h
     src/rad/Core/Span.h
     src/rad/Core/String.h
     src/rad/Core/String.cpp
@@ -144,6 +145,7 @@ find_package(boost_exception CONFIG REQUIRED)
 find_package(boost_filesystem CONFIG REQUIRED)
 find_package(boost_locale CONFIG REQUIRED)
 find_package(boost_nowide CONFIG REQUIRED)
+find_package(boost_outcome CONFIG REQUIRED)
 find_package(boost_process CONFIG REQUIRED)
 find_package(boost_smart_ptr CONFIG REQUIRED)
 find_package(CpuFeatures CONFIG REQUIRED)
@@ -175,6 +177,7 @@ target_link_libraries(rad
     PRIVATE Boost::filesystem
     PRIVATE Boost::locale
     PRIVATE Boost::nowide
+    PUBLIC Boost::outcome
     PRIVATE Boost::process
     PRIVATE Backward::Backward
     PUBLIC CpuFeatures::cpu_features
