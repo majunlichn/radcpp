@@ -74,6 +74,7 @@ set(RAD_SOURCES
     src/rad/Core/RefCounted.h
     src/rad/Core/Result.h
     src/rad/Core/Span.h
+    src/rad/Core/Sort.h
     src/rad/Core/String.h
     src/rad/Core/String.cpp
     src/rad/Core/TypeTraits.h
@@ -111,6 +112,7 @@ set(RAD_TEST_SOURCES
     src/rad/Core/Memory.test.cpp
     src/rad/Core/Platform.test.cpp
     src/rad/Core/Span.test.cpp
+    src/rad/Core/Sort.test.cpp
     src/rad/Core/String.test.cpp
     src/rad/Core/Unicode.test.cpp
     src/rad/Diagnostics/Exception.test.cpp
