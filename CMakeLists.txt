@@ -71,6 +71,7 @@ set(RAD_SOURCES
     src/rad/Core/Platform.cpp
     src/rad/Core/Random.h
     src/rad/Core/Random.cpp
+    src/rad/Core/Range.h
     src/rad/Core/RefCounted.h
     src/rad/Core/Result.h
     src/rad/Core/Span.h

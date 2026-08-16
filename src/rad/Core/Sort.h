@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rad/Core/Range.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <execution>
@@ -11,9 +13,8 @@ namespace rad
 {
 
 // Indices that would sort r (NumPy argsort). Does not modify r.
-template <std::ranges::random_access_range Range, typename Compare = std::ranges::less,
+template <SizedRandomAccessRange Range, typename Compare = std::ranges::less,
           typename ExecutionPolicy = std::execution::sequenced_policy>
-    requires std::ranges::sized_range<Range>
 [[nodiscard]] std::vector<std::size_t> SortIndices(Range&& r, Compare comp = {},
                                                    ExecutionPolicy policy = std::execution::seq)
 {
@@ -32,9 +33,8 @@ template <std::ranges::random_access_range Range, typename Compare = std::ranges
 }
 
 // Like SortIndices, but equal elements keep their original relative order.
-template <std::ranges::random_access_range Range, typename Compare = std::ranges::less,
+template <SizedRandomAccessRange Range, typename Compare = std::ranges::less,
           typename ExecutionPolicy = std::execution::sequenced_policy>
-    requires std::ranges::sized_range<Range>
 [[nodiscard]] std::vector<std::size_t> StableSortIndices(
     Range&& r, Compare comp = {}, ExecutionPolicy policy = std::execution::seq)
 {
