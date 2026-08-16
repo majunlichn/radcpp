@@ -2,7 +2,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <format>
+#include <functional>
+#include <iterator>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -23,6 +27,33 @@ namespace rad
 [[nodiscard]] std::string StrTrim(std::string_view value);
 // Accepts "1"/"true"/"on" and "0"/"false"/"off" (case-insensitive, trimmed).
 [[nodiscard]] std::optional<bool> StrToBool(std::string_view value);
+
+template <std::ranges::input_range R, typename Proj = std::identity>
+[[nodiscard]] std::string RangeToString(R&& range, std::string_view sep = ", ", Proj proj = {})
+{
+    std::string str;
+    if constexpr (std::ranges::sized_range<R>)
+    {
+        str.reserve(std::ranges::size(range) * (8 + sep.size()));
+    }
+
+    auto it = std::ranges::begin(range);
+    const auto end = std::ranges::end(range);
+    if (it == end)
+    {
+        return {};
+    }
+
+    auto strInserter = std::back_inserter(str);
+    std::format_to(strInserter, "{}", std::invoke(proj, *it));
+    ++it;
+    for (; it != end; ++it)
+    {
+        str += sep;
+        std::format_to(strInserter, "{}", std::invoke(proj, *it));
+    }
+    return str;
+}
 
 struct StringLess
 {

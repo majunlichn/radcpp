@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <optional>
+#include <ranges>
 #include <set>
 #include <string>
 #include <vector>
@@ -106,6 +107,23 @@ TEST(Core, StrTrim)
     EXPECT_EQ(rad::StrTrim("alpha  beta"), "alpha  beta");
     EXPECT_EQ(rad::StrTrim(" \t\r\n"), "");
     EXPECT_EQ(rad::StrTrim("alpha"), "alpha");
+}
+
+TEST(Core, RangeToString)
+{
+    EXPECT_EQ(rad::RangeToString(std::vector<int>{}), "");
+    EXPECT_EQ(rad::RangeToString(std::vector<int>{7}), "7");
+    EXPECT_EQ(rad::RangeToString(std::vector<int>{1, 2, 3}), "1, 2, 3");
+    EXPECT_EQ(rad::RangeToString(std::vector<int>{1, 2, 3}, "|"), "1|2|3");
+    EXPECT_EQ(rad::RangeToString(std::views::iota(0, 4)), "0, 1, 2, 3");
+
+    EXPECT_EQ(rad::RangeToString(std::vector<int>{}, ", ", [](int x) { return x; }), "");
+    EXPECT_EQ(rad::RangeToString(std::vector<int>{1, 2, 3}, ", ", [](int x) { return x * 10; }),
+              "10, 20, 30");
+    EXPECT_EQ(rad::RangeToString(std::vector<int>{1, 2, 3}, "|", [](int x) { return x; }), "1|2|3");
+    EXPECT_EQ(rad::RangeToString(std::vector<int>{1, 2, 3}, ", ",
+                                 [](int x) { return std::to_string(x * 10); }),
+              "10, 20, 30");
 }
 
 TEST(Core, StrToValue)
