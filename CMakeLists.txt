@@ -53,6 +53,7 @@ set(RAD_SOURCES
     src/rad/Container/SmallVector.h
     src/rad/Core/BFloat16.h
     src/rad/Core/BFloat16.cpp
+    src/rad/Core/Crc.h
     src/rad/Core/Float.h
     src/rad/Core/Float.cpp
     src/rad/Core/Float16.h
@@ -106,6 +107,7 @@ set(RAD_SOURCES
 set(RAD_TEST_SOURCES
     src/rad/TestMain.cpp
     src/rad/Core/BFloat16.test.cpp
+    src/rad/Core/Crc.test.cpp
     src/rad/Core/Float.test.cpp
     src/rad/Core/Float8.test.cpp
     src/rad/Core/Flags.test.cpp
@@ -145,6 +147,7 @@ find_package(Imath CONFIG REQUIRED)
 find_package(Backward CONFIG REQUIRED)
 find_package(boost_algorithm CONFIG REQUIRED)
 find_package(boost_container CONFIG REQUIRED)
+find_package(boost_crc CONFIG REQUIRED)
 find_package(boost_exception CONFIG REQUIRED)
 find_package(boost_filesystem CONFIG REQUIRED)
 find_package(boost_locale CONFIG REQUIRED)
@@ -177,6 +180,7 @@ target_include_directories(rad
 target_link_libraries(rad
     PRIVATE Boost::algorithm
     PUBLIC Boost::container
+    PUBLIC Boost::crc
     PUBLIC Boost::exception
     PRIVATE Boost::filesystem
     PRIVATE Boost::locale

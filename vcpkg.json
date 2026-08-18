@@ -3,6 +3,7 @@
     "backward-cpp",
     "boost-algorithm",
     "boost-container",
+    "boost-crc",
     "boost-exception",
     "boost-filesystem",
     "boost-locale",
