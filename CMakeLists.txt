@@ -51,6 +51,8 @@ endif()
 
 set(RAD_SOURCES
     src/rad/Container/SmallVector.h
+    src/rad/Core/Base64.h
+    src/rad/Core/Base64.cpp
     src/rad/Core/BFloat16.h
     src/rad/Core/BFloat16.cpp
     src/rad/Core/Crc.h
@@ -106,6 +108,7 @@ set(RAD_SOURCES
 
 set(RAD_TEST_SOURCES
     src/rad/TestMain.cpp
+    src/rad/Core/Base64.test.cpp
     src/rad/Core/BFloat16.test.cpp
     src/rad/Core/Crc.test.cpp
     src/rad/Core/Float.test.cpp

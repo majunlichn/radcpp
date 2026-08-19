@@ -8,6 +8,7 @@
 #include <ranges>
 #include <span>
 #include <type_traits>
+#include <utility>
 
 namespace rad
 {
@@ -151,6 +152,14 @@ constexpr auto MakeSpan(T* begin, T* end)
 {
     assert(begin <= end);
     return std::span<T>(begin, static_cast<std::size_t>(end - begin));
+}
+
+// Views the object representation of an element or contiguous range. The returned
+// span is only valid for as long as the source object remains alive.
+template <typename T>
+constexpr auto AsBytes(T&& value) noexcept
+{
+    return std::as_bytes(MakeSpan(std::forward<T>(value)));
 }
 
 } // namespace rad

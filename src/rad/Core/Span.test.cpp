@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstddef>
 #include <span>
 #include <type_traits>
 #include <vector>
@@ -115,5 +116,20 @@ TEST(Core, Span)
         static_assert(std::same_as<decltype(constRangeSpan), std::span<const int>>);
         EXPECT_EQ(constRangeSpan.data(), constValues.data());
         EXPECT_EQ(constRangeSpan.size(), constValues.size());
+    }
+
+    // AsBytes exposes object representations as read-only byte spans.
+    {
+        int value = 42;
+        const auto valueBytes = rad::AsBytes(value);
+        static_assert(std::same_as<decltype(valueBytes), const std::span<const std::byte>>);
+        EXPECT_EQ(valueBytes.data(), reinterpret_cast<const std::byte*>(&value));
+        EXPECT_EQ(valueBytes.size(), sizeof(value));
+
+        const std::array values = {1u, 2u, 3u};
+        const auto rangeBytes = rad::AsBytes(values);
+        static_assert(std::same_as<decltype(rangeBytes), const std::span<const std::byte>>);
+        EXPECT_EQ(rangeBytes.data(), reinterpret_cast<const std::byte*>(values.data()));
+        EXPECT_EQ(rangeBytes.size(), sizeof(values));
     }
 }
