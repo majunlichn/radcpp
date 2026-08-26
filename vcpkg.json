@@ -13,6 +13,7 @@
     "boost-smart-ptr",
     "boost-stacktrace",
     "cpu-features",
+    "eigen3",
     "gtest",
     "imath",
     "pystring",

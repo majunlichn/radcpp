@@ -51,6 +51,8 @@ endif()
 
 set(RAD_SOURCES
     src/rad/Container/SmallVector.h
+    src/rad/Math/Vector.h
+    src/rad/Math/Matrix.h
     src/rad/Core/Base64.h
     src/rad/Core/Base64.cpp
     src/rad/Core/BFloat16.h
@@ -148,6 +150,7 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src/rad FILES ${RAD_SOURCES})
 
 find_package(Imath CONFIG REQUIRED)
 find_package(Backward CONFIG REQUIRED)
+find_package(Eigen3 CONFIG REQUIRED)
 find_package(boost_algorithm CONFIG REQUIRED)
 find_package(boost_container CONFIG REQUIRED)
 find_package(boost_crc CONFIG REQUIRED)
@@ -199,6 +202,7 @@ target_link_libraries(rad
     PUBLIC spdlog::spdlog
     PRIVATE Threads::Threads
     PUBLIC Imath::Imath
+    PUBLIC Eigen3::Eigen
     PUBLIC xxHash::xxhash
 )
 

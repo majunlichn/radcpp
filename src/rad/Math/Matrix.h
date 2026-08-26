@@ -1,0 +1,19 @@
+#pragma once
+
+#include <Eigen/Core>
+
+namespace rad
+{
+
+////////////////////////////////////////////////////////////////////////////////
+// Eigen built-in aliases
+////////////////////////////////////////////////////////////////////////////////
+
+using Eigen::Matrix2d;
+using Eigen::Matrix2f;
+using Eigen::Matrix3d;
+using Eigen::Matrix3f;
+using Eigen::Matrix4d;
+using Eigen::Matrix4f;
+
+} // namespace rad
