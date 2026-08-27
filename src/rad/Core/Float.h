@@ -146,18 +146,6 @@ template <FloatingPoint T>
     return t * t * (T{3} - T{2} * t);
 }
 
-template <FloatingPoint T>
-[[nodiscard]] constexpr T DegreesToRadians(T degrees) noexcept
-{
-    return degrees * Pi<T> / T{180};
-}
-
-template <FloatingPoint T>
-[[nodiscard]] constexpr T RadiansToDegrees(T radians) noexcept
-{
-    return radians * T{180} / Pi<T>;
-}
-
 template <std::unsigned_integral T, FloatingPoint F>
 [[nodiscard]] constexpr T QuantizeUnorm(F value, F minimum, F maximum) noexcept
 {

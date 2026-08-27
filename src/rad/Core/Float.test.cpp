@@ -17,8 +17,6 @@ static_assert(rad::Float32ToBits(1.0f) == 0x3F800000u);
 static_assert(rad::Float32FromBits(0x3F800000u) == 1.0f);
 static_assert(rad::Float64ToBits(1.0) == 0x3FF0000000000000ull);
 static_assert(rad::Float64FromBits(0x3FF0000000000000ull) == 1.0);
-static_assert(rad::AlmostEqual(rad::DegreesToRadians(180.0), rad::Pi<double>));
-static_assert(rad::AlmostEqual(rad::RadiansToDegrees(rad::Pi<double>), 180.0));
 static_assert(rad::Abs(-2.5f) == 2.5f);
 static_assert(rad::Clamp(1.5f, 0.0f, 1.0f) == 1.0f);
 static_assert(rad::Saturate(-0.25f) == 0.0f);
@@ -92,14 +90,6 @@ TEST(Core, FloatNormalization)
     EXPECT_FLOAT_EQ(rad::DequantizeUnorm8(0), 0.0f);
     EXPECT_FLOAT_EQ(rad::DequantizeUnorm8(255), 1.0f);
     EXPECT_FLOAT_EQ(rad::DequantizeUnorm16(65535), 1.0f);
-}
-
-TEST(Core, FloatAngles)
-{
-    EXPECT_TRUE(rad::AlmostEqual(rad::DegreesToRadians(180.0), rad::Pi<double>));
-    EXPECT_TRUE(rad::AlmostEqual(rad::RadiansToDegrees(rad::Pi<double>), 180.0));
-    EXPECT_TRUE(rad::AlmostEqual(rad::DegreesToRadians(90.0), rad::Pi<double> / 2.0));
-    EXPECT_TRUE(rad::AlmostEqual(rad::RadiansToDegrees(rad::Pi<double> / 2.0), 90.0));
 }
 
 TEST(Core, FloatBits)

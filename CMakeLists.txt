@@ -70,6 +70,7 @@ set(RAD_SOURCES
     src/rad/Core/Integer.h
     src/rad/Core/IntegerFallback.h
     src/rad/Core/Integer.cpp
+    src/rad/Core/Math.h
     src/rad/Core/Memory.h
     src/rad/Core/Memory.cpp
     src/rad/Core/Platform.h
@@ -117,6 +118,7 @@ set(RAD_TEST_SOURCES
     src/rad/Core/Float8.test.cpp
     src/rad/Core/Flags.test.cpp
     src/rad/Core/Integer.test.cpp
+    src/rad/Core/Math.test.cpp
     src/rad/Core/Memory.test.cpp
     src/rad/Core/Platform.test.cpp
     src/rad/Core/Range.test.cpp
@@ -128,6 +130,7 @@ set(RAD_TEST_SOURCES
     src/rad/Diagnostics/StackTrace.test.cpp
     src/rad/IO/Image.test.cpp
     src/rad/IO/Logging.test.cpp
+    src/rad/Math/Vector.test.cpp
     src/rad/System/Application.test.cpp
     src/rad/System/CpuInfo.test.cpp
     src/rad/System/OS.test.cpp
