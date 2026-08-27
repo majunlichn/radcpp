@@ -53,10 +53,10 @@ inline const FilePath devnull = "/dev/null";
 
 enum class AccessMode : unsigned int
 {
-    F_OK = 0,
-    X_OK = 1,
-    W_OK = 2,
-    R_OK = 4,
+    Exists = 0,
+    Execute = 1,
+    Write = 2,
+    Read = 4,
 };
 
 [[nodiscard]] constexpr AccessMode operator|(AccessMode lhs, AccessMode rhs) noexcept
