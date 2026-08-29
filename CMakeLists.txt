@@ -130,6 +130,7 @@ set(RAD_TEST_SOURCES
     src/rad/Diagnostics/StackTrace.test.cpp
     src/rad/IO/Image.test.cpp
     src/rad/IO/Logging.test.cpp
+    src/rad/Math/Matrix.test.cpp
     src/rad/Math/Vector.test.cpp
     src/rad/System/Application.test.cpp
     src/rad/System/CpuInfo.test.cpp
