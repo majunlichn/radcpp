@@ -59,6 +59,16 @@ template <typename Derived>
 concept Uint32Vector =
     VectorExpression<Derived> && std::same_as<typename Derived::Scalar, std::uint32_t>;
 
+template <typename Derived>
+concept BoolVector = VectorExpression<Derived> && std::same_as<typename Derived::Scalar, bool>;
+
+template <typename Derived>
+concept EqualityComparableVector =
+    VectorExpression<Derived> && std::equality_comparable<typename Derived::Scalar>;
+
+template <typename Derived>
+using BoolMask = Eigen::Matrix<bool, Derived::RowsAtCompileTime, Derived::ColsAtCompileTime>;
+
 template <typename Derived, int Size>
 concept VectorOfSize =
     VectorExpression<Derived> && (Derived::SizeAtCompileTime == Size);
@@ -417,15 +427,15 @@ template <FloatingPointVector Derived>
 }
 
 template <FloatingPointVector Derived>
-[[nodiscard]] auto IsNaN(const Eigen::MatrixBase<Derived>& values)
+[[nodiscard]] BoolMask<Derived> IsNaN(const Eigen::MatrixBase<Derived>& values)
 {
-    return values.array().isNaN().eval();
+    return values.array().isNaN().matrix();
 }
 
 template <FloatingPointVector Derived>
-[[nodiscard]] auto IsInfinite(const Eigen::MatrixBase<Derived>& values)
+[[nodiscard]] BoolMask<Derived> IsInfinite(const Eigen::MatrixBase<Derived>& values)
 {
-    return values.array().isInf().eval();
+    return values.array().isInf().matrix();
 }
 
 template <FloatingPointVector ADerived, FloatingPointVector BDerived,
@@ -559,6 +569,82 @@ template <FloatingPointVector IDerived, FloatingPointVector NDerived>
         return IDerived::PlainObject::Zero(incident.rows(), incident.cols());
     }
     return eta * incident - (eta * dotNI + std::sqrt(k)) * normal;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Vector relational functions
+////////////////////////////////////////////////////////////////////////////////
+
+template <ArithmeticVector XDerived, ArithmeticVector YDerived>
+    requires std::same_as<typename XDerived::Scalar, typename YDerived::Scalar>
+[[nodiscard]] BoolMask<XDerived> LessThan(const Eigen::MatrixBase<XDerived>& x,
+                                             const Eigen::MatrixBase<YDerived>& y)
+{
+    assert(x.size() == y.size());
+    return (x.array() < y.array()).matrix();
+}
+
+template <ArithmeticVector XDerived, ArithmeticVector YDerived>
+    requires std::same_as<typename XDerived::Scalar, typename YDerived::Scalar>
+[[nodiscard]] BoolMask<XDerived> LessThanEqual(const Eigen::MatrixBase<XDerived>& x,
+                                                  const Eigen::MatrixBase<YDerived>& y)
+{
+    assert(x.size() == y.size());
+    return (x.array() <= y.array()).matrix();
+}
+
+template <ArithmeticVector XDerived, ArithmeticVector YDerived>
+    requires std::same_as<typename XDerived::Scalar, typename YDerived::Scalar>
+[[nodiscard]] BoolMask<XDerived> GreaterThan(const Eigen::MatrixBase<XDerived>& x,
+                                                const Eigen::MatrixBase<YDerived>& y)
+{
+    assert(x.size() == y.size());
+    return (x.array() > y.array()).matrix();
+}
+
+template <ArithmeticVector XDerived, ArithmeticVector YDerived>
+    requires std::same_as<typename XDerived::Scalar, typename YDerived::Scalar>
+[[nodiscard]] BoolMask<XDerived> GreaterThanEqual(const Eigen::MatrixBase<XDerived>& x,
+                                                     const Eigen::MatrixBase<YDerived>& y)
+{
+    assert(x.size() == y.size());
+    return (x.array() >= y.array()).matrix();
+}
+
+template <EqualityComparableVector XDerived, EqualityComparableVector YDerived>
+    requires std::same_as<typename XDerived::Scalar, typename YDerived::Scalar>
+[[nodiscard]] BoolMask<XDerived> Equal(const Eigen::MatrixBase<XDerived>& x,
+                                           const Eigen::MatrixBase<YDerived>& y)
+{
+    assert(x.size() == y.size());
+    return (x.array() == y.array()).matrix();
+}
+
+template <EqualityComparableVector XDerived, EqualityComparableVector YDerived>
+    requires std::same_as<typename XDerived::Scalar, typename YDerived::Scalar>
+[[nodiscard]] BoolMask<XDerived> NotEqual(const Eigen::MatrixBase<XDerived>& x,
+                                              const Eigen::MatrixBase<YDerived>& y)
+{
+    assert(x.size() == y.size());
+    return (x.array() != y.array()).matrix();
+}
+
+template <BoolVector Derived>
+[[nodiscard]] bool Any(const Eigen::DenseBase<Derived>& values)
+{
+    return values.any();
+}
+
+template <BoolVector Derived>
+[[nodiscard]] bool All(const Eigen::DenseBase<Derived>& values)
+{
+    return values.all();
+}
+
+template <BoolVector Derived>
+[[nodiscard]] BoolMask<Derived> Not(const Eigen::DenseBase<Derived>& values)
+{
+    return (!values.derived().array()).matrix();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
