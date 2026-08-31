@@ -111,6 +111,21 @@ std::string StrTrim(std::string_view value)
     return result;
 }
 
+std::string ToHexString(Span<const std::byte> bytes, HexCase letterCase)
+{
+    constexpr char lowerDigits[] = "0123456789abcdef";
+    constexpr char upperDigits[] = "0123456789ABCDEF";
+    const char* digits = (letterCase == HexCase::Lower) ? lowerDigits : upperDigits;
+    std::string result(bytes.size() * 2, '\0');
+    for (std::size_t i = 0; i < bytes.size(); ++i)
+    {
+        const auto value = std::to_integer<unsigned char>(bytes[i]);
+        result[i * 2] = digits[value >> 4];
+        result[i * 2 + 1] = digits[value & 0x0f];
+    }
+    return result;
+}
+
 std::optional<bool> StrToBool(std::string_view value)
 {
     const std::string normalized = StrLower(StrTrim(value));

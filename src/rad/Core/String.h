@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rad/Core/Span.h>
+
 #include <algorithm>
 #include <cctype>
 #include <format>
@@ -14,6 +16,12 @@
 namespace rad
 {
 
+enum class HexCase
+{
+    Lower,
+    Upper,
+};
+
 [[nodiscard]] std::vector<std::string> StrSplit(std::string_view value, std::string_view delimiters,
                                                 bool skipEmpty = false);
 [[nodiscard]] std::string StrReplaceAll(std::string_view value, std::string_view search,
@@ -25,6 +33,8 @@ namespace rad
 [[nodiscard]] std::string StrUpper(std::string_view value);
 [[nodiscard]] std::string StrLower(std::string_view value);
 [[nodiscard]] std::string StrTrim(std::string_view value);
+[[nodiscard]] std::string ToHexString(Span<const std::byte> bytes,
+                                      HexCase letterCase = HexCase::Lower);
 // Accepts "1"/"true"/"on" and "0"/"false"/"off" (case-insensitive, trimmed).
 [[nodiscard]] std::optional<bool> StrToBool(std::string_view value);
 

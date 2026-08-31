@@ -52,16 +52,21 @@ namespace
     ThrowError(std::error_code(errno, std::generic_category()), operation);
 }
 
-[[nodiscard]] FileTime FromTimeT(std::time_t value)
+[[nodiscard]] FileTime ToFileTime(std::time_t value)
 {
-    return std::chrono::system_clock::from_time_t(value);
+    const auto fileNow = FileTime::clock::now();
+    const auto systemNow = std::chrono::system_clock::now();
+    const auto systemTime = std::chrono::system_clock::from_time_t(value);
+    return std::chrono::time_point_cast<FileTime::duration>(systemTime - systemNow + fileNow);
 }
 
-[[nodiscard]] FileTime ToSystemTime(std::filesystem::file_time_type value)
+[[nodiscard]] std::time_t ToTimeT(FileTime value)
 {
-    const auto fileNow = std::filesystem::file_time_type::clock::now();
+    const auto fileNow = FileTime::clock::now();
     const auto systemNow = std::chrono::system_clock::now();
-    return std::chrono::time_point_cast<FileTime::duration>(value - fileNow + systemNow);
+    const auto systemTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+        value - fileNow + systemNow);
+    return std::chrono::system_clock::to_time_t(systemTime);
 }
 
 [[nodiscard]] StatResult ReadStat(const FilePath& path, bool followSymlinks)
@@ -74,7 +79,7 @@ namespace
     {
         ThrowError(error, followSymlinks ? "os::stat" : "os::lstat");
     }
-    if (status.type() == std::filesystem::file_type::not_found)
+    if (status.type() == FileType::not_found)
     {
         ThrowError(std::make_error_code(std::errc::no_such_file_or_directory),
                    followSymlinks ? "os::stat" : "os::lstat");
@@ -103,9 +108,9 @@ namespace
     struct _stat64 nativeStat{};
     if (_wstat64(path.c_str(), &nativeStat) == 0)
     {
-        result.atime = FromTimeT(nativeStat.st_atime);
-        result.mtime = FromTimeT(nativeStat.st_mtime);
-        result.ctime = FromTimeT(nativeStat.st_ctime);
+        result.atime = ToFileTime(nativeStat.st_atime);
+        result.mtime = ToFileTime(nativeStat.st_mtime);
+        result.ctime = ToFileTime(nativeStat.st_ctime);
     }
     else
     {
@@ -113,7 +118,7 @@ namespace
         const auto modified = std::filesystem::last_write_time(path, error);
         if (!error)
         {
-            result.mtime = ToSystemTime(modified);
+            result.mtime = modified;
         }
     }
 #else
@@ -124,9 +129,9 @@ namespace
     {
         ThrowErrno(followSymlinks ? "os::stat" : "os::lstat");
     }
-    result.atime = FromTimeT(nativeStat.st_atime);
-    result.mtime = FromTimeT(nativeStat.st_mtime);
-    result.ctime = FromTimeT(nativeStat.st_ctime);
+    result.atime = ToFileTime(nativeStat.st_atime);
+    result.mtime = ToFileTime(nativeStat.st_mtime);
+    result.ctime = ToFileTime(nativeStat.st_ctime);
 #endif
     return result;
 }
@@ -285,13 +290,13 @@ std::vector<DirEntry> scandir(const FilePath& path)
         item.name = entry.path().filename();
         item.path = entry.path();
         item.info = lstat(item.path);
-        item.isSymlink = item.info.type == std::filesystem::file_type::symlink;
+        item.isSymlink = item.info.type == FileType::symlink;
         result.push_back(std::move(item));
     }
     return result;
 }
 
-void mkdir(const FilePath& path, std::filesystem::perms mode)
+void mkdir(const FilePath& path, FilePermissions mode)
 {
 #if defined(RAD_OS_WINDOWS)
     std::error_code error;
@@ -496,7 +501,7 @@ StatResult lstat(const FilePath& path)
     return ReadStat(path, false);
 }
 
-void chmod(const FilePath& path, std::filesystem::perms mode)
+void chmod(const FilePath& path, FilePermissions mode)
 {
     std::error_code error;
     std::filesystem::permissions(path, mode, std::filesystem::perm_options::replace, error);
@@ -518,22 +523,20 @@ void truncate(const FilePath& path, std::uintmax_t length)
 
 void utime(const FilePath& path)
 {
-    const FileTime now = std::chrono::system_clock::now();
+    const FileTime now = FileTime::clock::now();
     utime(path, now, now);
 }
 
 void utime(const FilePath& path, FileTime atime, FileTime mtime)
 {
 #if defined(RAD_OS_WINDOWS)
-    struct __utimbuf64 times{std::chrono::system_clock::to_time_t(atime),
-                             std::chrono::system_clock::to_time_t(mtime)};
+    struct __utimbuf64 times{ToTimeT(atime), ToTimeT(mtime)};
     if (_wutime64(path.c_str(), &times) != 0)
     {
         ThrowErrno("os::utime");
     }
 #else
-    struct ::utimbuf times{std::chrono::system_clock::to_time_t(atime),
-                           std::chrono::system_clock::to_time_t(mtime)};
+    struct ::utimbuf times{ToTimeT(atime), ToTimeT(mtime)};
     if (::utime(path.c_str(), &times) != 0)
     {
         ThrowErrno("os::utime");
@@ -1010,7 +1013,7 @@ bool lexists(const FilePath& value) noexcept
 {
     std::error_code error;
     const auto status = std::filesystem::symlink_status(value, error);
-    return !error && status.type() != std::filesystem::file_type::not_found;
+    return !error && status.type() != FileType::not_found;
 }
 
 FilePath normcase(const FilePath& value)
@@ -1138,17 +1141,3 @@ std::pair<FilePath, FilePath> splitext(const FilePath& value)
 } // namespace path
 
 } // namespace rad::os
-
-namespace rad
-{
-
-std::string PathToUtf8(const os::FilePath& path)
-{
-#if defined(RAD_OS_WINDOWS)
-    return WideToUtf8(path.native());
-#else
-    return path.string();
-#endif
-}
-
-} // namespace rad

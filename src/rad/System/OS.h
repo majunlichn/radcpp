@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rad/Core/Platform.h>
+#include <rad/System/FileSystem.h>
 
 #include <chrono>
 #include <cstddef>
@@ -24,9 +25,6 @@ namespace rad::os
 // FilePath uses the platform-native path encoding. On Windows, creating symbolic links may require
 // Developer Mode or elevation, and permission values represent the limited Windows filesystem
 // permission model.
-using FilePath = std::filesystem::path;
-using FileTime = std::chrono::system_clock::time_point;
-
 #if defined(RAD_OS_WINDOWS)
 inline constexpr std::string_view name = "nt";
 inline const FilePath curdir = L".";
@@ -66,8 +64,8 @@ enum class AccessMode : unsigned int
 
 struct StatResult
 {
-    std::filesystem::file_type type = std::filesystem::file_type::none;
-    std::filesystem::perms permissions = std::filesystem::perms::unknown;
+    FileType type = FileType::none;
+    FilePermissions permissions = FilePermissions::unknown;
     std::uintmax_t size = 0;
     std::uintmax_t hardLinks = 0;
     FileTime atime{};
@@ -91,7 +89,7 @@ void chdir(const FilePath& path);
 [[nodiscard]] std::vector<FilePath> listdir(const FilePath& path = FilePath{"."});
 [[nodiscard]] std::vector<DirEntry> scandir(const FilePath& path = FilePath{"."});
 
-void mkdir(const FilePath& path, std::filesystem::perms mode = std::filesystem::perms::all);
+void mkdir(const FilePath& path, FilePermissions mode = FilePermissions::all);
 void makedirs(const FilePath& path, bool exist_ok = false);
 void remove(const FilePath& path);
 void unlink(const FilePath& path);
@@ -107,7 +105,7 @@ void symlink(const FilePath& source, const FilePath& destination, bool target_is
 [[nodiscard]] bool access(const FilePath& path, AccessMode mode) noexcept;
 [[nodiscard]] StatResult stat(const FilePath& path);
 [[nodiscard]] StatResult lstat(const FilePath& path);
-void chmod(const FilePath& path, std::filesystem::perms mode);
+void chmod(const FilePath& path, FilePermissions mode);
 void truncate(const FilePath& path, std::uintmax_t length);
 void utime(const FilePath& path);
 void utime(const FilePath& path, FileTime atime, FileTime mtime);
@@ -158,10 +156,3 @@ namespace path
 } // namespace path
 
 } // namespace rad::os
-
-namespace rad
-{
-
-[[nodiscard]] std::string PathToUtf8(const os::FilePath& path);
-
-} // namespace rad

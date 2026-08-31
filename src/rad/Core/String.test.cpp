@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <cstddef>
 #include <optional>
 #include <ranges>
 #include <set>
@@ -144,6 +146,14 @@ TEST(Core, StrToValue)
     EXPECT_EQ(rad::StrToBool("2"), std::nullopt);
     EXPECT_EQ(rad::StrToBool("yes"), std::nullopt);
     EXPECT_EQ(rad::StrToBool("ture"), std::nullopt);
+}
+
+TEST(Core, ToHexString)
+{
+    const std::array bytes = {std::byte{0x00}, std::byte{0x01}, std::byte{0xab}, std::byte{0xff}};
+    EXPECT_EQ(rad::ToHexString(bytes), "0001abff");
+    EXPECT_EQ(rad::ToHexString(bytes, rad::HexCase::Upper), "0001ABFF");
+    EXPECT_EQ(rad::ToHexString({}), "");
 }
 
 TEST(Core, StringLess)

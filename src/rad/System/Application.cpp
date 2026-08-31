@@ -214,7 +214,7 @@ void Application::Init(int argc, char** argv)
 
     if (auto* logger = GetLogger())
     {
-        logger->info("Executable: {}", PathToUtf8(os::executable_path()));
+        logger->info("Executable: {}", ToUtf8(os::executable_path()));
 #if defined(_DEBUG)
         const auto& args = Arguments();
         for (std::size_t index = 1; index < args.size(); ++index)
@@ -222,8 +222,8 @@ void Application::Init(int argc, char** argv)
             logger->debug("Argument[{}]: {}", index, args[index]);
         }
 #endif
-        logger->info("Working directory: {}", PathToUtf8(os::getcwd()));
-        logger->info("Temporary directory: {}", PathToUtf8(os::temp_directory_path()));
+        logger->info("Working directory: {}", ToUtf8(os::getcwd()));
+        logger->info("Temporary directory: {}", ToUtf8(os::temp_directory_path()));
     }
 }
 
@@ -245,18 +245,18 @@ void Application::InitLogging()
     }
 
     auto& logManager = LogManager::Instance();
-    const os::FilePath executablePath = os::executable_path();
+    const FilePath executablePath = os::executable_path();
     const bool logInitialized = logManager.IsInitialized();
     if (!logInitialized)
     {
-        os::FilePath logName = executablePath.stem();
-        logName += os::FilePath{".log"};
-        logManager.Init(PathToUtf8(os::getcwd() / logName), true);
+        FilePath logName = executablePath.stem();
+        logName += FilePath{".log"};
+        logManager.Init(ToUtf8(os::getcwd() / logName), true);
     }
 
     try
     {
-        m_logger = logManager.CreateLogger(PathToUtf8(executablePath.stem()));
+        m_logger = logManager.CreateLogger(ToUtf8(executablePath.stem()));
     }
     catch (...)
     {

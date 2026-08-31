@@ -91,6 +91,8 @@ set(RAD_SOURCES
     src/rad/Diagnostics/Exception.cpp
     src/rad/Diagnostics/StackTrace.h
     src/rad/Diagnostics/StackTrace.cpp
+    src/rad/IO/File.h
+    src/rad/IO/File.cpp
     src/rad/IO/Image.h
     src/rad/IO/Image.cpp
     src/rad/IO/Logging.h
@@ -99,6 +101,8 @@ set(RAD_SOURCES
     src/rad/System/Application.cpp
     src/rad/System/CpuInfo.h
     src/rad/System/CpuInfo.cpp
+    src/rad/System/FileSystem.h
+    src/rad/System/FileSystem.cpp
     src/rad/System/OS.h
     src/rad/System/OS.cpp
     src/rad/System/Process.h
@@ -128,6 +132,7 @@ set(RAD_TEST_SOURCES
     src/rad/Core/Unicode.test.cpp
     src/rad/Diagnostics/Exception.test.cpp
     src/rad/Diagnostics/StackTrace.test.cpp
+    src/rad/IO/File.test.cpp
     src/rad/IO/Image.test.cpp
     src/rad/IO/Logging.test.cpp
     src/rad/Math/Matrix.test.cpp
@@ -160,6 +165,7 @@ find_package(boost_container CONFIG REQUIRED)
 find_package(boost_crc CONFIG REQUIRED)
 find_package(boost_exception CONFIG REQUIRED)
 find_package(boost_filesystem CONFIG REQUIRED)
+find_package(boost_hash2 CONFIG REQUIRED)
 find_package(boost_locale CONFIG REQUIRED)
 find_package(boost_nowide CONFIG REQUIRED)
 find_package(boost_outcome CONFIG REQUIRED)
@@ -193,6 +199,7 @@ target_link_libraries(rad
     PUBLIC Boost::crc
     PUBLIC Boost::exception
     PRIVATE Boost::filesystem
+    PRIVATE Boost::hash2
     PRIVATE Boost::locale
     PRIVATE Boost::nowide
     PUBLIC Boost::outcome

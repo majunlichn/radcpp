@@ -6,6 +6,7 @@
     "boost-crc",
     "boost-exception",
     "boost-filesystem",
+    "boost-hash2",
     "boost-locale",
     "boost-nowide",
     "boost-outcome",
