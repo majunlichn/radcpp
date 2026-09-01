@@ -95,6 +95,8 @@ set(RAD_SOURCES
     src/rad/IO/File.cpp
     src/rad/IO/Image.h
     src/rad/IO/Image.cpp
+    src/rad/IO/Json.h
+    src/rad/IO/Json.cpp
     src/rad/IO/Logging.h
     src/rad/IO/Logging.cpp
     src/rad/System/Application.h
@@ -134,6 +136,7 @@ set(RAD_TEST_SOURCES
     src/rad/Diagnostics/StackTrace.test.cpp
     src/rad/IO/File.test.cpp
     src/rad/IO/Image.test.cpp
+    src/rad/IO/Json.test.cpp
     src/rad/IO/Logging.test.cpp
     src/rad/Math/Matrix.test.cpp
     src/rad/Math/Vector.test.cpp
@@ -166,6 +169,7 @@ find_package(boost_crc CONFIG REQUIRED)
 find_package(boost_exception CONFIG REQUIRED)
 find_package(boost_filesystem CONFIG REQUIRED)
 find_package(boost_hash2 CONFIG REQUIRED)
+find_package(boost_json CONFIG REQUIRED)
 find_package(boost_locale CONFIG REQUIRED)
 find_package(boost_nowide CONFIG REQUIRED)
 find_package(boost_outcome CONFIG REQUIRED)
@@ -200,6 +204,7 @@ target_link_libraries(rad
     PUBLIC Boost::exception
     PRIVATE Boost::filesystem
     PRIVATE Boost::hash2
+    PUBLIC Boost::json
     PRIVATE Boost::locale
     PRIVATE Boost::nowide
     PUBLIC Boost::outcome

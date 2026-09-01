@@ -3,6 +3,7 @@
 include(CMakeFindDependencyMacro)
 find_dependency(boost_crc CONFIG)
 find_dependency(boost_exception CONFIG)
+find_dependency(boost_json CONFIG)
 find_dependency(boost_outcome CONFIG)
 find_dependency(CpuFeatures CONFIG)
 find_dependency(Imath CONFIG)

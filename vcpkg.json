@@ -7,6 +7,7 @@
     "boost-exception",
     "boost-filesystem",
     "boost-hash2",
+    "boost-json",
     "boost-locale",
     "boost-nowide",
     "boost-outcome",
