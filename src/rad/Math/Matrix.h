@@ -3,6 +3,7 @@
 #include <rad/Math/Vector.h>
 
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <Eigen/LU>
 #include <cassert>
 #include <concepts>
@@ -159,6 +160,86 @@ template <FloatingPointMatrix Derived>
 {
     assert(matrix.rows() == matrix.cols());
     return matrix.inverse();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Matrix transformations
+////////////////////////////////////////////////////////////////////////////////
+
+// Column-vector convention (p' = M * p): each function post-multiplies the
+// given matrix, i.e. returns matrix * transform.
+
+// Returns matrix * T where T is a translation by `translation`. Works in any
+// dimension D: `matrix` is a (D+1) x (D+1) affine transform of D-space and
+// `translation` is a D-vector.
+template <FloatingPointMatrix MatrixDerived, FloatingPointVector VectorDerived>
+    requires SquareMatrix<MatrixDerived> && (MatrixDerived::RowsAtCompileTime >= 3) &&
+             (MatrixDerived::RowsAtCompileTime == VectorDerived::SizeAtCompileTime + 1) &&
+             std::same_as<typename MatrixDerived::Scalar, typename VectorDerived::Scalar>
+[[nodiscard]] typename MatrixDerived::PlainObject
+Translate(const Eigen::MatrixBase<MatrixDerived>& matrix,
+          const Eigen::MatrixBase<VectorDerived>& translation)
+{
+    using Scalar = typename MatrixDerived::Scalar;
+    constexpr int dim = MatrixDerived::RowsAtCompileTime - 1;
+    return matrix *
+           Eigen::Transform<Scalar, dim, Eigen::Isometry>(
+               Eigen::Translation<Scalar, dim>(translation.derived().eval()))
+               .matrix();
+}
+
+// Returns matrix * R where R is the in-plane 2D rotation by `angle` radians,
+// embedded as the top-left 2x2 block with identity elsewhere. Works for any
+// dimension D >= 2 (in 3D this is a rotation about the Z axis).
+template <FloatingPointMatrix MatrixDerived>
+    requires SquareMatrix<MatrixDerived> && (MatrixDerived::RowsAtCompileTime >= 3)
+[[nodiscard]] typename MatrixDerived::PlainObject
+Rotate(const Eigen::MatrixBase<MatrixDerived>& matrix, typename MatrixDerived::Scalar angle)
+{
+    using Scalar = typename MatrixDerived::Scalar;
+    constexpr int dim = MatrixDerived::RowsAtCompileTime - 1;
+    typename MatrixDerived::PlainObject rotation =
+        Eigen::Matrix<Scalar, dim + 1, dim + 1>::Identity();
+    rotation.template topLeftCorner<2, 2>() = Eigen::Rotation2D<Scalar>(angle).toRotationMatrix();
+    return matrix * rotation;
+}
+
+// Returns matrix * R where R is the right-handed rotation by `angle` radians
+// about `axis` in 3D. `axis` need not be normalized (a zero axis leaves the
+// matrix unchanged).
+template <FloatingPointMatrix MatrixDerived, FloatingPointVector VectorDerived>
+    requires SquareMatrix<MatrixDerived> && (MatrixDerived::RowsAtCompileTime == 4) &&
+             VectorOfSize<VectorDerived, 3> &&
+             std::same_as<typename MatrixDerived::Scalar, typename VectorDerived::Scalar>
+[[nodiscard]] typename MatrixDerived::PlainObject
+Rotate(const Eigen::MatrixBase<MatrixDerived>& matrix, typename MatrixDerived::Scalar angle,
+       const Eigen::MatrixBase<VectorDerived>& axis)
+{
+    using Scalar = typename MatrixDerived::Scalar;
+    if (axis.isZero())
+    {
+        return matrix;
+    }
+    return matrix * Eigen::Transform<Scalar, 3, Eigen::Isometry>(
+                        Eigen::AngleAxis<Scalar>(angle, axis.normalized()))
+                        .matrix();
+}
+
+// Returns matrix * S where S scales by the per-axis factors `scaling`. Works
+// in any dimension D: `matrix` is a (D+1) x (D+1) affine transform of D-space
+// and `scaling` is a D-vector.
+template <FloatingPointMatrix MatrixDerived, FloatingPointVector VectorDerived>
+    requires SquareMatrix<MatrixDerived> && (MatrixDerived::RowsAtCompileTime >= 3) &&
+             (MatrixDerived::RowsAtCompileTime == VectorDerived::SizeAtCompileTime + 1) &&
+             std::same_as<typename MatrixDerived::Scalar, typename VectorDerived::Scalar>
+[[nodiscard]] typename MatrixDerived::PlainObject
+Scale(const Eigen::MatrixBase<MatrixDerived>& matrix,
+      const Eigen::MatrixBase<VectorDerived>& scaling)
+{
+    using Scalar = typename MatrixDerived::Scalar;
+    constexpr int dim = MatrixDerived::RowsAtCompileTime - 1;
+    return matrix *
+           Eigen::Transform<Scalar, dim, Eigen::Affine>(Eigen::Scaling(scaling)).matrix();
 }
 
 } // namespace rad
