@@ -358,6 +358,105 @@ TEST(IO, JsonSchemaExamples)
     }
 }
 
+TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
+{
+    const auto schema = rad::ParseJson(
+        R"json({"$defs": {"node": {"type": "object", "properties":
+                 {"next": {"$ref": "#/$defs/node"}}}},
+                 "$ref": "#/$defs/node"})json");
+    ASSERT_TRUE(schema);
+    const auto compiled = rad::JsonSchema::Compile(
+        schema.value(), rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    const auto invalid = compiled.value().Validate(rad::JsonObject{
+        {"next", rad::JsonObject{{"next", 12}}}});
+    ASSERT_FALSE(invalid);
+    EXPECT_EQ(invalid.errors[0].instancePath, "/next/next");
+    EXPECT_EQ(invalid.errors[0].schemaPath, "/$defs/node/type");
+
+    rad::JsonSchemaValidationOptions options;
+    options.maxDepth = 2;
+    const auto limited = compiled.value().Validate(rad::JsonObject{
+        {"next", rad::JsonObject{{"next", rad::JsonObject{}}}}}, options);
+    ASSERT_FALSE(limited);
+    EXPECT_NE(limited.errors[0].message.find("maximum validation depth"),
+              std::string::npos);
+
+    const auto selfReference = rad::ParseJson(R"json({"$ref": "#"})json");
+    ASSERT_TRUE(selfReference);
+    const auto selfCompiled = rad::JsonSchema::Compile(
+        selfReference.value(), rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_TRUE(selfCompiled);
+    options.maxErrors = 1;
+    const auto selfResult = selfCompiled.value().Validate(1, options);
+    ASSERT_EQ(selfResult.errors.size(), 1);
+    EXPECT_NE(selfResult.errors[0].message.find("maximum validation depth"),
+              std::string::npos);
+}
+
+TEST(IO, JsonSchemaInvalidReferences)
+{
+    struct Case
+    {
+        std::string_view reference;
+        rad::JsonSchemaCompileErrorCode code;
+    };
+    constexpr Case cases[] = {
+        {R"json(7)json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json("#/missing")json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json("#/a~2b")json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json("#/%ZZ")json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json("#/list/01")json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json("#/list/-")json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json("#/list/1")json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json("other.json#/$defs/item")json",
+         rad::JsonSchemaCompileErrorCode::UnsupportedFeature},
+        {R"json("#named")json", rad::JsonSchemaCompileErrorCode::UnsupportedFeature},
+    };
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.reference);
+        const auto schema = rad::ParseJson(
+            std::format(R"json({{"list": [{{"type": "string"}}], "$ref": {}}})json",
+                        testCase.reference));
+        ASSERT_TRUE(schema);
+        const auto compiled = rad::JsonSchema::Compile(
+            schema.value(), rad::JsonSchemaDialect::Draft2020_12);
+        ASSERT_FALSE(compiled);
+        EXPECT_EQ(compiled.error().code, testCase.code);
+        EXPECT_EQ(compiled.error().schemaPath, "/$ref");
+    }
+
+    const auto nonSchemaTarget = rad::ParseJson(
+        R"json({"list": [{"type": "string"}], "$ref": "#/list/0/type"})json");
+    ASSERT_TRUE(nonSchemaTarget);
+    const auto invalidTarget = rad::JsonSchema::Compile(
+        nonSchemaTarget.value(), rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_FALSE(invalidTarget);
+    EXPECT_EQ(invalidTarget.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+    EXPECT_EQ(invalidTarget.error().schemaPath, "/list/0/type");
+
+    const auto nestedSource = rad::ParseJson(
+        R"json({"$defs": {"inner": {"$id": "sub.json", "$ref": "#"}},
+                 "$ref": "#/$defs/inner"})json");
+    ASSERT_TRUE(nestedSource);
+    const auto nestedCompiled = rad::JsonSchema::Compile(
+        nestedSource.value(), rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_FALSE(nestedCompiled);
+    EXPECT_EQ(nestedCompiled.error().code,
+              rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
+
+    const auto nestedTarget = rad::ParseJson(
+        R"json({"$defs": {"inner": {"$id": "sub.json", "type": "string"}},
+                 "$ref": "#/$defs/inner"})json");
+    ASSERT_TRUE(nestedTarget);
+    const auto targetCompiled = rad::JsonSchema::Compile(
+        nestedTarget.value(), rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_FALSE(targetCompiled);
+    EXPECT_EQ(targetCompiled.error().code,
+              rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
+}
+
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const char* suitePath = std::getenv("JSON_SCHEMA_TEST_SUITE");
@@ -399,6 +498,8 @@ TEST(IO, JsonSchemaOfficialTestSuite)
         }
         ++availableSuites;
         std::size_t suiteExecutedCases = 0;
+        std::size_t suiteReferenceCases = 0;
+        std::size_t failedReferenceGroups = 0;
 
         std::vector<std::filesystem::path> files;
         for (const auto& entry : std::filesystem::directory_iterator(testsDirectory))
@@ -413,6 +514,7 @@ TEST(IO, JsonSchemaOfficialTestSuite)
         for (const auto& file : files)
         {
             SCOPED_TRACE(file.string());
+            const bool referenceFile = file.filename() == "ref.json";
             const auto text = rad::File::ReadAllText(file);
             if (!text)
             {
@@ -435,19 +537,28 @@ TEST(IO, JsonSchemaOfficialTestSuite)
 
                 const auto compiled =
                     rad::JsonSchema::Compile(group.at("schema"), suite.dialect);
+                if (IsKnownInvalidOfficialSchema(group.at("schema")))
+                {
+                    if (compiled)
+                    {
+                        ADD_FAILURE() << "empty enum schema must be rejected";
+                    }
+                    else
+                    {
+                        EXPECT_EQ(compiled.error().code,
+                                  rad::JsonSchemaCompileErrorCode::InvalidSchema);
+                        EXPECT_EQ(compiled.error().schemaPath, "/enum");
+                    }
+                    continue;
+                }
                 if (!compiled)
                 {
-                    const bool knownInvalidSchema =
-                        compiled.error().code ==
-                            rad::JsonSchemaCompileErrorCode::InvalidSchema &&
-                        IsKnownInvalidOfficialSchema(group.at("schema"));
-                    if (compiled.error().code !=
-                            rad::JsonSchemaCompileErrorCode::UnsupportedFeature &&
-                        !knownInvalidSchema)
+                    if (referenceFile)
                     {
-                        ADD_FAILURE() << compiled.error().schemaPath << ": "
-                                      << compiled.error().message;
+                        ++failedReferenceGroups;
                     }
+                    ADD_FAILURE() << compiled.error().schemaPath << ": "
+                                  << compiled.error().message;
                     continue;
                 }
 
@@ -462,6 +573,10 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                     const auto result = compiled.value().Validate(test.at("data"));
                     ++suiteExecutedCases;
                     ++executedCases;
+                    if (referenceFile)
+                    {
+                        ++suiteReferenceCases;
+                    }
                     EXPECT_EQ(static_cast<bool>(result), expected)
                         << std::format("data: {}\n{}",
                                        rad::PrettyJson(test.at("data")),
@@ -470,6 +585,10 @@ TEST(IO, JsonSchemaOfficialTestSuite)
             }
         }
         EXPECT_GT(suiteExecutedCases, 0) << testsDirectory.string();
+        EXPECT_GT(suiteReferenceCases, 0) << testsDirectory.string() << "\\ref.json";
+        GTEST_LOG_(INFO) << suite.directory << ": " << suiteReferenceCases
+                         << " reference cases executed, " << failedReferenceGroups
+                         << " reference groups failed to compile";
     }
 
     if (availableSuites == 0)

@@ -90,7 +90,8 @@ struct JsonSchemaValidationOptions
 // Implements a practical subset of JSON Schema Draft 7, Draft 2019-09, and Draft 2020-12.
 //
 // Supported:
-// - All dialects: boolean schemas; type, enum, const; numeric bounds and integer multipleOf;
+// - All dialects: boolean schemas; root-local JSON Pointer $ref; type, enum, const;
+//   numeric bounds and integer multipleOf;
 //   min/max string, array, and object sizes; pattern; required, properties,
 //   additionalProperties; single-schema items, uniqueItems, contains; allOf, anyOf, oneOf,
 //   not; and if/then/else.
@@ -99,13 +100,15 @@ struct JsonSchemaValidationOptions
 // - Draft 2020-12: prefixItems.
 //
 // Not supported:
-// - $ref or anchor resolution, vocabularies, patternProperties, propertyNames,
+// - Remote/relative references, anchors, embedded $id resources, vocabularies,
+//   patternProperties, propertyNames,
 //   unevaluatedProperties, unevaluatedItems, and fractional multipleOf.
 // - Draft 7: dependencies.
 // - Draft 7 and 2019-09: tuple-form items and additionalItems.
 //
-// definitions and $defs are checked but cannot be referenced.
-// Identification and annotation keywords are ignored; format is not validated.
+// definitions and $defs can be referenced by root-local JSON Pointers.
+// Embedded $id resources cannot be used as reference sources or targets.
+// Identification and annotation keywords are otherwise ignored; format is not validated.
 // pattern uses std::regex ECMAScript syntax over UTF-8 bytes and is not fully Unicode-aware.
 class JsonSchema
 {
