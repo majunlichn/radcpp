@@ -1770,10 +1770,19 @@ TEST(IO, JsonSchemaVocabularyDeclarations)
              {rad::JsonValue(1), rad::JsonValue(rad::JsonObject{}),
               rad::JsonValue(rad::JsonObject{{core, false}})})
         {
-            const auto invalid =
-                rad::JsonSchema::Compile(rad::JsonObject{{"$vocabulary", vocabulary}}, dialect);
+            const auto invalid = rad::JsonSchema::Compile(
+                rad::JsonObject{{"$vocabulary", vocabulary}}, dialect, options);
             ASSERT_FALSE(invalid);
             EXPECT_EQ(invalid.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+            EXPECT_EQ(invalid.error().schemaPath,
+                      vocabulary.is_object() && vocabulary.as_object().contains(core)
+                          ? "/$vocabulary/https:~1~1json-schema.org~1draft~1" +
+                                std::string(dialect == rad::JsonSchemaDialect::Draft2019_09
+                                                ? "2019-09"
+                                                : "2020-12") +
+                                "~1vocab~1core"
+                          : "/$vocabulary");
+            EXPECT_EQ(invalid.error().schemaUri, options.retrievalUri);
         }
     }
     const auto ignored = rad::JsonSchema::Compile(
@@ -1855,6 +1864,58 @@ TEST(IO, JsonSchemaCustomDialectSelection)
         EXPECT_TRUE(defaults.value().Validate(rad::JsonObject{}));
         EXPECT_FALSE(defaults.value().Validate(rad::JsonObject{{"value", 1}}));
         EXPECT_FALSE(defaults.value().Validate(1));
+    }
+}
+
+TEST(IO, JsonSchemaCustomDialectCandidateShapes)
+{
+    for (const auto dialect :
+         {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        const std::string base = dialect == rad::JsonSchemaDialect::Draft2019_09
+                                     ? "https://json-schema.org/draft/2019-09/"
+                                     : "https://json-schema.org/draft/2020-12/";
+        const char* keyword =
+            dialect == rad::JsonSchemaDialect::Draft2019_09 ? "items" : "prefixItems";
+        const rad::JsonValue meta =
+            rad::JsonObject{{"$id", "https://example.com/meta"},
+                            {"$schema", base + "schema"},
+                            {"$vocabulary", rad::JsonObject{{base + "vocab/core", true},
+                                                            {base + "vocab/validation", false}}}};
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/root.json";
+        options.documents = {
+            {"https://example.com/container",
+             rad::JsonObject{{"$schema", base + "schema"}, {keyword, rad::JsonArray{meta}}}},
+        };
+        const rad::JsonValue schema = rad::JsonObject{
+            {"$schema", "https://example.com/meta"}, {"type", "integer"}, {"allOf", 5}};
+        const auto compiled = rad::JsonSchema::Compile(schema, options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(1));
+        EXPECT_FALSE(compiled.value().Validate("invalid"));
+        options.documents[0]
+            .schema.as_object()
+            .at(keyword)
+            .as_array()[0]
+            .as_object()["$vocabulary"] = rad::JsonObject{};
+        const auto missingCore = rad::JsonSchema::Compile(schema, options);
+        ASSERT_FALSE(missingCore);
+        EXPECT_EQ(missingCore.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+        EXPECT_EQ(missingCore.error().schemaPath,
+                  std::string("/") + keyword + "/0/$vocabulary/https:~1~1json-schema.org~1draft~1" +
+                      (dialect == rad::JsonSchemaDialect::Draft2019_09 ? "2019-09" : "2020-12") +
+                      "~1vocab~1core");
+        EXPECT_EQ(missingCore.error().schemaUri, options.documents[0].uri);
+        if (dialect == rad::JsonSchemaDialect::Draft2020_12)
+        {
+            options.documents[0].schema.as_object().erase("prefixItems");
+            options.documents[0].schema.as_object()["items"] = rad::JsonArray{meta};
+            const auto hidden = rad::JsonSchema::Compile(schema, options);
+            ASSERT_FALSE(hidden);
+            EXPECT_EQ(hidden.error().schemaPath, "/$schema");
+            EXPECT_EQ(hidden.error().schemaUri, options.retrievalUri);
+        }
     }
 }
 

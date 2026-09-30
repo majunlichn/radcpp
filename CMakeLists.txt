@@ -98,6 +98,11 @@ set(RAD_SOURCES
     src/rad/IO/Json.h
     src/rad/IO/Json.cpp
     src/rad/IO/JsonSchema.cpp
+    src/rad/IO/JsonSchemaPaths.h
+    src/rad/IO/JsonSchemaKeywords.h
+    src/rad/IO/JsonSchemaKeywords.cpp
+    src/rad/IO/JsonSchemaVocabularies.h
+    src/rad/IO/JsonSchemaVocabularies.cpp
     src/rad/IO/JsonSchemaDialects.h
     src/rad/IO/JsonSchemaDialects.cpp
     src/rad/IO/JsonSchemaMetaSchemas.h
@@ -325,6 +330,9 @@ if(RAD_ENABLE_INSTALL)
             PATTERN "JsonSchemaReferences.h" EXCLUDE
             PATTERN "JsonSchemaMetaSchemas.h" EXCLUDE
             PATTERN "JsonSchemaDialects.h" EXCLUDE
+            PATTERN "JsonSchemaPaths.h" EXCLUDE
+            PATTERN "JsonSchemaKeywords.h" EXCLUDE
+            PATTERN "JsonSchemaVocabularies.h" EXCLUDE
     )
 
     install(

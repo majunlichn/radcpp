@@ -1,11 +1,11 @@
 #include "JsonSchemaDialects.h"
 #include "JsonSchemaMetaSchemas.h"
-#include "JsonSchemaReferences.h"
+#include "JsonSchemaKeywords.h"
+#include "JsonSchemaVocabularies.h"
 
 #include <boost/url.hpp>
 
 #include <algorithm>
-#include <array>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -68,28 +68,21 @@ bool JsonSchemaVocabularyProfile::IsKeywordEnabled(std::string_view keyword) con
     {
         return true;
     }
-    constexpr std::array<std::string_view, 20> assertions = {
-        "type", "enum", "const", "multipleOf", "minimum", "maximum", "exclusiveMinimum",
-        "exclusiveMaximum", "minLength", "maxLength", "pattern", "minProperties",
-        "maxProperties", "required", "minItems", "maxItems", "uniqueItems",
-        "dependentRequired", "minContains", "maxContains",
-    };
-    if (std::find(assertions.begin(), assertions.end(), keyword) != assertions.end())
+    const auto* description = FindJsonSchemaKeyword(keyword);
+    if (description == nullptr || description->Shape(dialect) == JsonSchemaChildShape::Unsupported)
     {
+        return true;
+    }
+    switch (description->vocabulary)
+    {
+    case JsonSchemaKeywordVocabulary::Validation:
         return validation;
-    }
-    constexpr std::array<std::string_view, 16> applicators = {
-        "allOf", "anyOf", "oneOf", "not", "if", "then", "else", "properties",
-        "patternProperties", "additionalProperties", "propertyNames", "items", "prefixItems",
-        "additionalItems", "contains", "dependentSchemas",
-    };
-    if (std::find(applicators.begin(), applicators.end(), keyword) != applicators.end())
-    {
+    case JsonSchemaKeywordVocabulary::Applicator:
         return applicator;
-    }
-    if (keyword == "unevaluatedProperties" || keyword == "unevaluatedItems")
-    {
+    case JsonSchemaKeywordVocabulary::Unevaluated:
         return unevaluated;
+    case JsonSchemaKeywordVocabulary::Core:
+        return true;
     }
     return true;
 }
@@ -134,7 +127,7 @@ private:
         std::string documentUri;
         std::size_t parent;
         std::string keyword;
-        bool arrayItems;
+        bool arrayChild;
         std::size_t depth;
         std::optional<JsonSchemaCompileError> identifierError;
     };
@@ -158,15 +151,15 @@ private:
 
     void Scan(const JsonValue& value, std::string path, std::string base,
               const std::string& documentUri, std::size_t parent = NoParent,
-              std::string keyword = {}, bool arrayItems = false, std::size_t depth = 0)
+              std::string keyword = {}, bool arrayChild = false, std::size_t depth = 0)
     {
         if (parent != NoParent && !value.is_object() && !value.is_bool())
         {
             return;
         }
         const auto index = m_nodes.size();
-        m_nodes.push_back({&value, path, base, documentUri, parent, std::move(keyword),
-                           arrayItems, depth, std::nullopt});
+        m_nodes.push_back({&value, path, base, documentUri, parent, std::move(keyword), arrayChild,
+                           depth, std::nullopt});
         if (parent == NoParent && !documentUri.empty())
         {
             AddIdentifier(documentUri, index);
@@ -203,43 +196,20 @@ private:
         }
         // Catalogue only schema-bearing locations. Visibility is checked against each
         // ancestor's own dialect before an identifier is exported from this catalogue.
-        for (std::string_view name :
-             {"$defs", "definitions", "properties", "patternProperties", "dependentSchemas",
-              "dependencies"})
+        for (const auto& description : JsonSchemaChildKeywords())
         {
-            const auto* map = object.if_contains(name);
-            if (!map || !map->is_object())
+            const auto* child = object.if_contains(description.name);
+            if (child == nullptr)
             {
                 continue;
             }
-            for (const auto& member : map->as_object())
-            {
-                Scan(member.value(), ChildPath(ChildPath(path, name), member.key()), base,
-                     documentUri, index, std::string(name), false, depth + 1);
-            }
-        }
-        for (std::string_view name :
-             {"additionalProperties", "propertyNames", "contains", "not", "if", "then", "else",
-              "unevaluatedProperties", "unevaluatedItems", "additionalItems", "items"})
-        {
-            if (const auto* child = object.if_contains(name); child && !child->is_array())
-            {
-                Scan(*child, ChildPath(path, name), base, documentUri, index, std::string(name),
-                     false, depth + 1);
-            }
-        }
-        for (std::string_view name : {"allOf", "anyOf", "oneOf", "prefixItems", "items"})
-        {
-            const auto* children = object.if_contains(name);
-            if (!children || !children->is_array())
-            {
-                continue;
-            }
-            for (std::size_t i = 0; i < children->as_array().size(); ++i)
-            {
-                Scan(children->as_array()[i], ChildPath(ChildPath(path, name), std::to_string(i)),
-                     base, documentUri, index, std::string(name), name == "items", depth + 1);
-            }
+            ForEachJsonSchemaChild(
+                *child, ChildPath(path, description.name), description.CandidateShape(),
+                [&](const JsonValue& schema, std::string childPath, bool arrayChild)
+                {
+                    Scan(schema, std::move(childPath), base, documentUri, index,
+                         std::string(description.name), arrayChild, depth + 1);
+                });
         }
     }
 
@@ -392,22 +362,15 @@ private:
         }
         const auto dialect = profile.value().dialect;
         const auto& keyword = node.keyword;
-        if (!profile.value().IsKeywordEnabled(keyword) ||
-            (keyword == "dependencies" && dialect != JsonSchemaDialect::Draft7) ||
-            (keyword == "dependentSchemas" && dialect == JsonSchemaDialect::Draft7) ||
-            (keyword == "$defs" && dialect == JsonSchemaDialect::Draft7) ||
-            (keyword == "definitions" && dialect != JsonSchemaDialect::Draft7) ||
-            (keyword == "prefixItems" && dialect != JsonSchemaDialect::Draft2020_12) ||
-            ((keyword == "additionalItems" || node.arrayItems) &&
-             dialect == JsonSchemaDialect::Draft2020_12) ||
-            ((keyword == "unevaluatedItems" || keyword == "unevaluatedProperties") &&
-             dialect == JsonSchemaDialect::Draft7))
+        const auto* description = FindJsonSchemaKeyword(keyword);
+        if (description == nullptr || !profile.value().IsKeywordEnabled(keyword) ||
+            !description->AcceptsChild(dialect, node.arrayChild))
         {
             return Success(false);
         }
         const auto& parent = *m_nodes[node.parent].value;
         if (dialect == JsonSchemaDialect::Draft7 && parent.is_object() &&
-            parent.as_object().contains("$ref") && keyword != "definitions")
+            parent.as_object().contains("$ref") && !description->retainedBesideDraft7Ref)
         {
             return Success(false);
         }
@@ -610,58 +573,36 @@ private:
         {
             return Success(profile);
         }
-        const auto path = ChildPath(node.path, "$vocabulary");
-        if (!vocabulary->is_object())
+        const auto parsed = ParseJsonSchemaVocabularies(*vocabulary, profile.dialect);
+        if (!parsed)
         {
-            return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, node.documentUri,
-                                 path, "$vocabulary must be an object"));
-        }
-        const auto core = JsonSchemaCoreVocabularyUri(profile.dialect);
-        const auto* requiredCore = vocabulary->as_object().if_contains(core);
-        if (!requiredCore || !requiredCore->is_bool() || !requiredCore->as_bool())
-        {
-            return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, node.documentUri,
-                                 ChildPath(path, core),
-                                 "$vocabulary must require the underlying draft's "
-                                 "Core vocabulary"));
-        }
-        profile.applicator = false;
-        profile.validation = false;
-        profile.unevaluated = false;
-        const auto prefix = core.substr(0, core.size() - std::string_view("core").size());
-        for (const auto& entry : vocabulary->as_object())
-        {
-            const std::string_view name = entry.key();
-            const auto entryPath = ChildPath(path, name);
-            if (!entry.value().is_bool())
+            const auto& error = parsed.error();
+            auto path = ChildPath(node.path, "$vocabulary") + error.path;
+            auto message = error.message;
+            auto code = JsonSchemaCompileErrorCode::InvalidSchema;
+            switch (error.kind)
             {
-                return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, node.documentUri,
-                                     entryPath, "$vocabulary values must be booleans"));
+            case JsonSchemaVocabularyErrorKind::MissingCore:
+                path = ChildPath(path, JsonSchemaCoreVocabularyUri(profile.dialect));
+                [[fallthrough]];
+            case JsonSchemaVocabularyErrorKind::InvalidCore:
+                message = "$vocabulary must require the underlying draft's Core vocabulary";
+                break;
+            case JsonSchemaVocabularyErrorKind::InvalidRequirement:
+                message = "$vocabulary values must be booleans";
+                break;
+            case JsonSchemaVocabularyErrorKind::UnsupportedRequired:
+                code = JsonSchemaCompileErrorCode::UnsupportedFeature;
+                message = "unsupported required vocabulary: " + message;
+                break;
+            default:
+                break;
             }
-            const auto supported = GetJsonSchemaVocabularySupport(name, profile.dialect);
-            if (!supported)
-            {
-                return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, node.documentUri,
-                                     entryPath, supported.error()));
-            }
-            if (!supported.value() && entry.value().as_bool())
-            {
-                return Failure(Error(JsonSchemaCompileErrorCode::UnsupportedFeature,
-                                     node.documentUri, entryPath,
-                                     "unsupported required vocabulary: " + std::string(name)));
-            }
-            if (supported.value() && name.starts_with(prefix))
-            {
-                const auto suffix = name.substr(prefix.size());
-                profile.applicator |= suffix == "applicator";
-                profile.validation |= suffix == "validation";
-                profile.unevaluated |= suffix == "unevaluated";
-            }
+            return Failure(Error(code, node.documentUri, path, std::move(message)));
         }
-        if (profile.dialect == JsonSchemaDialect::Draft2019_09)
-        {
-            profile.unevaluated = profile.applicator;
-        }
+        profile.applicator = parsed.value().applicator;
+        profile.validation = parsed.value().validation;
+        profile.unevaluated = parsed.value().unevaluated;
         return Success(profile);
     }
 

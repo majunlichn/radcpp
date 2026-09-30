@@ -3,7 +3,7 @@
 
 #include "JsonSchemaRegex.h"
 #include "JsonSchemaReferences.h"
-#include "JsonSchemaMetaSchemas.h"
+#include "JsonSchemaVocabularies.h"
 
 #include <algorithm>
 #include <array>
@@ -1486,42 +1486,19 @@ private:
             return;
         }
         const auto keywordPath = ChildPath(schemaPath, "$vocabulary");
-        if (!vocabulary->is_object())
+        const auto parsed = detail::ParseJsonSchemaVocabularies(*vocabulary, m_dialect);
+        if (!parsed)
         {
-            AddError(instancePath, keywordPath, "$vocabulary must be an object");
-            return;
-        }
-        const auto coreUri = detail::JsonSchemaCoreVocabularyUri(m_dialect);
-        const auto* core = vocabulary->as_object().if_contains(coreUri);
-        if (core == nullptr)
-        {
-            AddError(instancePath, keywordPath, "$vocabulary must require the core vocabulary");
-            return;
-        }
-        if (!core->is_bool() || !core->as_bool())
-        {
-            AddError(instancePath, ChildPath(keywordPath, coreUri),
-                     "core vocabulary must be required (true)");
-            return;
-        }
-        for (const auto& entry : vocabulary->as_object())
-        {
-            const auto entryPath = ChildPath(keywordPath, entry.key());
-            if (!entry.value().is_bool())
+            const auto& error = parsed.error();
+            const auto path = keywordPath + error.path;
+            if (error.kind == detail::JsonSchemaVocabularyErrorKind::UnsupportedRequired)
             {
-                AddError(instancePath, entryPath, "vocabulary requirement must be a boolean");
-                continue;
+                AddUnsupportedError(instancePath, path,
+                                    "required vocabulary is not supported: " + error.message);
             }
-            const auto supported = detail::GetJsonSchemaVocabularySupport(entry.key(), m_dialect);
-            if (!supported)
+            else
             {
-                AddError(instancePath, entryPath, supported.error());
-            }
-            else if (entry.value().as_bool() && !supported.value())
-            {
-                AddUnsupportedError(instancePath, entryPath,
-                                    "required vocabulary is not supported: " +
-                                        std::string(entry.key()));
+                AddError(instancePath, path, error.message);
             }
         }
     }

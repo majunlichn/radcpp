@@ -1,4 +1,5 @@
 #include "JsonSchemaReferences.h"
+#include "JsonSchemaKeywords.h"
 #include "JsonSchemaMetaSchemas.h"
 
 #include <boost/url.hpp>
@@ -518,108 +519,22 @@ private:
             m_references.push_back({path, "$dynamicRef"});
         }
 
-        const auto indexMap = [&](std::string_view keyword, bool dependencies = false)
+        for (const auto& description : JsonSchemaChildKeywords())
         {
-            if (!profile.IsKeywordEnabled(keyword))
+            if ((ignoredSiblings && !description.retainedBesideDraft7Ref) ||
+                !profile.IsKeywordEnabled(description.name))
             {
-                return;
+                continue;
             }
-            const auto* value = object.if_contains(keyword);
-            if (value == nullptr || !value->is_object())
+            const auto* value = object.if_contains(description.name);
+            if (value == nullptr)
             {
-                return;
+                continue;
             }
-            const auto keywordPath = ChildPath(path, keyword);
-            for (const auto& member : value->as_object())
-            {
-                if (!dependencies || !member.value().is_array())
-                {
-                    Index(member.value(), ChildPath(keywordPath, member.key()), base, depth + 1);
-                }
-            }
-        };
-        indexMap(m_dialect == JsonSchemaDialect::Draft7 ? "definitions" : "$defs");
-        if (ignoredSiblings)
-        {
-            return;
-        }
-        indexMap("properties");
-        indexMap("patternProperties");
-        if (m_dialect == JsonSchemaDialect::Draft7)
-        {
-            indexMap("dependencies", true);
-        }
-        else
-        {
-            indexMap("dependentSchemas");
-        }
-
-        constexpr std::array singles = {
-            "additionalProperties", "propertyNames", "contains", "not", "if", "then", "else",
-        };
-        for (const std::string_view keyword : singles)
-        {
-            if (const auto* value = object.if_contains(keyword);
-                value && profile.IsKeywordEnabled(keyword))
-            {
-                Index(*value, ChildPath(path, keyword), base, depth + 1);
-            }
-        }
-        if (m_dialect != JsonSchemaDialect::Draft7)
-        {
-            for (const std::string_view keyword : {"unevaluatedItems", "unevaluatedProperties"})
-            {
-                if (const auto* value = object.if_contains(keyword);
-                    value && profile.IsKeywordEnabled(keyword))
-                {
-                    Index(*value, ChildPath(path, keyword), base, depth + 1);
-                }
-            }
-        }
-        if (m_dialect != JsonSchemaDialect::Draft2020_12)
-        {
-            if (const auto* value = object.if_contains("additionalItems");
-                value && profile.IsKeywordEnabled("additionalItems"))
-            {
-                Index(*value, ChildPath(path, "additionalItems"), base, depth + 1);
-            }
-        }
-        const auto indexArray = [&](const JsonArray& values, std::string_view keyword)
-        {
-            const auto keywordPath = ChildPath(path, keyword);
-            for (std::size_t index = 0; index < values.size(); ++index)
-            {
-                Index(values[index], ChildPath(keywordPath, std::to_string(index)), base,
-                      depth + 1);
-            }
-        };
-        for (const std::string_view keyword : {"allOf", "anyOf", "oneOf"})
-        {
-            if (const auto* value = object.if_contains(keyword);
-                value && profile.IsKeywordEnabled(keyword) && value->is_array())
-            {
-                indexArray(value->as_array(), keyword);
-            }
-        }
-        if (m_dialect == JsonSchemaDialect::Draft2020_12)
-        {
-            if (const auto* value = object.if_contains("prefixItems");
-                value && profile.IsKeywordEnabled("prefixItems") && value->is_array())
-            {
-                indexArray(value->as_array(), "prefixItems");
-            }
-        }
-        if (const auto* items = object.if_contains("items");
-            items && profile.IsKeywordEnabled("items"))
-        {
-            if (items->is_array() && m_dialect != JsonSchemaDialect::Draft2020_12)
-            {
-                indexArray(items->as_array(), "items");
-            }
-            else
-            {
-                Index(*items, ChildPath(path, "items"), base, depth + 1);
-            }
+            ForEachJsonSchemaChild(*value, ChildPath(path, description.name),
+                                   description.Shape(m_dialect),
+                                   [&](const JsonValue& child, std::string childPath, bool)
+                                   { Index(child, childPath, base, depth + 1); });
         }
     }
 
