@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -403,6 +404,42 @@ public:
     }
 
 private:
+    struct Evaluation
+    {
+        bool valid = true;
+        std::vector<bool> properties;
+        std::vector<bool> items;
+
+        static void Mark(std::vector<bool>& locations, std::size_t index)
+        {
+            if (locations.size() <= index)
+            {
+                locations.resize(index + 1, false);
+            }
+            locations[index] = true;
+        }
+
+        void Merge(const Evaluation& other)
+        {
+            if (!other.valid)
+            {
+                return;
+            }
+            const auto merge = [](std::vector<bool>& target, const std::vector<bool>& source) {
+                if (target.size() < source.size())
+                {
+                    target.resize(source.size(), false);
+                }
+                for (std::size_t index = 0; index < source.size(); ++index)
+                {
+                    target[index] = target[index] || source[index];
+                }
+            };
+            merge(properties, other.properties);
+            merge(items, other.items);
+        }
+    };
+
     struct ReferenceTarget
     {
         const JsonValue* schema;
@@ -582,6 +619,7 @@ private:
             }
             return;
         }
+        ++m_errorCount;
         if (m_result.errors.size() >= std::max<std::size_t>(m_options.maxErrors, 1))
         {
             return;
@@ -613,6 +651,11 @@ private:
                           std::string message)
     {
         m_resourceError = true;
+        if (!m_resourceDiagnostic)
+        {
+            m_resourceDiagnostic = JsonSchemaValidationError{
+                std::string(instancePath), std::string(schemaPath), message};
+        }
         AddError(instancePath, schemaPath, std::move(message));
     }
 
@@ -990,6 +1033,14 @@ private:
                 ValidateSchemaDefinition(*additional, additionalPath, depth + 1);
             }
         }
+        if (m_dialect != JsonSchemaDialect::Draft7)
+        {
+            if (const auto* unevaluated = object.if_contains("unevaluatedProperties"))
+            {
+                ValidateSchemaDefinition(
+                    *unevaluated, ChildPath(schemaPath, "unevaluatedProperties"), depth + 1);
+            }
+        }
 
         if (const auto* items = object.if_contains("items"))
         {
@@ -1109,40 +1160,41 @@ private:
         }
     }
 
-    [[nodiscard]] std::optional<bool>
-    BranchMatches(const JsonValue& schema, const JsonValue& instance,
-                  std::string_view instancePath, std::string_view schemaPath,
-                  std::size_t depth)
+    [[nodiscard]] std::optional<Evaluation>
+    EvaluateBranch(const JsonValue& schema, const JsonValue& instance,
+                   std::string_view instancePath, std::string_view schemaPath,
+                   std::size_t depth)
     {
         JsonSchemaValidationOptions options = m_options;
         options.maxErrors = 1;
         JsonSchemaValidator validator(m_dialect, options, m_rootSchema);
-        validator.Validate(schema, instance, instancePath, schemaPath, depth);
+        auto evaluation = validator.Validate(schema, instance, instancePath, schemaPath, depth);
         if (validator.m_resourceError)
         {
-            m_resourceError = true;
-            for (auto& error : validator.m_result.errors)
-            {
-                AddError(error.instancePath, error.schemaPath, std::move(error.message));
-            }
+            const auto& error = *validator.m_resourceDiagnostic;
+            AddResourceError(error.instancePath, error.schemaPath, error.message);
             return std::nullopt;
         }
-        return static_cast<bool>(validator.m_result);
+        return evaluation;
     }
 
-    void Validate(const JsonValue& schema, const JsonValue& instance,
-                  std::string_view instancePath, std::string_view schemaPath,
-                  std::size_t depth)
+    Evaluation Validate(const JsonValue& schema, const JsonValue& instance,
+                        std::string_view instancePath, std::string_view schemaPath,
+                        std::size_t depth)
     {
-        if (m_result.errors.size() >= std::max<std::size_t>(m_options.maxErrors, 1))
+        Evaluation evaluation;
+        const auto errorsBefore = m_errorCount;
+        if (m_resourceError)
         {
-            return;
+            evaluation.valid = false;
+            return evaluation;
         }
         if (depth > m_options.maxDepth)
         {
             AddResourceError(instancePath, schemaPath,
                              "maximum validation depth exceeded");
-            return;
+            evaluation.valid = false;
+            return evaluation;
         }
         if (schema.is_bool())
         {
@@ -1150,12 +1202,14 @@ private:
             {
                 AddError(instancePath, schemaPath, "value is rejected by the false schema");
             }
-            return;
+            evaluation.valid = schema.as_bool();
+            return evaluation;
         }
         if (!schema.is_object())
         {
             AddError(instancePath, schemaPath, "schema must be an object or boolean");
-            return;
+            evaluation.valid = false;
+            return evaluation;
         }
 
         const auto& object = schema.as_object();
@@ -1164,26 +1218,29 @@ private:
             const auto target = ResolveReference(*reference, ChildPath(schemaPath, "$ref"));
             if (!target)
             {
-                return;
+                evaluation.valid = false;
+                return evaluation;
             }
-            Validate(*target->schema, instance, instancePath, target->path, depth + 1);
+            const auto referenced = Validate(*target->schema, instance, instancePath,
+                                              target->path, depth + 1);
+            evaluation.Merge(referenced);
             if (m_dialect == JsonSchemaDialect::Draft7)
             {
-                return;
+                return referenced;
             }
         }
         ValidateUnsupportedKeywords(object, instancePath, schemaPath);
         ValidateType(object, instance, instancePath, schemaPath);
         ValidateEnumAndConst(object, instance, instancePath, schemaPath);
-        ValidateCompositions(object, instance, instancePath, schemaPath, depth);
+        ValidateCompositions(object, instance, instancePath, schemaPath, depth, evaluation);
 
         if (instance.is_object())
         {
-            ValidateObject(object, instance, instancePath, schemaPath, depth);
+            ValidateObject(object, instance, instancePath, schemaPath, depth, evaluation);
         }
         if (instance.is_array())
         {
-            ValidateArray(object, instance.as_array(), instancePath, schemaPath, depth);
+            ValidateArray(object, instance.as_array(), instancePath, schemaPath, depth, evaluation);
         }
         if (instance.is_string())
         {
@@ -1193,6 +1250,8 @@ private:
         {
             ValidateNumber(object, instance, instancePath, schemaPath);
         }
+        evaluation.valid = m_errorCount == errorsBefore && !m_resourceError;
+        return evaluation;
     }
 
     void ValidateUnsupportedKeywords(const JsonObject& schema, std::string_view instancePath,
@@ -1207,7 +1266,6 @@ private:
         if (m_dialect != JsonSchemaDialect::Draft7)
         {
             constexpr std::array newerUnsupported = {
-                "unevaluatedProperties",
                 "unevaluatedItems",
             };
             for (const std::string_view keyword : newerUnsupported)
@@ -1323,7 +1381,7 @@ private:
 
     void ValidateCompositions(const JsonObject& schema, const JsonValue& instance,
                               std::string_view instancePath, std::string_view schemaPath,
-                              std::size_t depth)
+                              std::size_t depth, Evaluation& evaluation)
     {
         if (const auto* allOf = schema.if_contains("allOf"))
         {
@@ -1334,27 +1392,34 @@ private:
             }
             else
             {
+                Evaluation combined;
                 for (std::size_t index = 0; index < allOf->as_array().size(); ++index)
                 {
-                    Validate(allOf->as_array()[index], instance, instancePath,
-                             ChildPath(keywordPath, std::to_string(index)), depth + 1);
+                    const auto branch = Validate(allOf->as_array()[index], instance, instancePath,
+                                                 ChildPath(keywordPath, std::to_string(index)),
+                                                 depth + 1);
+                    combined.Merge(branch);
+                    combined.valid = combined.valid && branch.valid;
                 }
+                evaluation.Merge(combined);
             }
         }
 
-        ValidateAlternative(schema, "anyOf", instance, instancePath, schemaPath, depth, false);
-        ValidateAlternative(schema, "oneOf", instance, instancePath, schemaPath, depth, true);
+        ValidateAlternative(schema, "anyOf", instance, instancePath, schemaPath, depth, false,
+                            evaluation);
+        ValidateAlternative(schema, "oneOf", instance, instancePath, schemaPath, depth, true,
+                            evaluation);
 
         if (const auto* notSchema = schema.if_contains("not"))
         {
             const auto keywordPath = ChildPath(schemaPath, "not");
             const auto matches =
-                BranchMatches(*notSchema, instance, instancePath, keywordPath, depth + 1);
+                EvaluateBranch(*notSchema, instance, instancePath, keywordPath, depth + 1);
             if (!matches)
             {
                 return;
             }
-            if (*matches)
+            if (matches->valid)
             {
                 AddError(instancePath, keywordPath, "value matches the disallowed schema");
             }
@@ -1363,24 +1428,26 @@ private:
         if (const auto* condition = schema.if_contains("if"))
         {
             const auto matches =
-                BranchMatches(*condition, instance, instancePath,
+                EvaluateBranch(*condition, instance, instancePath,
                               ChildPath(schemaPath, "if"), depth + 1);
             if (!matches)
             {
                 return;
             }
-            const std::string_view keyword = *matches ? "then" : "else";
+            evaluation.Merge(*matches);
+            const std::string_view keyword = matches->valid ? "then" : "else";
             if (const auto* branch = schema.if_contains(keyword))
             {
-                Validate(*branch, instance, instancePath,
-                         ChildPath(schemaPath, keyword), depth + 1);
+                evaluation.Merge(Validate(*branch, instance, instancePath,
+                                          ChildPath(schemaPath, keyword), depth + 1));
             }
         }
     }
 
     void ValidateAlternative(const JsonObject& schema, std::string_view keyword,
                              const JsonValue& instance, std::string_view instancePath,
-                             std::string_view schemaPath, std::size_t depth, bool exactlyOne)
+                             std::string_view schemaPath, std::size_t depth, bool exactlyOne,
+                             Evaluation& evaluation)
     {
         const auto* alternatives = schema.if_contains(keyword);
         if (alternatives == nullptr)
@@ -1397,18 +1464,20 @@ private:
         }
 
         std::size_t matches = 0;
+        Evaluation combined;
         for (std::size_t index = 0; index < alternatives->as_array().size(); ++index)
         {
             const auto branchMatches =
-                BranchMatches(alternatives->as_array()[index], instance, instancePath,
+                EvaluateBranch(alternatives->as_array()[index], instance, instancePath,
                               ChildPath(keywordPath, std::to_string(index)), depth + 1);
             if (!branchMatches)
             {
                 return;
             }
-            if (*branchMatches)
+            if (branchMatches->valid)
             {
                 ++matches;
+                combined.Merge(*branchMatches);
             }
         }
         if ((!exactlyOne && matches == 0) || (exactlyOne && matches != 1))
@@ -1417,11 +1486,15 @@ private:
                      exactlyOne ? "value must match exactly one schema"
                                 : "value must match at least one schema");
         }
+        else
+        {
+            evaluation.Merge(combined);
+        }
     }
 
     void ValidateObject(const JsonObject& schema, const JsonValue& instanceValue,
                         std::string_view instancePath, std::string_view schemaPath,
-                        std::size_t depth)
+                        std::size_t depth, Evaluation& evaluation)
     {
         const auto& instance = instanceValue.as_object();
         ValidateSizeKeyword(schema, "minProperties", instance.size(), true, instancePath,
@@ -1458,6 +1531,8 @@ private:
         const JsonObject* properties = nullptr;
         if (const auto* propertiesValue = schema.if_contains("properties"))
         {
+            const auto errorsBefore = m_errorCount;
+            Evaluation propertiesEvaluation;
             if (!propertiesValue->is_object())
             {
                 AddError(instancePath, ChildPath(schemaPath, "properties"),
@@ -1474,14 +1549,22 @@ private:
                                  ChildPath(instancePath, property.key()),
                                  ChildPath(ChildPath(schemaPath, "properties"), property.key()),
                                  depth + 1);
+                        Evaluation::Mark(
+                            propertiesEvaluation.properties,
+                            static_cast<std::size_t>(
+                                std::distance(instance.begin(), instance.find(property.key()))));
                     }
                 }
             }
+            propertiesEvaluation.valid = m_errorCount == errorsBefore;
+            evaluation.Merge(propertiesEvaluation);
         }
 
         std::vector<bool> patternMatches;
         if (const auto* patterns = schema.if_contains("patternProperties"))
         {
+            const auto errorsBefore = m_errorCount;
+            Evaluation patternsEvaluation;
             patternMatches.resize(instance.size(), false);
             const auto keywordPath = ChildPath(schemaPath, "patternProperties");
             if (!patterns->is_object())
@@ -1508,11 +1591,14 @@ private:
                             patternMatches[index] = true;
                             Validate(pattern.value(), property.value(),
                                      ChildPath(instancePath, name), patternPath, depth + 1);
+                            Evaluation::Mark(patternsEvaluation.properties, index);
                         }
                         ++index;
                     }
                 }
             }
+            patternsEvaluation.valid = m_errorCount == errorsBefore;
+            evaluation.Merge(patternsEvaluation);
         }
 
         if (const auto* names = schema.if_contains("propertyNames"))
@@ -1527,6 +1613,8 @@ private:
 
         if (const auto* additional = schema.if_contains("additionalProperties"))
         {
+            const auto errorsBefore = m_errorCount;
+            Evaluation additionalEvaluation;
             const auto keywordPath = ChildPath(schemaPath, "additionalProperties");
             if (!additional->is_bool() && !additional->is_object())
             {
@@ -1543,6 +1631,7 @@ private:
                 {
                     continue;
                 }
+                Evaluation::Mark(additionalEvaluation.properties, index - 1);
                 const auto propertyPath = ChildPath(instancePath, property.key());
                 if (additional->is_bool())
                 {
@@ -1558,14 +1647,38 @@ private:
                              depth + 1);
                 }
             }
+            additionalEvaluation.valid = m_errorCount == errorsBefore;
+            evaluation.Merge(additionalEvaluation);
         }
 
-        ValidateDependencies(schema, instanceValue, instancePath, schemaPath, depth);
+        ValidateDependencies(schema, instanceValue, instancePath, schemaPath, depth, evaluation);
+        if (m_dialect != JsonSchemaDialect::Draft7)
+        {
+            if (const auto* unevaluated = schema.if_contains("unevaluatedProperties"))
+            {
+                const auto keywordPath = ChildPath(schemaPath, "unevaluatedProperties");
+                const auto errorsBefore = m_errorCount;
+                Evaluation unevaluatedEvaluation;
+                std::size_t index = 0;
+                for (const auto& property : instance)
+                {
+                    if (index >= evaluation.properties.size() || !evaluation.properties[index])
+                    {
+                        Validate(*unevaluated, property.value(),
+                                 ChildPath(instancePath, property.key()), keywordPath, depth + 1);
+                        Evaluation::Mark(unevaluatedEvaluation.properties, index);
+                    }
+                    ++index;
+                }
+                unevaluatedEvaluation.valid = m_errorCount == errorsBefore;
+                evaluation.Merge(unevaluatedEvaluation);
+            }
+        }
     }
 
     void ValidateDependencies(const JsonObject& schema, const JsonValue& instanceValue,
                               std::string_view instancePath, std::string_view schemaPath,
-                              std::size_t depth)
+                              std::size_t depth, Evaluation& evaluation)
     {
         const auto& instance = instanceValue.as_object();
         constexpr std::array keywords = {
@@ -1605,8 +1718,8 @@ private:
                 }
                 else
                 {
-                    Validate(dependency.value(), instanceValue, instancePath,
-                             dependencyPath, depth + 1);
+                    evaluation.Merge(Validate(dependency.value(), instanceValue, instancePath,
+                                              dependencyPath, depth + 1));
                 }
             }
         }
@@ -1615,21 +1728,26 @@ private:
     [[nodiscard]] std::size_t
     ValidateTupleItems(const JsonArray& schemas, const JsonArray& instance,
                        std::string_view instancePath, std::string_view schemaPath,
-                       std::size_t depth)
+                       std::size_t depth, Evaluation& evaluation)
     {
+        const auto errorsBefore = m_errorCount;
+        Evaluation tupleEvaluation;
         const auto count = std::min(instance.size(), schemas.size());
         for (std::size_t index = 0; index < count; ++index)
         {
             const auto token = std::to_string(index);
             Validate(schemas[index], instance[index], ChildPath(instancePath, token),
                      ChildPath(schemaPath, token), depth + 1);
+            Evaluation::Mark(tupleEvaluation.items, index);
         }
+        tupleEvaluation.valid = m_errorCount == errorsBefore;
+        evaluation.Merge(tupleEvaluation);
         return count;
     }
 
     void ValidateArray(const JsonObject& schema, const JsonArray& instance,
                        std::string_view instancePath, std::string_view schemaPath,
-                       std::size_t depth)
+                       std::size_t depth, Evaluation& evaluation)
     {
         ValidateSizeKeyword(schema, "minItems", instance.size(), true, instancePath,
                             schemaPath);
@@ -1643,7 +1761,8 @@ private:
                 prefixItems != nullptr && prefixItems->is_array())
             {
                 itemStart = ValidateTupleItems(prefixItems->as_array(), instance, instancePath,
-                                              ChildPath(schemaPath, "prefixItems"), depth);
+                                              ChildPath(schemaPath, "prefixItems"), depth,
+                                              evaluation);
             }
         }
 
@@ -1683,35 +1802,45 @@ private:
             if (items->is_array())
             {
                 itemStart = ValidateTupleItems(items->as_array(), instance, instancePath,
-                                              keywordPath, depth);
+                                              keywordPath, depth, evaluation);
                 if (const auto* additional = schema.if_contains("additionalItems"))
                 {
+                    const auto errorsBefore = m_errorCount;
+                    Evaluation additionalEvaluation;
                     const auto additionalPath = ChildPath(schemaPath, "additionalItems");
                     for (std::size_t index = itemStart; index < instance.size(); ++index)
                     {
                         Validate(*additional, instance[index],
                                  ChildPath(instancePath, std::to_string(index)),
                                  additionalPath, depth + 1);
+                        Evaluation::Mark(additionalEvaluation.items, index);
                     }
+                    additionalEvaluation.valid = m_errorCount == errorsBefore;
+                    evaluation.Merge(additionalEvaluation);
                 }
             }
             else
             {
+                const auto errorsBefore = m_errorCount;
+                Evaluation itemsEvaluation;
                 for (std::size_t index = itemStart; index < instance.size(); ++index)
                 {
                     Validate(*items, instance[index],
                              ChildPath(instancePath, std::to_string(index)), keywordPath,
                              depth + 1);
+                    Evaluation::Mark(itemsEvaluation.items, index);
                 }
+                itemsEvaluation.valid = m_errorCount == errorsBefore;
+                evaluation.Merge(itemsEvaluation);
             }
         }
 
-        ValidateContains(schema, instance, instancePath, schemaPath, depth);
+        ValidateContains(schema, instance, instancePath, schemaPath, depth, evaluation);
     }
 
     void ValidateContains(const JsonObject& schema, const JsonArray& instance,
                           std::string_view instancePath, std::string_view schemaPath,
-                          std::size_t depth)
+                          std::size_t depth, Evaluation& evaluation)
     {
         const auto* contains = schema.if_contains("contains");
         if (contains == nullptr)
@@ -1720,20 +1849,22 @@ private:
         }
 
         std::size_t matches = 0;
+        Evaluation containsEvaluation;
         const auto keywordPath = ChildPath(schemaPath, "contains");
         for (std::size_t index = 0; index < instance.size(); ++index)
         {
             const auto itemMatches =
-                BranchMatches(*contains, instance[index],
+                EvaluateBranch(*contains, instance[index],
                               ChildPath(instancePath, std::to_string(index)), keywordPath,
                               depth + 1);
             if (!itemMatches)
             {
                 return;
             }
-            if (*itemMatches)
+            if (itemMatches->valid)
             {
                 ++matches;
+                Evaluation::Mark(containsEvaluation.items, index);
             }
         }
 
@@ -1759,6 +1890,10 @@ private:
         {
             AddError(instancePath, ChildPath(schemaPath, "maxContains"),
                      "array contains more matching items than allowed");
+        }
+        else if (m_dialect == JsonSchemaDialect::Draft2020_12)
+        {
+            evaluation.Merge(containsEvaluation);
         }
     }
 
@@ -1902,6 +2037,8 @@ private:
     JsonSchemaValidationOptions m_options;
     const JsonValue& m_rootSchema;
     JsonSchemaValidationResult m_result;
+    std::size_t m_errorCount = 0;
+    std::optional<JsonSchemaValidationError> m_resourceDiagnostic;
     std::optional<JsonSchemaCompileError> m_compileError;
     std::vector<const JsonValue*> m_checkedSchemas;
     bool m_checkingSchema = false;

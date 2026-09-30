@@ -553,6 +553,37 @@ TEST(IO, JsonSchemaRegexWhitespaceCompatibility)
 }
 #endif
 
+TEST(IO, JsonSchemaResourceFailureWithErrorLimit)
+{
+    const auto schema = rad::ParseJson(
+        R"json({"anyOf": [
+            {"type": "integer", "properties": {"child": {"allOf": [true]}}},
+            true
+        ]})json");
+    ASSERT_TRUE(schema);
+    const auto compiled = rad::JsonSchema::Compile(
+        schema.value(), rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_TRUE(compiled) << compiled.error().message;
+
+    rad::JsonSchemaValidationOptions options;
+    options.maxDepth = 2;
+    for (const std::size_t maxErrors : {0U, 1U, 2U})
+    {
+        SCOPED_TRACE(maxErrors);
+        options.maxErrors = maxErrors;
+        const auto result = compiled.value().Validate(
+            rad::JsonObject{{"child", rad::JsonObject{}}}, options);
+        ASSERT_FALSE(result);
+        ASSERT_EQ(result.errors.size(), 1);
+        EXPECT_EQ(result.errors[0].instancePath, "/child");
+        EXPECT_EQ(result.errors[0].schemaPath, "/anyOf/0/properties/child/allOf/0");
+        EXPECT_EQ(result.errors[0].message, "maximum validation depth exceeded");
+    }
+    options.maxDepth = 3;
+    EXPECT_TRUE(compiled.value().Validate(
+        rad::JsonObject{{"child", rad::JsonObject{}}}, options));
+}
+
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const char* suitePath = std::getenv("JSON_SCHEMA_TEST_SUITE");
@@ -685,6 +716,12 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                         << std::format("data: {}\n{}",
                                        rad::PrettyJson(test.at("data")),
                                        FormatValidationErrors(result));
+                    rad::JsonSchemaValidationOptions limitedOptions;
+                    limitedOptions.maxErrors = 1;
+                    const auto limited = compiled.value().Validate(test.at("data"), limitedOptions);
+                    EXPECT_EQ(static_cast<bool>(limited), expected)
+                        << FormatValidationErrors(limited);
+                    EXPECT_LE(limited.errors.size(), 1);
                 }
             }
         }
