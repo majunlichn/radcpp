@@ -1035,10 +1035,16 @@ private:
         }
         if (m_dialect != JsonSchemaDialect::Draft7)
         {
-            if (const auto* unevaluated = object.if_contains("unevaluatedProperties"))
+            constexpr std::array unevaluatedKeywords = {
+                "unevaluatedProperties", "unevaluatedItems",
+            };
+            for (const std::string_view keyword : unevaluatedKeywords)
             {
-                ValidateSchemaDefinition(
-                    *unevaluated, ChildPath(schemaPath, "unevaluatedProperties"), depth + 1);
+                if (const auto* unevaluated = object.if_contains(keyword))
+                {
+                    ValidateSchemaDefinition(*unevaluated, ChildPath(schemaPath, keyword),
+                                             depth + 1);
+                }
             }
         }
 
@@ -1261,21 +1267,6 @@ private:
         {
             AddUnsupportedError(instancePath, ChildPath(schemaPath, "$vocabulary"),
                                 "custom vocabularies are not supported by this validator");
-        }
-
-        if (m_dialect != JsonSchemaDialect::Draft7)
-        {
-            constexpr std::array newerUnsupported = {
-                "unevaluatedItems",
-            };
-            for (const std::string_view keyword : newerUnsupported)
-            {
-                if (schema.contains(keyword))
-                {
-                    AddUnsupportedError(instancePath, ChildPath(schemaPath, keyword),
-                                        "keyword is not supported by this validator");
-                }
-            }
         }
 
         if (m_dialect == JsonSchemaDialect::Draft2019_09)
@@ -1836,6 +1827,27 @@ private:
         }
 
         ValidateContains(schema, instance, instancePath, schemaPath, depth, evaluation);
+        if (m_dialect != JsonSchemaDialect::Draft7)
+        {
+            if (const auto* unevaluated = schema.if_contains("unevaluatedItems"))
+            {
+                const auto keywordPath = ChildPath(schemaPath, "unevaluatedItems");
+                const auto errorsBefore = m_errorCount;
+                Evaluation unevaluatedEvaluation;
+                for (std::size_t index = 0; index < instance.size(); ++index)
+                {
+                    if (index >= evaluation.items.size() || !evaluation.items[index])
+                    {
+                        Validate(*unevaluated, instance[index],
+                                 ChildPath(instancePath, std::to_string(index)), keywordPath,
+                                 depth + 1);
+                        Evaluation::Mark(unevaluatedEvaluation.items, index);
+                    }
+                }
+                unevaluatedEvaluation.valid = m_errorCount == errorsBefore;
+                evaluation.Merge(unevaluatedEvaluation);
+            }
+        }
     }
 
     void ValidateContains(const JsonObject& schema, const JsonArray& instance,

@@ -584,6 +584,44 @@ TEST(IO, JsonSchemaResourceFailureWithErrorLimit)
         rad::JsonObject{{"child", rad::JsonObject{}}}, options));
 }
 
+TEST(IO, JsonSchemaUnevaluatedItemsDiagnostics)
+{
+    const auto schema = rad::ParseJson(R"json({"unevaluatedItems": {"type": "integer"}})json");
+    ASSERT_TRUE(schema);
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const auto compiled = rad::JsonSchema::Compile(schema.value(), dialect);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        const auto result = compiled.value().Validate(rad::JsonArray{1, "invalid"});
+        ASSERT_FALSE(result);
+        ASSERT_EQ(result.errors.size(), 1);
+        EXPECT_EQ(result.errors[0].instancePath, "/1");
+        EXPECT_EQ(result.errors[0].schemaPath, "/unevaluatedItems/type");
+
+        rad::JsonSchemaValidationOptions options;
+        options.maxDepth = 0;
+        options.maxErrors = 1;
+        const auto limited = compiled.value().Validate(rad::JsonArray{1}, options);
+        ASSERT_FALSE(limited);
+        ASSERT_EQ(limited.errors.size(), 1);
+        EXPECT_EQ(limited.errors[0].instancePath, "/0");
+        EXPECT_EQ(limited.errors[0].schemaPath, "/unevaluatedItems");
+        EXPECT_EQ(limited.errors[0].message, "maximum validation depth exceeded");
+
+        const auto invalid = rad::JsonSchema::Compile(
+            rad::JsonObject{{"unevaluatedItems", 42}}, dialect);
+        ASSERT_FALSE(invalid);
+        EXPECT_EQ(invalid.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+        EXPECT_EQ(invalid.error().schemaPath, "/unevaluatedItems");
+    }
+    const auto olderDraft = rad::JsonSchema::Compile(
+        rad::JsonObject{{"unevaluatedItems", 42}}, rad::JsonSchemaDialect::Draft7);
+    ASSERT_TRUE(olderDraft) << olderDraft.error().message;
+    EXPECT_TRUE(olderDraft.value().Validate(rad::JsonArray{1, "ignored"}));
+}
+
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const char* suitePath = std::getenv("JSON_SCHEMA_TEST_SUITE");
