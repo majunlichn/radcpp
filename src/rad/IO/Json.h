@@ -123,7 +123,9 @@ struct JsonSchemaCompileOptions
 };
 
 // Compiles and validates a practical subset of JSON Schema Draft 7, 2019-09, and 2020-12.
+// Compilation checks definitions and prepares static references and regular expressions.
 // Compiled schemas own their documents and expressions; copies share immutable state.
+// Instance evaluation keeps diagnostics and resource scopes local to each call.
 //
 // Supported keywords:
 // - All drafts: boolean schemas; $ref, $id, and JSON Pointers; type, enum, const;
