@@ -126,6 +126,7 @@ struct JsonSchemaCompileOptions
 //   unevaluatedProperties, unevaluatedItems, $anchor, and $defs structure checking.
 // - Offline references to standard meta-schemas and their default vocabulary meta-schemas.
 // - Standard $vocabulary declarations; unsupported optional vocabularies are ignored.
+// - Draft 2019-09 and 2020-12: registered custom meta-schema vocabulary selection.
 // - Draft 2020-12: prefixItems, $dynamicRef, and $dynamicAnchor.
 // - Draft 2019-09: $recursiveRef (only "#") and boolean $recursiveAnchor.
 // - Draft 7: dependencies (property-name arrays and schemas).
@@ -133,7 +134,8 @@ struct JsonSchemaCompileOptions
 // - Draft 7: plain-name fragments in $id.
 //
 // Not supported:
-// - Automatic file/network loading, mixed-dialect resources, custom meta-schema dialects,
+// - Automatic file/network loading, mixed-base-draft resources, custom Draft 7 dialects,
+//   custom keyword implementations,
 //   and unsupported required vocabularies (including format assertion).
 //
 // definitions and $defs can be referenced by root-local JSON Pointers.
@@ -141,11 +143,15 @@ struct JsonSchemaCompileOptions
 // Existing resources and caller-provided documents take precedence over bundled meta-schemas.
 // A missing fragment in a caller-provided document is an error, not a built-in fallback.
 // Registered documents without $schema use the selected dialect.
+// Custom $schema URIs resolve through registered resources and derive an underlying standard draft.
+// Vocabularies are selected per schema resource; an absent $vocabulary uses standard defaults.
+// A vocabulary-changing $schema in a subschema requires its own $id resource boundary.
+// Supported optional vocabularies remain enabled. Unknown optional vocabularies are ignored.
 // Draft 2020-12 $dynamicRef rebinds named dynamic anchors through the active resource scope.
 // JSON Pointer targets and ordinary anchors remain static, as do all $ref targets.
 // CompileFile does not load referenced files or use its path as a retrieval URI.
 // Compilation does not automatically validate schemas against their meta-schema.
-// $vocabulary declarations do not change keyword enablement under the selected standard dialect.
+// A schema's own $vocabulary does not change its keyword enablement; its $schema selects that.
 // Other annotation keywords are ignored; format is not validated.
 // multipleOf uses exact integer arithmetic for integer values and shortest round-trip decimal
 // representations for doubles, without an epsilon. Original numeric text is not retained;
@@ -160,7 +166,7 @@ struct JsonSchemaCompileOptions
 class JsonSchema
 {
 public:
-    // Detects the dialect from the required root $schema keyword.
+    // Detects the underlying standard dialect from the required root $schema keyword.
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
     Compile(const JsonValue& schema);
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
@@ -176,6 +182,7 @@ public:
     CompileFile(const FilePath& path, JsonSchemaDialect dialect,
                 const JsonSchemaCompileOptions& options);
 
+    // Returns the underlying standard draft, including for a custom vocabulary dialect.
     [[nodiscard]] JsonSchemaDialect Dialect() const noexcept;
     [[nodiscard]] JsonSchemaValidationResult
     Validate(const JsonValue& instance,

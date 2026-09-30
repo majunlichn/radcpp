@@ -1541,6 +1541,211 @@ TEST(IO, JsonSchemaVocabularyDeclarations)
     EXPECT_TRUE(ignored.value().Validate(1));
 }
 
+TEST(IO, JsonSchemaCustomDialectSelection)
+{
+    for (const auto dialect :
+         {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string base = dialect == rad::JsonSchemaDialect::Draft2019_09
+                                     ? "https://json-schema.org/draft/2019-09/"
+                                     : "https://json-schema.org/draft/2020-12/";
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/root.json";
+        options.documents = {
+            {"https://example.com/meta-a.json",
+             rad::JsonObject{{"$id", "https://example.com/applicator"},
+                             {"$schema", base + "schema"},
+                             {"$vocabulary", rad::JsonObject{{base + "vocab/core", true},
+                                                            {base + "vocab/applicator", true}}}}},
+            {"https://example.com/meta-b.json",
+             rad::JsonObject{{"$id", "https://example.com/validation"},
+                             {"$schema", base + "schema"},
+                             {"$vocabulary", rad::JsonObject{{base + "vocab/core", true},
+                                                            {base + "vocab/validation", false}}}}},
+        };
+        const auto loose = rad::ParseJson(R"json({
+            "$schema": "https://example.com/applicator",
+            "type": 42, "enum": [], "required": false, "pattern": 1,
+            "minimum": false, "minContains": "ignored", "uniqueItems": 1,
+            "dependentRequired": 4, "properties": {"value": {"minimum": false}}
+        })json");
+        ASSERT_TRUE(loose);
+        const auto inferred = rad::JsonSchema::Compile(loose.value(), options);
+        ASSERT_TRUE(inferred) << inferred.error().schemaUri << inferred.error().schemaPath << ": "
+                              << inferred.error().message;
+        EXPECT_EQ(inferred.value().Dialect(), dialect);
+        EXPECT_TRUE(inferred.value().Validate(rad::JsonObject{{"value", 1}}));
+        EXPECT_TRUE(rad::JsonSchema::Compile(loose.value(), dialect, options));
+
+        const auto strict = rad::ParseJson(R"json({
+            "$schema": "https://example.com/validation", "type": "integer", "minimum": 1,
+            "allOf": 5, "items": 5, "unevaluatedProperties": 5,
+            "properties": {"bad": {"$id": 5, "$ref": "unregistered.json"}}
+        })json");
+        ASSERT_TRUE(strict);
+        const auto compiled = rad::JsonSchema::Compile(strict.value(), options);
+        ASSERT_TRUE(compiled) << compiled.error().schemaPath << ": " << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(1));
+        EXPECT_FALSE(compiled.value().Validate(0));
+        EXPECT_FALSE(compiled.value().Validate("invalid"));
+        auto malformed = strict.value();
+        malformed.as_object()["type"] = 42;
+        const auto invalid = rad::JsonSchema::Compile(malformed, options);
+        ASSERT_FALSE(invalid);
+        EXPECT_EQ(invalid.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+        EXPECT_EQ(invalid.error().schemaPath, "/type");
+        EXPECT_EQ(invalid.error().schemaUri, options.retrievalUri);
+
+        auto pointed = strict.value();
+        pointed.as_object()["$ref"] = "#/properties/bad";
+        const auto badTarget = rad::JsonSchema::Compile(pointed, options);
+        ASSERT_FALSE(badTarget);
+        EXPECT_EQ(badTarget.error().schemaPath, "/properties/bad/$id");
+
+        options.documents.push_back(
+            {"https://example.com/defaults",
+             rad::JsonObject{{"$schema", "https://example.com/validation"}}});
+        const auto defaults = rad::JsonSchema::Compile(
+            rad::JsonObject{{"$schema", "https://example.com/defaults"},
+                            {"type", "object"}, {"properties", rad::JsonObject{{"value", false}}}},
+            options);
+        ASSERT_TRUE(defaults) << defaults.error().message;
+        EXPECT_TRUE(defaults.value().Validate(rad::JsonObject{}));
+        EXPECT_FALSE(defaults.value().Validate(rad::JsonObject{{"value", 1}}));
+        EXPECT_FALSE(defaults.value().Validate(1));
+    }
+}
+
+TEST(IO, JsonSchemaCustomDialectResourceProfiles)
+{
+    for (const auto dialect :
+         {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        const std::string base = dialect == rad::JsonSchemaDialect::Draft2019_09
+                                     ? "https://json-schema.org/draft/2019-09/"
+                                     : "https://json-schema.org/draft/2020-12/";
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/root.json";
+        options.documents = {
+            {"https://example.com/loose-meta",
+             rad::JsonObject{{"$schema", base + "schema"},
+                             {"$vocabulary", rad::JsonObject{{base + "vocab/core", true},
+                                                            {base + "vocab/applicator", true}}}}},
+        };
+        const auto schema = rad::ParseJson(std::format(R"json({{
+            "$schema": "https://example.com/loose-meta",
+            "$defs": {{
+                "strict": {{"$id": "strict", "$schema": "{}schema", "type": "integer"}},
+                "loose": {{"$id": "loose", "type": 42}}
+            }},
+            "properties": {{
+                "strict": {{"$ref": "strict"}},
+                "loose": {{"$ref": "loose"}}
+            }}
+        }})json", base));
+        ASSERT_TRUE(schema);
+        const auto compiled = rad::JsonSchema::Compile(schema.value(), options);
+        ASSERT_TRUE(compiled) << compiled.error().schemaPath << ": " << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(rad::JsonObject{{"strict", 1}, {"loose", "ignored"}}));
+        const auto invalid = compiled.value().Validate(rad::JsonObject{{"strict", "invalid"}});
+        ASSERT_FALSE(invalid);
+        ASSERT_EQ(invalid.errors.size(), 1);
+        EXPECT_EQ(invalid.errors[0].instancePath, "/strict");
+        EXPECT_EQ(invalid.errors[0].schemaPath, "/$defs/strict/type");
+        EXPECT_EQ(invalid.errors[0].schemaUri, options.retrievalUri);
+
+        auto nonResource = schema.value();
+        nonResource.as_object().at("properties").as_object().at("strict") =
+            rad::JsonObject{{"$schema", base + "schema"}, {"type", "integer"}};
+        const auto badDeclaration = rad::JsonSchema::Compile(nonResource, options);
+        ASSERT_FALSE(badDeclaration);
+        EXPECT_EQ(badDeclaration.error().schemaPath, "/properties/strict/$schema");
+        EXPECT_EQ(badDeclaration.error().schemaUri, options.retrievalUri);
+
+        options.documents.push_back(
+            {"https://example.com/foreign.json",
+             rad::JsonObject{{"$schema", base + "schema"}, {"type", "integer"}}});
+        auto referenced = schema.value();
+        referenced.as_object()["$ref"] = "foreign.json";
+        const auto external = rad::JsonSchema::Compile(referenced, options);
+        ASSERT_TRUE(external) << external.error().message;
+        EXPECT_TRUE(external.value().Validate(1));
+        EXPECT_FALSE(external.value().Validate("invalid"));
+        options.documents.back().schema.as_object()["$schema"] = "https://example.com/missing";
+        const auto badExternal = rad::JsonSchema::Compile(referenced, options);
+        ASSERT_FALSE(badExternal);
+        EXPECT_EQ(badExternal.error().schemaPath, "/$schema");
+        EXPECT_EQ(badExternal.error().schemaUri, options.documents.back().uri);
+    }
+}
+
+TEST(IO, JsonSchemaCustomDialectUnevaluatedVocabulary)
+{
+    rad::JsonSchemaCompileOptions options;
+    options.documents = {
+        {"https://example.com/meta",
+         rad::JsonObject{{"$schema", "https://json-schema.org/draft/2020-12/schema"},
+                         {"$vocabulary", rad::JsonObject{
+                             {"https://json-schema.org/draft/2020-12/vocab/core", true},
+                             {"https://json-schema.org/draft/2020-12/vocab/unevaluated", false}}}}},
+    };
+    const auto compiled = rad::JsonSchema::Compile(
+        rad::JsonObject{{"$schema", "https://example.com/meta"},
+                        {"properties", rad::JsonObject{{"value", true}}},
+                        {"prefixItems", rad::JsonArray{true}},
+                        {"unevaluatedProperties", false}, {"unevaluatedItems", false}},
+        options);
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    EXPECT_TRUE(compiled.value().Validate(rad::JsonObject{}));
+    EXPECT_TRUE(compiled.value().Validate(rad::JsonArray{}));
+    EXPECT_FALSE(compiled.value().Validate(rad::JsonObject{{"value", 1}}));
+    EXPECT_FALSE(compiled.value().Validate(rad::JsonArray{1}));
+}
+
+TEST(IO, JsonSchemaCustomDialectDiagnostics)
+{
+    constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;
+    rad::JsonSchemaCompileOptions options;
+    options.retrievalUri = "https://example.com/root.json";
+    const auto root = rad::JsonObject{{"$schema", "https://example.com/meta"}};
+    const auto missing = rad::JsonSchema::Compile(root, options);
+    ASSERT_FALSE(missing);
+    EXPECT_EQ(missing.error().schemaPath, "/$schema");
+    EXPECT_EQ(missing.error().schemaUri, options.retrievalUri);
+    options.documents = {
+        {"https://example.com/meta",
+         rad::JsonObject{{"$schema", "https://example.com/other"}}},
+        {"https://example.com/other",
+         rad::JsonObject{{"$schema", "https://example.com/meta"}}},
+    };
+    const auto cyclic = rad::JsonSchema::Compile(root, options);
+    ASSERT_FALSE(cyclic);
+    EXPECT_EQ(cyclic.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+    EXPECT_EQ(cyclic.error().schemaPath, "/$schema");
+    options.documents = {
+        {"https://example.com/meta", rad::JsonObject{
+            {"$schema", "https://json-schema.org/draft/2020-12/schema"},
+            {"$vocabulary", rad::JsonObject{
+                {"https://json-schema.org/draft/2020-12/vocab/core", true},
+                {"urn:example:required", true}}},
+        }},
+    };
+    const auto unsupported = rad::JsonSchema::Compile(root, options);
+    ASSERT_FALSE(unsupported);
+    EXPECT_EQ(unsupported.error().code, rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
+    EXPECT_EQ(unsupported.error().schemaPath, "/$vocabulary/urn:example:required");
+    EXPECT_EQ(unsupported.error().schemaUri, options.documents[0].uri);
+    options.documents[0].schema.as_object().at("$vocabulary").as_object()
+        ["urn:example:required"] = false;
+    EXPECT_TRUE(rad::JsonSchema::Compile(root, options));
+    const auto mismatched = rad::JsonSchema::Compile(
+        root, rad::JsonSchemaDialect::Draft2019_09, options);
+    ASSERT_FALSE(mismatched);
+    EXPECT_EQ(mismatched.error().code, rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
+    EXPECT_TRUE(rad::JsonSchema::Compile(root, dialect, options));
+}
+
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const char* suitePath = std::getenv("JSON_SCHEMA_TEST_SUITE");

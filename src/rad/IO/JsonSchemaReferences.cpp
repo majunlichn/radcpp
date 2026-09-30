@@ -64,11 +64,21 @@ public:
 
     ReferenceIndexBuilder(JsonValue& root, std::vector<std::string>& uris,
                           std::unordered_map<std::string, std::string>& schemaResources,
+                          std::unordered_map<std::string, JsonSchemaVocabularyProfile>& profiles,
+                          std::unordered_map<std::string, JsonSchemaCompileError>& profileErrors,
+                          const JsonSchemaReferences& references,
+                          JsonSchemaDialectResolver& dialectResolver,
+                          const JsonSchemaVocabularyProfile& rootProfile,
                           const JsonSchemaCompileOptions& options, JsonSchemaDialect dialect,
                           std::size_t maxDepth) :
         m_root(root),
         m_uris(uris),
         m_schemaResources(schemaResources),
+        m_profiles(profiles),
+        m_profileErrors(profileErrors),
+        m_graph(references),
+        m_dialectResolver(dialectResolver),
+        m_rootProfile(rootProfile),
         m_options(options),
         m_dialect(dialect),
         m_maxDepth(maxDepth)
@@ -91,6 +101,8 @@ public:
             m_scopes.clear();
             m_references.clear();
             m_documentErrors.clear();
+            m_profiles.clear();
+            m_profileErrors.clear();
             for (std::size_t index = 0; index < m_uris.size(); ++index)
             {
                 const auto path = ChildPath("", std::to_string(index));
@@ -149,7 +161,13 @@ public:
             }
             else if (!m_error)
             {
-                targets.emplace(ChildPath(source.path, source.keyword), Failure(*m_resolutionError));
+                auto error = *m_resolutionError;
+                if (!m_publicResolutionError)
+                {
+                    error.schemaUri = m_graph.SchemaUri(error.schemaPath);
+                    error.schemaPath = m_graph.SchemaPath(error.schemaPath);
+                }
+                targets.emplace(ChildPath(source.path, source.keyword), Failure(std::move(error)));
             }
         }
         if (m_error)
@@ -247,6 +265,8 @@ private:
             m_dynamicAnchors.clear();
             m_scopes.clear();
             m_references.clear();
+            m_profiles.clear();
+            m_profileErrors.clear();
             m_cataloging = true;
             Index(document.schema, "/1", std::string(retrieval.buffer()), 0);
             m_cataloging = false;
@@ -351,6 +371,7 @@ private:
             Error(path, "maximum schema depth exceeded");
             return;
         }
+        auto profile = ParentProfile(path);
         if (!schema.is_object())
         {
             if (path.find('/', 1) == std::string::npos && !schema.is_bool())
@@ -359,38 +380,10 @@ private:
                 return;
             }
             m_scopes.emplace(path, std::move(base));
+            m_profiles.emplace(path, profile);
             return;
         }
         const auto& object = schema.as_object();
-        if (!m_cataloging && path.find('/', 1) == std::string::npos &&
-            !(path == "/0" && m_dialect == JsonSchemaDialect::Draft7 && object.contains("$ref")))
-        {
-            if (const auto* declared = object.if_contains("$schema"); declared != nullptr)
-            {
-                const std::string_view expected =
-                    m_dialect == JsonSchemaDialect::Draft7
-                        ? "http://json-schema.org/draft-07/schema"
-                    : m_dialect == JsonSchemaDialect::Draft2019_09
-                        ? "https://json-schema.org/draft/2019-09/schema"
-                        : "https://json-schema.org/draft/2020-12/schema";
-                auto text = declared->is_string() ? StringView(declared->as_string()) : "";
-                if (text.ends_with('#'))
-                {
-                    text.remove_suffix(1);
-                }
-                if (text != expected)
-                {
-                    m_error = JsonSchemaCompileError{
-                        declared->is_string() ? JsonSchemaCompileErrorCode::UnsupportedFeature
-                                              : JsonSchemaCompileErrorCode::InvalidSchema,
-                        m_dialect, ChildPath(path, "$schema"),
-                        declared->is_string()
-                            ? "custom or mismatched meta-schemas are not supported"
-                            : "$schema must be a string"};
-                    return;
-                }
-            }
-        }
         const bool ignoredSiblings =
             m_dialect == JsonSchemaDialect::Draft7 && object.contains("$ref");
         if (!ignoredSiblings)
@@ -462,6 +455,56 @@ private:
             }
         }
         m_scopes.emplace(path, base);
+        if (!ignoredSiblings)
+        {
+            if (const auto* declared = object.if_contains("$schema"))
+            {
+                const auto keywordPath = ChildPath(path, "$schema");
+                if (!declared->is_string())
+                {
+                    m_profileErrors.emplace(path, PublicError(
+                        JsonSchemaCompileErrorCode::InvalidSchema, keywordPath,
+                        "$schema must be a string"));
+                    return;
+                }
+                auto selected = m_dialectResolver.Resolve(
+                    StringView(declared->as_string()), m_graph.SchemaUri(path),
+                    m_graph.SchemaPath(keywordPath));
+                if (!selected)
+                {
+                    m_profileErrors.emplace(path, std::move(selected.error()));
+                    return;
+                }
+                if (selected.value().dialect != m_dialect)
+                {
+                    if (!m_cataloging)
+                    {
+                        m_profileErrors.emplace(path, PublicError(
+                            JsonSchemaCompileErrorCode::UnsupportedFeature, keywordPath,
+                            "mixed base schema drafts are not supported"));
+                        return;
+                    }
+                }
+                else
+                {
+                    const auto& next = selected.value();
+                    const bool resourceRoot = path.find('/', 1) == std::string::npos ||
+                                              object.contains("$id");
+                    if (!resourceRoot &&
+                        (next.applicator != profile.applicator ||
+                         next.validation != profile.validation ||
+                         next.unevaluated != profile.unevaluated))
+                    {
+                        m_profileErrors.emplace(path, PublicError(
+                            JsonSchemaCompileErrorCode::InvalidSchema, keywordPath,
+                            "a different $schema vocabulary must be declared at a resource root"));
+                        return;
+                    }
+                    profile = selected.value();
+                }
+            }
+        }
+        m_profiles.emplace(path, profile);
         if (object.contains("$ref"))
         {
             m_references.push_back({path, "$ref"});
@@ -477,6 +520,10 @@ private:
 
         const auto indexMap = [&](std::string_view keyword, bool dependencies = false)
         {
+            if (!profile.IsKeywordEnabled(keyword))
+            {
+                return;
+            }
             const auto* value = object.if_contains(keyword);
             if (value == nullptr || !value->is_object())
             {
@@ -512,7 +559,8 @@ private:
         };
         for (const std::string_view keyword : singles)
         {
-            if (const auto* value = object.if_contains(keyword))
+            if (const auto* value = object.if_contains(keyword);
+                value && profile.IsKeywordEnabled(keyword))
             {
                 Index(*value, ChildPath(path, keyword), base, depth + 1);
             }
@@ -521,7 +569,8 @@ private:
         {
             for (const std::string_view keyword : {"unevaluatedItems", "unevaluatedProperties"})
             {
-                if (const auto* value = object.if_contains(keyword))
+                if (const auto* value = object.if_contains(keyword);
+                    value && profile.IsKeywordEnabled(keyword))
                 {
                     Index(*value, ChildPath(path, keyword), base, depth + 1);
                 }
@@ -529,7 +578,8 @@ private:
         }
         if (m_dialect != JsonSchemaDialect::Draft2020_12)
         {
-            if (const auto* value = object.if_contains("additionalItems"))
+            if (const auto* value = object.if_contains("additionalItems");
+                value && profile.IsKeywordEnabled("additionalItems"))
             {
                 Index(*value, ChildPath(path, "additionalItems"), base, depth + 1);
             }
@@ -545,19 +595,22 @@ private:
         };
         for (const std::string_view keyword : {"allOf", "anyOf", "oneOf"})
         {
-            if (const auto* value = object.if_contains(keyword); value && value->is_array())
+            if (const auto* value = object.if_contains(keyword);
+                value && profile.IsKeywordEnabled(keyword) && value->is_array())
             {
                 indexArray(value->as_array(), keyword);
             }
         }
         if (m_dialect == JsonSchemaDialect::Draft2020_12)
         {
-            if (const auto* value = object.if_contains("prefixItems"); value && value->is_array())
+            if (const auto* value = object.if_contains("prefixItems");
+                value && profile.IsKeywordEnabled("prefixItems") && value->is_array())
             {
                 indexArray(value->as_array(), "prefixItems");
             }
         }
-        if (const auto* items = object.if_contains("items"))
+        if (const auto* items = object.if_contains("items");
+            items && profile.IsKeywordEnabled("items"))
         {
             if (items->is_array() && m_dialect != JsonSchemaDialect::Draft2020_12)
             {
@@ -583,6 +636,31 @@ private:
         }
     }
 
+    [[nodiscard]] JsonSchemaVocabularyProfile ParentProfile(std::string path) const
+    {
+        for (;;)
+        {
+            const auto end = path.rfind('/');
+            if (end == std::string::npos)
+            {
+                return m_rootProfile;
+            }
+            path.resize(end);
+            if (const auto found = m_profiles.find(path); found != m_profiles.end())
+            {
+                return found->second;
+            }
+        }
+    }
+
+    [[nodiscard]] JsonSchemaCompileError PublicError(JsonSchemaCompileErrorCode code,
+                                                     std::string_view path,
+                                                     std::string message) const
+    {
+        return {code, m_dialect, m_graph.SchemaPath(path), std::move(message),
+                m_graph.SchemaUri(path)};
+    }
+
     [[nodiscard]] Target AnchorTarget(const std::string& path, const boost::urls::url& uri,
                                       std::string_view keyword) const
     {
@@ -594,6 +672,13 @@ private:
     [[nodiscard]] std::optional<Target> Resolve(const PendingReference& source)
     {
         m_resolutionError.reset();
+        m_publicResolutionError = false;
+        if (const auto* error = m_graph.ProfileError(source.path))
+        {
+            m_resolutionError = *error;
+            m_publicResolutionError = true;
+            return std::nullopt;
+        }
         if (const auto failed = m_documentErrors.find(DocumentPath(source.path));
             failed != m_documentErrors.end())
         {
@@ -628,6 +713,12 @@ private:
         const auto anchor = m_anchors.find(std::string(uri->buffer()));
         if (anchor != m_anchors.end())
         {
+            if (const auto* error = m_graph.ProfileError(anchor->second))
+            {
+                m_resolutionError = *error;
+                m_publicResolutionError = true;
+                return std::nullopt;
+            }
             if (const auto failed = m_documentErrors.find(DocumentPath(anchor->second));
                 failed != m_documentErrors.end())
             {
@@ -680,6 +771,12 @@ private:
             m_resolutionError = failed->second;
             return std::nullopt;
         }
+        if (const auto* error = m_graph.ProfileError(resource->second))
+        {
+            m_resolutionError = *error;
+            m_publicResolutionError = true;
+            return std::nullopt;
+        }
         if (!fragment.empty() && fragment.front() != '/')
         {
             auto canonical = boost::urls::url(m_scopes.at(resource->second));
@@ -688,6 +785,12 @@ private:
             const auto named = m_anchors.find(std::string(canonical.buffer()));
             if (named != m_anchors.end())
             {
+                if (const auto* error = m_graph.ProfileError(named->second))
+                {
+                    m_resolutionError = *error;
+                    m_publicResolutionError = true;
+                    return std::nullopt;
+                }
                 return AnchorTarget(named->second, canonical, source.keyword);
             }
             m_resolutionError =
@@ -697,6 +800,12 @@ private:
             return std::nullopt;
         }
         const auto targetPath = resource->second + fragment;
+        if (const auto* error = m_graph.ProfileError(targetPath))
+        {
+            m_resolutionError = *error;
+            m_publicResolutionError = true;
+            return std::nullopt;
+        }
         if (FindJsonSchemaValue(m_root, targetPath) == nullptr)
         {
             m_resolutionError = JsonSchemaCompileError{
@@ -711,6 +820,11 @@ private:
     JsonValue& m_root;
     std::vector<std::string>& m_uris;
     std::unordered_map<std::string, std::string>& m_schemaResources;
+    std::unordered_map<std::string, JsonSchemaVocabularyProfile>& m_profiles;
+    std::unordered_map<std::string, JsonSchemaCompileError>& m_profileErrors;
+    const JsonSchemaReferences& m_graph;
+    JsonSchemaDialectResolver& m_dialectResolver;
+    JsonSchemaVocabularyProfile m_rootProfile;
     const JsonSchemaCompileOptions& m_options;
     std::unordered_map<std::string, RegistryEntry> m_registry;
     std::unordered_map<std::string, JsonSchemaCompileError> m_documentErrors;
@@ -724,6 +838,7 @@ private:
     std::optional<JsonSchemaCompileError> m_error;
     std::optional<JsonSchemaCompileError> m_resolutionError;
     bool m_cataloging = false;
+    bool m_publicResolutionError = false;
 }; // class ReferenceIndexBuilder
 
 } // namespace
@@ -799,14 +914,49 @@ const JsonValue* FindJsonSchemaValue(const JsonValue& root, std::string_view poi
 }
 
 Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compile(
-    const JsonValue& schema, JsonSchemaDialect dialect, std::size_t maxDepth,
+    const JsonValue& schema, std::optional<JsonSchemaDialect> dialect, std::size_t maxDepth,
     const JsonSchemaCompileOptions& options)
 {
+    JsonSchemaDialectResolver resolver(schema, options, dialect, maxDepth);
+    JsonSchemaVocabularyProfile rootProfile{dialect.value_or(JsonSchemaDialect::Draft2020_12)};
+    const auto* declared = schema.is_object() ? schema.as_object().if_contains("$schema") : nullptr;
+    const bool ignoredDeclaration = dialect == JsonSchemaDialect::Draft7 && schema.is_object() &&
+                                    schema.as_object().contains("$ref");
+    if (declared != nullptr && !ignoredDeclaration)
+    {
+        if (!declared->is_string())
+        {
+            return Failure(JsonSchemaCompileError{
+                JsonSchemaCompileErrorCode::InvalidSchema, dialect, "/$schema",
+                "$schema must be a string", options.retrievalUri});
+        }
+        auto selected = resolver.Resolve(StringView(declared->as_string()));
+        if (!selected)
+        {
+            return Failure(std::move(selected.error()));
+        }
+        rootProfile = selected.value();
+        if (dialect && rootProfile.dialect != *dialect)
+        {
+            return Failure(JsonSchemaCompileError{
+                JsonSchemaCompileErrorCode::UnsupportedFeature, dialect, "/$schema",
+                "declared meta-schema has a mismatched base draft", options.retrievalUri});
+        }
+    }
+    else if (!dialect)
+    {
+        return Failure(JsonSchemaCompileError{
+            JsonSchemaCompileErrorCode::MissingDialect, std::nullopt, {},
+            "schema does not declare $schema", options.retrievalUri});
+    }
     JsonSchemaReferences references;
+    references.m_dialect = rootProfile.dialect;
     references.m_documents = JsonArray{schema};
     references.m_uris.emplace_back();
     ReferenceIndexBuilder builder(references.m_documents, references.m_uris,
-                                  references.m_schemaResources, options, dialect, maxDepth);
+                                  references.m_schemaResources, references.m_profiles,
+                                  references.m_profileErrors, references, resolver, rootProfile,
+                                  options, rootProfile.dialect, maxDepth);
     auto targets = builder.Build();
     if (!targets)
     {
@@ -816,7 +966,7 @@ Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compi
         return Failure(std::move(error));
     }
     references.m_targets = std::move(targets.value());
-    if (dialect == JsonSchemaDialect::Draft2020_12)
+    if (rootProfile.dialect == JsonSchemaDialect::Draft2020_12)
     {
         for (const auto& [path, resource] : references.m_schemaResources)
         {
@@ -887,6 +1037,35 @@ const JsonSchemaReferences::Anchors* JsonSchemaReferences::DynamicAnchors(
 {
     const auto found = m_dynamicAnchors.find(std::string(resourcePath));
     return found == m_dynamicAnchors.end() ? nullptr : &found->second;
+}
+
+JsonSchemaDialect JsonSchemaReferences::Dialect() const
+{
+    return m_dialect;
+}
+
+const JsonSchemaVocabularyProfile* JsonSchemaReferences::Profile(std::string_view schemaPath) const
+{
+    const auto found = m_profiles.find(std::string(schemaPath));
+    return found == m_profiles.end() ? nullptr : &found->second;
+}
+
+const JsonSchemaCompileError* JsonSchemaReferences::ProfileError(std::string_view schemaPath) const
+{
+    std::string path(schemaPath);
+    for (;;)
+    {
+        if (const auto found = m_profileErrors.find(path); found != m_profileErrors.end())
+        {
+            return &found->second;
+        }
+        const auto end = path.rfind('/');
+        if (end == std::string::npos)
+        {
+            return nullptr;
+        }
+        path.resize(end);
+    }
 }
 
 } // namespace rad::detail

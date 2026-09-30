@@ -2,6 +2,8 @@
 
 #include <rad/IO/Json.h>
 
+#include "JsonSchemaDialects.h"
+
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -25,7 +27,7 @@ public:
     using Anchors = std::unordered_map<std::string, std::string>;
 
     [[nodiscard]] static Result<JsonSchemaReferences, JsonSchemaCompileError> Compile(
-        const JsonValue& schema, JsonSchemaDialect dialect, std::size_t maxDepth,
+        const JsonValue& schema, std::optional<JsonSchemaDialect> dialect, std::size_t maxDepth,
         const JsonSchemaCompileOptions& options);
 
     [[nodiscard]] const Resolution* Find(std::string_view referencePath) const;
@@ -35,6 +37,9 @@ public:
     [[nodiscard]] const std::string* Resource(std::string_view schemaPath) const;
     [[nodiscard]] bool HasRecursiveAnchor(std::string_view resourcePath) const;
     [[nodiscard]] const Anchors* DynamicAnchors(std::string_view resourcePath) const;
+    [[nodiscard]] JsonSchemaDialect Dialect() const;
+    [[nodiscard]] const JsonSchemaVocabularyProfile* Profile(std::string_view schemaPath) const;
+    [[nodiscard]] const JsonSchemaCompileError* ProfileError(std::string_view schemaPath) const;
 
 private:
     std::unordered_map<std::string, Resolution> m_targets;
@@ -43,6 +48,9 @@ private:
     std::vector<std::string> m_uris;
     std::unordered_map<std::string, std::string> m_schemaResources;
     std::unordered_map<std::string, Anchors> m_dynamicAnchors;
+    JsonSchemaDialect m_dialect = JsonSchemaDialect::Draft2020_12;
+    std::unordered_map<std::string, JsonSchemaVocabularyProfile> m_profiles;
+    std::unordered_map<std::string, JsonSchemaCompileError> m_profileErrors;
 }; // class JsonSchemaReferences
 
 } // namespace rad::detail

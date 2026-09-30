@@ -412,6 +412,31 @@ struct DecimalNumber
     return false;
 }
 
+class JsonSchemaKeywords
+{
+public:
+    JsonSchemaKeywords(const JsonObject& object,
+                       const detail::JsonSchemaVocabularyProfile& profile) :
+        m_object(object),
+        m_profile(profile)
+    {
+    }
+
+    [[nodiscard]] const JsonValue* if_contains(std::string_view keyword) const
+    {
+        return m_profile.IsKeywordEnabled(keyword) ? m_object.if_contains(keyword) : nullptr;
+    }
+
+    [[nodiscard]] bool contains(std::string_view keyword) const
+    {
+        return if_contains(keyword) != nullptr;
+    }
+
+private:
+    const JsonObject& m_object;
+    const detail::JsonSchemaVocabularyProfile& m_profile;
+}; // class JsonSchemaKeywords
+
 class JsonSchemaValidator
 {
 public:
@@ -519,13 +544,20 @@ private:
         if (resolution != nullptr && !*resolution)
         {
             const auto& error = resolution->error();
-            if (error.code == JsonSchemaCompileErrorCode::UnsupportedFeature)
+            if (m_checkingSchema)
             {
-                AddUnsupportedError({}, error.schemaPath, error.message);
+                if (!m_compileError)
+                {
+                    m_compileError = error;
+                }
             }
             else
             {
-                AddError({}, error.schemaPath, error.message);
+                ++m_errorCount;
+                if (m_result.errors.size() < std::max<std::size_t>(m_options.maxErrors, 1))
+                {
+                    m_result.errors.push_back({{}, error.schemaPath, error.message, error.schemaUri});
+                }
             }
             return std::nullopt;
         }
@@ -668,6 +700,11 @@ private:
         {
             return;
         }
+        if (const auto* error = m_references.ProfileError(schemaPath))
+        {
+            m_compileError = *error;
+            return;
+        }
         if (depth > m_options.maxDepth)
         {
             AddError({}, schemaPath, "maximum schema depth exceeded");
@@ -717,7 +754,13 @@ private:
                 }
             }
         }
-        const auto& object = schema.as_object();
+        const auto* profile = m_references.Profile(schemaPath);
+        if (profile == nullptr)
+        {
+            AddError({}, schemaPath, "compiled schema vocabulary profile does not exist");
+            return;
+        }
+        const JsonSchemaKeywords object(schema.as_object(), *profile);
         if (const auto* reference = object.if_contains("$ref"))
         {
             const auto target = ResolveReference(*reference, ChildPath(schemaPath, "$ref"));
@@ -764,42 +807,6 @@ private:
             }
         }
         ValidateVocabulary(object, {}, schemaPath);
-
-        if (const auto* declaredDialect = object.if_contains("$schema"))
-        {
-            const auto keywordPath = ChildPath(schemaPath, "$schema");
-            if (!declaredDialect->is_string())
-            {
-                AddError({}, keywordPath, "$schema must be a string");
-            }
-            else
-            {
-                std::string_view expected;
-                switch (m_dialect)
-                {
-                case JsonSchemaDialect::Draft7:
-                    expected = "http://json-schema.org/draft-07/schema";
-                    break;
-                case JsonSchemaDialect::Draft2019_09:
-                    expected = "https://json-schema.org/draft/2019-09/schema";
-                    break;
-                case JsonSchemaDialect::Draft2020_12:
-                    expected = "https://json-schema.org/draft/2020-12/schema";
-                    break;
-                }
-                auto declared = ToStringView(declaredDialect->as_string());
-                if (declared.ends_with('#'))
-                {
-                    declared.remove_suffix(1);
-                }
-                if (declared != expected)
-                {
-                    AddUnsupportedError(
-                        {}, keywordPath,
-                        "custom or mismatched meta-schemas are not supported");
-                }
-            }
-        }
 
         if (const auto* type = object.if_contains("type"))
         {
@@ -1120,7 +1127,7 @@ private:
         }
     }
 
-    void ValidateDependenciesSchema(const JsonObject& schema,
+    void ValidateDependenciesSchema(const JsonSchemaKeywords& schema,
                                     std::string_view schemaPath, std::size_t depth)
     {
         constexpr std::array keywords = {
@@ -1251,7 +1258,15 @@ private:
             return evaluation;
         }
         ResourceScope resourceScope(m_dynamicScope, resource);
-        const auto& object = schema.as_object();
+        const auto* profile = m_references.Profile(schemaPath);
+        if (profile == nullptr)
+        {
+            AddResourceError(instancePath, schemaPath,
+                             "compiled schema vocabulary profile does not exist");
+            evaluation.valid = false;
+            return evaluation;
+        }
+        const JsonSchemaKeywords object(schema.as_object(), *profile);
         if (const auto* reference = object.if_contains("$ref"))
         {
             const auto target = ResolveReference(*reference, ChildPath(schemaPath, "$ref"));
@@ -1344,7 +1359,7 @@ private:
         return evaluation;
     }
 
-    void ValidateVocabulary(const JsonObject& schema, std::string_view instancePath,
+    void ValidateVocabulary(const JsonSchemaKeywords& schema, std::string_view instancePath,
                             std::string_view schemaPath)
     {
         if (m_dialect == JsonSchemaDialect::Draft7)
@@ -1397,7 +1412,7 @@ private:
         }
     }
 
-    void ValidateType(const JsonObject& schema, const JsonValue& instance,
+    void ValidateType(const JsonSchemaKeywords& schema, const JsonValue& instance,
                       std::string_view instancePath, std::string_view schemaPath)
     {
         const auto* typeValue = schema.if_contains("type");
@@ -1445,7 +1460,7 @@ private:
         }
     }
 
-    void ValidateEnumAndConst(const JsonObject& schema, const JsonValue& instance,
+    void ValidateEnumAndConst(const JsonSchemaKeywords& schema, const JsonValue& instance,
                               std::string_view instancePath, std::string_view schemaPath)
     {
         if (const auto* enumValue = schema.if_contains("enum"))
@@ -1472,7 +1487,7 @@ private:
         }
     }
 
-    void ValidateCompositions(const JsonObject& schema, const JsonValue& instance,
+    void ValidateCompositions(const JsonSchemaKeywords& schema, const JsonValue& instance,
                               std::string_view instancePath, std::string_view schemaPath,
                               std::size_t depth, Evaluation& evaluation)
     {
@@ -1537,7 +1552,7 @@ private:
         }
     }
 
-    void ValidateAlternative(const JsonObject& schema, std::string_view keyword,
+    void ValidateAlternative(const JsonSchemaKeywords& schema, std::string_view keyword,
                              const JsonValue& instance, std::string_view instancePath,
                              std::string_view schemaPath, std::size_t depth, bool exactlyOne,
                              Evaluation& evaluation)
@@ -1585,7 +1600,7 @@ private:
         }
     }
 
-    void ValidateObject(const JsonObject& schema, const JsonValue& instanceValue,
+    void ValidateObject(const JsonSchemaKeywords& schema, const JsonValue& instanceValue,
                         std::string_view instancePath, std::string_view schemaPath,
                         std::size_t depth, Evaluation& evaluation)
     {
@@ -1769,7 +1784,7 @@ private:
         }
     }
 
-    void ValidateDependencies(const JsonObject& schema, const JsonValue& instanceValue,
+    void ValidateDependencies(const JsonSchemaKeywords& schema, const JsonValue& instanceValue,
                               std::string_view instancePath, std::string_view schemaPath,
                               std::size_t depth, Evaluation& evaluation)
     {
@@ -1838,7 +1853,7 @@ private:
         return count;
     }
 
-    void ValidateArray(const JsonObject& schema, const JsonArray& instance,
+    void ValidateArray(const JsonSchemaKeywords& schema, const JsonArray& instance,
                        std::string_view instancePath, std::string_view schemaPath,
                        std::size_t depth, Evaluation& evaluation)
     {
@@ -1952,7 +1967,7 @@ private:
         }
     }
 
-    void ValidateContains(const JsonObject& schema, const JsonArray& instance,
+    void ValidateContains(const JsonSchemaKeywords& schema, const JsonArray& instance,
                           std::string_view instancePath, std::string_view schemaPath,
                           std::size_t depth, Evaluation& evaluation)
     {
@@ -2011,7 +2026,7 @@ private:
         }
     }
 
-    void ValidateString(const JsonObject& schema, const JsonString& instance,
+    void ValidateString(const JsonSchemaKeywords& schema, const JsonString& instance,
                         std::string_view instancePath, std::string_view schemaPath)
     {
         const auto value = ToStringView(instance);
@@ -2040,7 +2055,7 @@ private:
         }
     }
 
-    void ValidateNumber(const JsonObject& schema, const JsonValue& instance,
+    void ValidateNumber(const JsonSchemaKeywords& schema, const JsonValue& instance,
                         std::string_view instancePath, std::string_view schemaPath)
     {
         if (instance.is_double() && !std::isfinite(instance.as_double()))
@@ -2095,7 +2110,7 @@ private:
         }
     }
 
-    void ValidateSizeKeyword(const JsonObject& schema, std::string_view keyword,
+    void ValidateSizeKeyword(const JsonSchemaKeywords& schema, std::string_view keyword,
                              std::size_t actual, bool minimum, std::string_view instancePath,
                              std::string_view schemaPath)
     {
@@ -2119,7 +2134,7 @@ private:
         }
     }
 
-    void ValidateNumberLimit(const JsonObject& schema, std::string_view keyword,
+    void ValidateNumberLimit(const JsonSchemaKeywords& schema, std::string_view keyword,
                              const JsonValue& instance, std::string_view instancePath,
                              std::string_view schemaPath, bool maximum, bool exclusive)
     {
@@ -2159,6 +2174,28 @@ private:
     bool m_checkingSchema = false;
     bool m_resourceError = false;
 };
+
+[[nodiscard]] Result<detail::JsonSchemaReferences, JsonSchemaCompileError>
+CompileReferences(const JsonValue& schema, std::optional<JsonSchemaDialect> dialect,
+                  const JsonSchemaCompileOptions& compileOptions)
+{
+    const JsonSchemaValidationOptions options;
+    auto references = detail::JsonSchemaReferences::Compile(
+        schema, dialect, options.maxDepth, compileOptions);
+    if (!references)
+    {
+        return Failure(std::move(references.error()));
+    }
+    const auto& documents = references.value().Documents();
+    JsonSchemaValidator validator(references.value().Dialect(), options, documents,
+                                  references.value());
+    auto error = validator.CheckSchema(documents.as_array()[0]);
+    if (error)
+    {
+        return Failure(std::move(*error));
+    }
+    return references;
+}
 
 } // namespace
 
@@ -2237,32 +2274,15 @@ JsonSchema::Compile(const JsonValue& schema, const JsonSchemaCompileOptions& opt
         });
     }
 
-    auto declared = ToStringView(declaredValue.as_string());
-    if (declared.ends_with('#'))
+    auto references = CompileReferences(schema, std::nullopt, options);
+    if (!references)
     {
-        declared.remove_suffix(1);
+        return Failure(std::move(references.error()));
     }
-
-    if (declared == "http://json-schema.org/draft-07/schema")
-    {
-        return Compile(schema, JsonSchemaDialect::Draft7, options);
-    }
-    if (declared == "https://json-schema.org/draft/2019-09/schema")
-    {
-        return Compile(schema, JsonSchemaDialect::Draft2019_09, options);
-    }
-    if (declared == "https://json-schema.org/draft/2020-12/schema")
-    {
-        return Compile(schema, JsonSchemaDialect::Draft2020_12, options);
-    }
-
-    return Failure(JsonSchemaCompileError{
-        JsonSchemaCompileErrorCode::UnsupportedDialect,
-        std::nullopt,
-        "/$schema",
-        "schema dialect is not supported: " + std::string(declared),
-        options.retrievalUri,
-    });
+    const auto dialect = references.value().Dialect();
+    return Success(JsonSchema(
+        dialect,
+        std::make_shared<const detail::JsonSchemaReferences>(std::move(references.value()))));
 }
 
 Result<JsonSchema, JsonSchemaCompileError>
@@ -2288,21 +2308,11 @@ JsonSchema::Compile(const JsonValue& schema, JsonSchemaDialect dialect,
         });
     }
 
-    const JsonSchemaValidationOptions options;
-    auto references = detail::JsonSchemaReferences::Compile(
-        schema, dialect, options.maxDepth, compileOptions);
+    auto references = CompileReferences(schema, dialect, compileOptions);
     if (!references)
     {
         return Failure(std::move(references.error()));
     }
-    const auto& documents = references.value().Documents();
-    JsonSchemaValidator validator(dialect, options, documents, references.value());
-    auto error = validator.CheckSchema(documents.as_array()[0]);
-    if (error)
-    {
-        return Failure(std::move(*error));
-    }
-
     return Success(JsonSchema(
         dialect,
         std::make_shared<const detail::JsonSchemaReferences>(std::move(references.value()))));
