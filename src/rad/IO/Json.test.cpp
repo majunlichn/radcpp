@@ -24,8 +24,8 @@ FormatValidationErrors(const rad::JsonSchemaValidationResult& result)
     std::string output;
     for (const auto& error : result.errors)
     {
-        output += std::format("instance={}, schema={}: {}\n", error.instancePath,
-                              error.schemaPath, error.message);
+        output += std::format("instance={}, document={}, schema={}: {}\n", error.instancePath,
+                              error.schemaUri, error.schemaPath, error.message);
     }
     return output;
 }
@@ -747,6 +747,209 @@ TEST(IO, JsonSchemaUnevaluatedItemsDiagnostics)
     EXPECT_TRUE(olderDraft.value().Validate(rad::JsonArray{1, "ignored"}));
 }
 
+TEST(IO, JsonSchemaDocumentRegistry)
+{
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const auto makeSchema = [&]
+        {
+            rad::JsonSchemaCompileOptions options;
+            options.retrievalUri = "https://example.com/root.json";
+            options.documents = {
+                {"https://example.com/a.json",
+                 rad::ParseJson(R"json({"$id": "canonical/a.json", "type": "object",
+                     "properties": {"child": {"$ref": "../b.json#/properties/value"}}})json")
+                     .value()},
+                {"https://example.com/b.json",
+                 rad::ParseJson(R"json({"properties": {"value": {"type": "integer"},
+                     "embedded": {"$id": "embedded.json", "type": "string"}}})json")
+                     .value()},
+            };
+            auto root = rad::JsonObject{{"$ref", "canonical/a.json"}};
+            if (dialect != rad::JsonSchemaDialect::Draft7)
+            {
+                root["unevaluatedProperties"] = false;
+            }
+            return rad::JsonSchema::Compile(root, dialect, options);
+        };
+        const auto compiled = makeSchema();
+        ASSERT_TRUE(compiled) << compiled.error().schemaUri << compiled.error().schemaPath << ": "
+                              << compiled.error().message;
+        auto copied = compiled.value();
+        auto moved = std::move(copied);
+        EXPECT_TRUE(moved.Validate(rad::JsonObject{{"child", 1}}));
+        rad::JsonSchemaValidationOptions diagnosticLimit;
+        diagnosticLimit.maxErrors = 1;
+        const auto invalid = moved.Validate(rad::JsonObject{{"child", "invalid"}}, diagnosticLimit);
+        ASSERT_FALSE(invalid);
+        ASSERT_EQ(invalid.errors.size(), 1);
+        EXPECT_EQ(invalid.errors[0].instancePath, "/child");
+        EXPECT_EQ(invalid.errors[0].schemaPath, "/properties/value/type");
+        EXPECT_EQ(invalid.errors[0].schemaUri, "https://example.com/b.json");
+        if (dialect != rad::JsonSchemaDialect::Draft7)
+        {
+            EXPECT_FALSE(moved.Validate(rad::JsonObject{{"child", 1}, {"extra", 1}}));
+        }
+
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/root.json";
+        options.documents = {
+            {"https://example.com/container.json", rad::ParseJson(R"json({"properties":
+                 {"embedded": {"$id": "embedded.json", "type": "integer"}}})json")
+                                                       .value()},
+        };
+        const auto embedded =
+            rad::JsonSchema::Compile(rad::JsonObject{{"$ref", "embedded.json"}}, dialect, options);
+        ASSERT_TRUE(embedded) << embedded.error().message;
+        EXPECT_TRUE(embedded.value().Validate(1));
+        const auto failure = embedded.value().Validate("invalid");
+        ASSERT_FALSE(failure);
+        EXPECT_EQ(failure.errors[0].schemaUri, "https://example.com/container.json");
+        EXPECT_EQ(failure.errors[0].schemaPath, "/properties/embedded/type");
+
+        options.documents = {
+            {"https://example.com/alias.json", rad::ParseJson(R"json({"$id": "canonical.json",
+                                   "properties": {"value": {"$anchor": "value",
+                                                           "type": "integer"}}})json")
+                                                   .value()},
+        };
+        if (dialect == rad::JsonSchemaDialect::Draft7)
+        {
+            auto& value = options.documents[0]
+                              .schema.as_object()
+                              .at("properties")
+                              .as_object()
+                              .at("value")
+                              .as_object();
+            value.erase("$anchor");
+            value["$id"] = "#value";
+        }
+        for (const auto* reference :
+             {"alias.json#value", "canonical.json#value", "alias.json#/properties/value"})
+        {
+            const auto aliased =
+                rad::JsonSchema::Compile(rad::JsonObject{{"$ref", reference}}, dialect, options);
+            ASSERT_TRUE(aliased) << aliased.error().message;
+            const auto invalid = aliased.value().Validate("invalid");
+            ASSERT_FALSE(invalid);
+            EXPECT_EQ(invalid.errors[0].schemaUri, "https://example.com/alias.json");
+            EXPECT_EQ(invalid.errors[0].schemaPath, "/properties/value/type");
+        }
+
+        options.documents = {
+            {"https://example.com/a.json", rad::JsonObject{{"$ref", "b.json"}}},
+            {"https://example.com/b.json", rad::JsonObject{{"$ref", "a.json"}}},
+        };
+        const auto cyclic =
+            rad::JsonSchema::Compile(rad::JsonObject{{"$ref", "a.json"}}, dialect, options);
+        ASSERT_TRUE(cyclic) << cyclic.error().message;
+        rad::JsonSchemaValidationOptions limits;
+        limits.maxDepth = 2;
+        limits.maxErrors = 1;
+        const auto exhausted = cyclic.value().Validate(1, limits);
+        ASSERT_FALSE(exhausted);
+        ASSERT_EQ(exhausted.errors.size(), 1);
+        EXPECT_EQ(exhausted.errors[0].schemaPath, "");
+        EXPECT_EQ(exhausted.errors[0].schemaUri, "https://example.com/a.json");
+        EXPECT_EQ(exhausted.errors[0].message, "maximum validation depth exceeded");
+
+        options.documents = {
+            {"https://example.com/a.json",
+             rad::ParseJson(R"json({"type": "integer",
+                 "properties": {"child": {"allOf": [true]}}})json").value()},
+        };
+        const auto branches = rad::ParseJson(R"json({"anyOf": [{"$ref": "a.json"}, true]})json");
+        ASSERT_TRUE(branches);
+        const auto limited = rad::JsonSchema::Compile(branches.value(), dialect, options);
+        ASSERT_TRUE(limited) << limited.error().message;
+        limits.maxDepth = 3;
+        for (const std::size_t maxErrors : {0U, 1U, 2U})
+        {
+            limits.maxErrors = maxErrors;
+            const auto result =
+                limited.value().Validate(rad::JsonObject{{"child", rad::JsonObject{}}}, limits);
+            ASSERT_FALSE(result);
+            ASSERT_EQ(result.errors.size(), 1);
+            EXPECT_EQ(result.errors[0].schemaUri, "https://example.com/a.json");
+            EXPECT_EQ(result.errors[0].schemaPath, "/properties/child/allOf/0");
+            EXPECT_EQ(result.errors[0].message, "maximum validation depth exceeded");
+        }
+        limits.maxDepth = 4;
+        EXPECT_TRUE(
+            limited.value().Validate(rad::JsonObject{{"child", rad::JsonObject{}}}, limits));
+    }
+}
+
+TEST(IO, JsonSchemaDocumentRegistryDiagnostics)
+{
+    constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;
+    rad::JsonSchemaCompileOptions options;
+    options.retrievalUri = "https://example.com/root.json";
+    const auto root = rad::JsonObject{{"$ref", "child.json"}};
+    const auto missing = rad::JsonSchema::Compile(root, dialect, options);
+    ASSERT_FALSE(missing);
+    EXPECT_EQ(missing.error().code, rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
+    EXPECT_EQ(missing.error().schemaPath, "/$ref");
+    EXPECT_EQ(missing.error().schemaUri, options.retrievalUri);
+
+    options.documents = {
+        {"https://example.com/child.json", rad::JsonObject{{"type", 42}}},
+    };
+    const auto invalid = rad::JsonSchema::Compile(root, dialect, options);
+    ASSERT_FALSE(invalid);
+    EXPECT_EQ(invalid.error().schemaPath, "/type");
+    EXPECT_EQ(invalid.error().schemaUri, "https://example.com/child.json");
+    EXPECT_TRUE(rad::JsonSchema::Compile(rad::JsonObject{}, dialect, options));
+
+    options.documents[0].schema = rad::JsonObject{
+        {"$schema", "http://json-schema.org/draft-07/schema"},
+        {"properties", rad::JsonObject{{"child", true}}},
+    };
+    const auto mixed = rad::JsonSchema::Compile(
+        rad::JsonObject{{"$ref", "child.json#/properties/child"}}, dialect, options);
+    ASSERT_FALSE(mixed);
+    EXPECT_EQ(mixed.error().code, rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
+    EXPECT_EQ(mixed.error().schemaPath, "/$schema");
+    EXPECT_EQ(mixed.error().schemaUri, "https://example.com/child.json");
+
+    options.documents[0].schema = true;
+    options.documents.push_back({"https://EXAMPLE.COM/%63hild.json", false});
+    const auto duplicate = rad::JsonSchema::Compile(root, dialect, options);
+    ASSERT_FALSE(duplicate);
+    EXPECT_EQ(duplicate.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+    options.documents.pop_back();
+    const auto conflict = rad::JsonSchema::Compile(
+        rad::JsonObject{{"$id", "https://example.com/child.json"}}, dialect, options);
+    ASSERT_FALSE(conflict);
+    EXPECT_EQ(conflict.error().schemaPath, "/$id");
+    EXPECT_EQ(conflict.error().schemaUri, options.retrievalUri);
+
+    auto detected = rad::JsonObject{{"$schema", "https://json-schema.org/draft/2020-12/schema"},
+                                    {"$ref", "child.json"}};
+    EXPECT_TRUE(rad::JsonSchema::Compile(detected, options));
+    EXPECT_FALSE(rad::JsonSchema::Compile(detected));
+    options.retrievalUri = "relative.json";
+    const auto relative = rad::JsonSchema::Compile(root, dialect, options);
+    ASSERT_FALSE(relative);
+    EXPECT_EQ(relative.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+    options.retrievalUri = "https://example.com/root.json#fragment";
+    EXPECT_FALSE(rad::JsonSchema::Compile(root, dialect, options));
+
+    options.retrievalUri = "https://example.com/root.json";
+    options.documents[0].schema = rad::JsonObject{{"$id", 42}};
+    const auto ignored = rad::ParseJson(
+        R"json({"$ref": "#/definitions/value",
+                 "definitions": {"value": true, "unused": {"$ref": "child.json"}}})json");
+    ASSERT_TRUE(ignored);
+    EXPECT_TRUE(rad::JsonSchema::Compile(ignored.value(), rad::JsonSchemaDialect::Draft7, options));
+    const auto malformedId = rad::JsonSchema::Compile(root, dialect, options);
+    ASSERT_FALSE(malformedId);
+    EXPECT_EQ(malformedId.error().schemaPath, "/$id");
+    EXPECT_EQ(malformedId.error().schemaUri, "https://example.com/child.json");
+}
+
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const char* suitePath = std::getenv("JSON_SCHEMA_TEST_SUITE");
@@ -762,6 +965,26 @@ TEST(IO, JsonSchemaOfficialTestSuite)
         GTEST_LOG_(WARNING) << "JSON_SCHEMA_TEST_SUITE does not exist: "
                             << suiteRoot.string();
         GTEST_SKIP();
+    }
+
+    rad::JsonSchemaCompileOptions compileOptions;
+    const auto remotes = suiteRoot / "remotes";
+    ASSERT_TRUE(std::filesystem::is_directory(remotes)) << remotes.string();
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(remotes))
+    {
+        if (!entry.is_regular_file() || entry.path().extension() != ".json")
+        {
+            continue;
+        }
+        const auto text = rad::File::ReadAllText(entry.path());
+        ASSERT_TRUE(text) << entry.path().string();
+        const auto schema = rad::ParseJson(*text);
+        ASSERT_TRUE(schema) << entry.path().string();
+        compileOptions.documents.push_back({
+            "http://localhost:1234/" +
+                std::filesystem::relative(entry.path(), remotes).generic_string(),
+            schema.value(),
+        });
     }
 
     struct Suite
@@ -834,7 +1057,7 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                 SCOPED_TRACE(std::string(description.data(), description.size()));
 
                 const auto compiled =
-                    rad::JsonSchema::Compile(group.at("schema"), suite.dialect);
+                    rad::JsonSchema::Compile(group.at("schema"), suite.dialect, compileOptions);
                 if (IsKnownInvalidOfficialSchema(group.at("schema")))
                 {
                     if (compiled)
@@ -855,7 +1078,8 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                     {
                         ++failedReferenceGroups;
                     }
-                    ADD_FAILURE() << compiled.error().schemaPath << ": "
+                    ADD_FAILURE() << compiled.error().schemaUri
+                                  << compiled.error().schemaPath << ": "
                                   << compiled.error().message;
                     continue;
                 }

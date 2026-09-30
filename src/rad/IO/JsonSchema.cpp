@@ -301,14 +301,14 @@ public:
     CheckSchema(const JsonValue& schema)
     {
         m_checkingSchema = true;
-        ValidateSchemaDefinition(schema, {}, 0);
+        ValidateSchemaDefinition(schema, "/0", 0);
         return std::move(m_compileError);
     }
 
     [[nodiscard]] JsonSchemaValidationResult ValidateInstance(const JsonValue& schema,
                                                               const JsonValue& instance)
     {
-        Validate(schema, instance, {}, {}, 0);
+        Validate(schema, instance, {}, "/0", 0);
         return std::move(m_result);
     }
 
@@ -369,11 +369,11 @@ private:
             const auto& error = resolution->error();
             if (error.code == JsonSchemaCompileErrorCode::UnsupportedFeature)
             {
-                AddUnsupportedError({}, schemaPath, error.message);
+                AddUnsupportedError({}, error.schemaPath, error.message);
             }
             else
             {
-                AddError({}, schemaPath, error.message);
+                AddError({}, error.schemaPath, error.message);
             }
             return std::nullopt;
         }
@@ -398,8 +398,9 @@ private:
                 m_compileError = JsonSchemaCompileError{
                     JsonSchemaCompileErrorCode::InvalidSchema,
                     m_dialect,
-                    std::string(schemaPath),
+                    m_references.SchemaPath(schemaPath),
                     std::move(message),
+                    m_references.SchemaUri(schemaPath),
                 };
             }
             return;
@@ -410,7 +411,8 @@ private:
             return;
         }
         m_result.errors.push_back(
-            {std::string(instancePath), std::string(schemaPath), std::move(message)});
+            {std::string(instancePath), m_references.SchemaPath(schemaPath), std::move(message),
+             m_references.SchemaUri(schemaPath)});
     }
 
     void AddUnsupportedError(std::string_view instancePath, std::string_view schemaPath,
@@ -421,8 +423,9 @@ private:
             m_compileError = JsonSchemaCompileError{
                 JsonSchemaCompileErrorCode::UnsupportedFeature,
                 m_dialect,
-                std::string(schemaPath),
+                m_references.SchemaPath(schemaPath),
                 std::move(message),
+                m_references.SchemaUri(schemaPath),
             };
         }
         if (m_checkingSchema)
@@ -439,7 +442,8 @@ private:
         if (!m_resourceDiagnostic)
         {
             m_resourceDiagnostic = JsonSchemaValidationError{
-                std::string(instancePath), std::string(schemaPath), message};
+                std::string(instancePath), m_references.SchemaPath(schemaPath), message,
+                m_references.SchemaUri(schemaPath)};
         }
         AddError(instancePath, schemaPath, std::move(message));
     }
@@ -963,7 +967,16 @@ private:
         if (validator.m_resourceError)
         {
             const auto& error = *validator.m_resourceDiagnostic;
-            AddResourceError(error.instancePath, error.schemaPath, error.message);
+            m_resourceError = true;
+            if (!m_resourceDiagnostic)
+            {
+                m_resourceDiagnostic = error;
+            }
+            ++m_errorCount;
+            if (m_result.errors.size() < std::max<std::size_t>(m_options.maxErrors, 1))
+            {
+                m_result.errors.push_back(error);
+            }
             return std::nullopt;
         }
         return evaluation;
@@ -1845,14 +1858,21 @@ private:
 
 } // namespace
 
-JsonSchema::JsonSchema(JsonValue schema, JsonSchemaDialect dialect,
+JsonSchema::JsonSchema(JsonSchemaDialect dialect,
                        std::shared_ptr<const detail::JsonSchemaReferences> references)
-    : m_schema(std::move(schema)), m_dialect(dialect), m_references(std::move(references))
+    : m_dialect(dialect), m_references(std::move(references))
 {
 }
 
 Result<JsonSchema, JsonSchemaCompileError>
 JsonSchema::CompileFile(const FilePath& path, JsonSchemaDialect dialect)
+{
+    return CompileFile(path, dialect, {});
+}
+
+Result<JsonSchema, JsonSchemaCompileError>
+JsonSchema::CompileFile(const FilePath& path, JsonSchemaDialect dialect,
+                        const JsonSchemaCompileOptions& options)
 {
     const auto text = File::ReadAllText(path);
     if (!text)
@@ -1862,6 +1882,7 @@ JsonSchema::CompileFile(const FilePath& path, JsonSchemaDialect dialect)
             dialect,
             {},
             "unable to read schema file: " + path.string(),
+            options.retrievalUri,
         });
     }
 
@@ -1873,14 +1894,21 @@ JsonSchema::CompileFile(const FilePath& path, JsonSchemaDialect dialect)
             dialect,
             {},
             "unable to parse schema file: " + schema.error().message(),
+            options.retrievalUri,
         });
     }
 
-    return Compile(schema.value(), dialect);
+    return Compile(schema.value(), dialect, options);
 }
 
 Result<JsonSchema, JsonSchemaCompileError>
 JsonSchema::Compile(const JsonValue& schema)
+{
+    return Compile(schema, JsonSchemaCompileOptions{});
+}
+
+Result<JsonSchema, JsonSchemaCompileError>
+JsonSchema::Compile(const JsonValue& schema, const JsonSchemaCompileOptions& options)
 {
     if (!schema.is_object() || !schema.as_object().contains("$schema"))
     {
@@ -1889,6 +1917,7 @@ JsonSchema::Compile(const JsonValue& schema)
             std::nullopt,
             {},
             "schema does not declare $schema",
+            options.retrievalUri,
         });
     }
 
@@ -1900,6 +1929,7 @@ JsonSchema::Compile(const JsonValue& schema)
             std::nullopt,
             "/$schema",
             "$schema must be a string",
+            options.retrievalUri,
         });
     }
 
@@ -1911,15 +1941,15 @@ JsonSchema::Compile(const JsonValue& schema)
 
     if (declared == "http://json-schema.org/draft-07/schema")
     {
-        return Compile(schema, JsonSchemaDialect::Draft7);
+        return Compile(schema, JsonSchemaDialect::Draft7, options);
     }
     if (declared == "https://json-schema.org/draft/2019-09/schema")
     {
-        return Compile(schema, JsonSchemaDialect::Draft2019_09);
+        return Compile(schema, JsonSchemaDialect::Draft2019_09, options);
     }
     if (declared == "https://json-schema.org/draft/2020-12/schema")
     {
-        return Compile(schema, JsonSchemaDialect::Draft2020_12);
+        return Compile(schema, JsonSchemaDialect::Draft2020_12, options);
     }
 
     return Failure(JsonSchemaCompileError{
@@ -1927,11 +1957,19 @@ JsonSchema::Compile(const JsonValue& schema)
         std::nullopt,
         "/$schema",
         "schema dialect is not supported: " + std::string(declared),
+        options.retrievalUri,
     });
 }
 
 Result<JsonSchema, JsonSchemaCompileError>
 JsonSchema::Compile(const JsonValue& schema, JsonSchemaDialect dialect)
+{
+    return Compile(schema, dialect, {});
+}
+
+Result<JsonSchema, JsonSchemaCompileError>
+JsonSchema::Compile(const JsonValue& schema, JsonSchemaDialect dialect,
+                    const JsonSchemaCompileOptions& compileOptions)
 {
     if (dialect != JsonSchemaDialect::Draft7 &&
         dialect != JsonSchemaDialect::Draft2019_09 &&
@@ -1942,24 +1980,27 @@ JsonSchema::Compile(const JsonValue& schema, JsonSchemaDialect dialect)
             dialect,
             {},
             "schema dialect is not supported",
+            compileOptions.retrievalUri,
         });
     }
 
     const JsonSchemaValidationOptions options;
-    auto references = detail::JsonSchemaReferences::Compile(schema, dialect, options.maxDepth);
+    auto references = detail::JsonSchemaReferences::Compile(
+        schema, dialect, options.maxDepth, compileOptions);
     if (!references)
     {
         return Failure(std::move(references.error()));
     }
-    JsonSchemaValidator validator(dialect, options, schema, references.value());
-    auto error = validator.CheckSchema(schema);
+    const auto& documents = references.value().Documents();
+    JsonSchemaValidator validator(dialect, options, documents, references.value());
+    auto error = validator.CheckSchema(documents.as_array()[0]);
     if (error)
     {
         return Failure(std::move(*error));
     }
 
     return Success(JsonSchema(
-        schema, dialect,
+        dialect,
         std::make_shared<const detail::JsonSchemaReferences>(std::move(references.value()))));
 }
 
@@ -1972,8 +2013,9 @@ JsonSchemaValidationResult
 JsonSchema::Validate(const JsonValue& instance,
                      const JsonSchemaValidationOptions& options) const
 {
-    JsonSchemaValidator validator(m_dialect, options, m_schema, *m_references);
-    return validator.ValidateInstance(m_schema, instance);
+    const auto& documents = m_references->Documents();
+    JsonSchemaValidator validator(m_dialect, options, documents, *m_references);
+    return validator.ValidateInstance(documents.as_array()[0], instance);
 }
 
 } // namespace rad

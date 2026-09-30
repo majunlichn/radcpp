@@ -63,6 +63,8 @@ struct JsonSchemaCompileError
     std::optional<JsonSchemaDialect> dialect;
     std::string schemaPath;
     std::string message;
+    // Retrieval URI of the schema document, empty for an anonymous root.
+    std::string schemaUri;
 };
 
 [[nodiscard]] inline std::exception_ptr
@@ -76,6 +78,7 @@ struct JsonSchemaValidationError
     std::string instancePath;
     std::string schemaPath;
     std::string message;
+    std::string schemaUri;
 };
 
 struct JsonSchemaValidationResult
@@ -92,10 +95,27 @@ struct JsonSchemaValidationOptions
     std::size_t maxDepth = 128;
 };
 
+struct JsonSchemaDocument
+{
+    // Absolute, fragment-free retrieval URI. No file or network access is performed.
+    std::string uri;
+    JsonValue schema;
+};
+
+struct JsonSchemaCompileOptions
+{
+    // Empty means an anonymous root; otherwise an absolute, fragment-free retrieval URI.
+    std::string retrievalUri;
+    // Compilation owns copies of reachable documents; unused documents are not validated.
+    // Retrieval URIs and resource identifiers must not conflict.
+    std::vector<JsonSchemaDocument> documents;
+};
+
 // Implements a practical subset of JSON Schema Draft 7, Draft 2019-09, and Draft 2020-12.
 //
 // Supported:
-// - All dialects: boolean schemas; in-document $ref, $id resources, and JSON Pointers;
+// - All dialects: boolean schemas; $ref across registered documents, $id resources,
+//   and JSON Pointers;
 //   type, enum, const;
 //   numeric bounds and integer multipleOf;
 //   min/max string, array, and object sizes; pattern; required, properties,
@@ -110,11 +130,12 @@ struct JsonSchemaValidationOptions
 // - Draft 7: plain-name fragments in $id.
 //
 // Not supported:
-// - External-document loading, recursive/dynamic references, mixed-dialect resources,
+// - Automatic file/network loading, recursive/dynamic references, mixed-dialect resources,
 //   custom vocabularies, and fractional multipleOf.
 //
 // definitions and $defs can be referenced by root-local JSON Pointers.
-// Relative and absolute reference URIs resolve only to resources within the supplied schema.
+// References resolve within the root schema and caller-provided document registry.
+// Registered documents without $schema use the selected dialect.
 // CompileFile does not load referenced files or use its path as a retrieval URI.
 // Other annotation keywords are ignored; format is not validated.
 // pattern and patternProperties use PCRE2 with UTF-8 and Unicode category escape support.
@@ -131,9 +152,17 @@ public:
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
     Compile(const JsonValue& schema);
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
+    Compile(const JsonValue& schema, const JsonSchemaCompileOptions& options);
+    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
     Compile(const JsonValue& schema, JsonSchemaDialect dialect);
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
+    Compile(const JsonValue& schema, JsonSchemaDialect dialect,
+            const JsonSchemaCompileOptions& options);
+    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
     CompileFile(const FilePath& path, JsonSchemaDialect dialect);
+    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
+    CompileFile(const FilePath& path, JsonSchemaDialect dialect,
+                const JsonSchemaCompileOptions& options);
 
     [[nodiscard]] JsonSchemaDialect Dialect() const noexcept;
     [[nodiscard]] JsonSchemaValidationResult
@@ -141,10 +170,9 @@ public:
              const JsonSchemaValidationOptions& options = {}) const;
 
 private:
-    JsonSchema(JsonValue schema, JsonSchemaDialect dialect,
+    JsonSchema(JsonSchemaDialect dialect,
                std::shared_ptr<const detail::JsonSchemaReferences> references);
 
-    JsonValue m_schema;
     JsonSchemaDialect m_dialect;
     std::shared_ptr<const detail::JsonSchemaReferences> m_references;
 }; // class JsonSchema

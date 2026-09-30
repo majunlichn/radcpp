@@ -60,8 +60,12 @@ class ReferenceIndexBuilder
 public:
     using Targets = std::unordered_map<std::string, JsonSchemaReferences::Resolution>;
 
-    ReferenceIndexBuilder(const JsonValue& root, JsonSchemaDialect dialect, std::size_t maxDepth) :
+    ReferenceIndexBuilder(JsonValue& root, std::vector<std::string>& uris,
+                          const JsonSchemaCompileOptions& options, JsonSchemaDialect dialect,
+                          std::size_t maxDepth) :
         m_root(root),
+        m_uris(uris),
+        m_options(options),
         m_dialect(dialect),
         m_maxDepth(maxDepth)
     {
@@ -69,8 +73,10 @@ public:
 
     [[nodiscard]] Result<Targets, JsonSchemaCompileError> Build()
     {
-        // A private retrieval URI gives anonymous schemas a base without enabling I/O.
-        const std::string anonymousBase = "rad-schema://document/";
+        if (!PrepareRegistry())
+        {
+            return Failure(std::move(*m_error));
+        }
         // References may turn locations under otherwise unknown keywords into schemas.
         std::vector<std::string> discoveredPaths;
         for (;;)
@@ -79,19 +85,32 @@ public:
             m_anchors.clear();
             m_scopes.clear();
             m_references.clear();
-            m_resources.emplace(anonymousBase, "");
-            Index(m_root, "", anonymousBase, 0);
+            m_documentErrors.clear();
+            for (std::size_t index = 0; index < m_uris.size(); ++index)
+            {
+                const auto path = ChildPath("", std::to_string(index));
+                const auto base = m_uris[index].empty() ? "rad-schema://document/" : m_uris[index];
+                Register(m_resources, base, path, path);
+                Index(m_root.as_array()[index], path, base, 0);
+                DeferDocumentError();
+            }
+            if (m_error)
+            {
+                break;
+            }
             // Rebuild ancestor-first so newly discovered resources replace stale scopes.
             std::sort(discoveredPaths.begin(), discoveredPaths.end());
             for (const auto& path : discoveredPaths)
             {
                 Index(*FindJsonSchemaValue(m_root, path), path, ParentScope(path), 1);
+                DeferDocumentError();
             }
             if (m_error)
             {
                 break;
             }
             const auto previousSize = discoveredPaths.size();
+            const auto previousDocuments = m_uris.size();
             for (const auto& source : m_references)
             {
                 const auto target = Resolve(source);
@@ -105,7 +124,7 @@ public:
                     discoveredPaths.push_back(*target);
                 }
             }
-            if (discoveredPaths.size() == previousSize)
+            if (discoveredPaths.size() == previousSize && m_uris.size() == previousDocuments)
             {
                 break;
             }
@@ -136,6 +155,92 @@ public:
     }
 
 private:
+    [[nodiscard]] static std::string DocumentPath(std::string_view path)
+    {
+        return std::string(path.substr(0, path.find('/', 1)));
+    }
+
+    void DeferDocumentError()
+    {
+        if (m_error && DocumentPath(m_error->schemaPath) != "/0")
+        {
+            const auto path = DocumentPath(m_error->schemaPath);
+            m_documentErrors.emplace(path, std::move(*m_error));
+            m_error.reset();
+        }
+    }
+
+    struct RegistryEntry
+    {
+        const JsonSchemaDocument* document;
+        std::string retrievalUri;
+    };
+
+    [[nodiscard]] std::optional<std::string> DocumentUri(std::string_view text)
+    {
+        const auto parsed = boost::urls::parse_uri(text);
+        if (!parsed || parsed->has_fragment())
+        {
+            Error("/0", "retrieval URIs must be absolute and fragment-free");
+            return std::nullopt;
+        }
+        boost::urls::url uri(*parsed);
+        uri.normalize();
+        return std::string(uri.buffer());
+    }
+
+    [[nodiscard]] bool PrepareRegistry()
+    {
+        if (!m_options.retrievalUri.empty())
+        {
+            const auto uri = DocumentUri(m_options.retrievalUri);
+            if (!uri)
+            {
+                return false;
+            }
+            m_uris[0] = *uri;
+        }
+        for (const auto& document : m_options.documents)
+        {
+            const auto uri = DocumentUri(document.uri);
+            if (!uri)
+            {
+                return false;
+            }
+            if (*uri == m_uris[0] ||
+                !m_registry.emplace(*uri, RegistryEntry{&document, *uri}).second)
+            {
+                Error("/0", "duplicate retrieval URI in schema document registry");
+                return false;
+            }
+        }
+        for (const auto& document : m_options.documents)
+        {
+            auto retrieval = boost::urls::url(document.uri);
+            retrieval.normalize();
+            m_resources.clear();
+            m_anchors.clear();
+            m_scopes.clear();
+            m_references.clear();
+            m_cataloging = true;
+            Index(document.schema, "/1", std::string(retrieval.buffer()), 0);
+            m_cataloging = false;
+            // Identifier errors are reported if this document becomes reachable.
+            m_error.reset();
+            for (const auto& [uri, path] : m_resources)
+            {
+                const auto [found, inserted] = m_registry.emplace(
+                    uri, RegistryEntry{&document, std::string(retrieval.buffer())});
+                if (!inserted && found->second.document != &document)
+                {
+                    Error("/0", "conflicting document identifiers in schema registry");
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     void Error(std::string_view path, std::string message)
     {
         if (!m_error)
@@ -183,6 +288,25 @@ private:
     void Register(std::unordered_map<std::string, std::string>& table, std::string uri,
                   const std::string& path, std::string_view keywordPath)
     {
+        if (!m_cataloging && &table == &m_resources)
+        {
+            const auto registered = m_registry.find(uri);
+            if (registered != m_registry.end())
+            {
+                const auto end = path.find('/', 1);
+                const auto token =
+                    std::string_view(path).substr(1, end == std::string::npos ? end : end - 1);
+                std::size_t index = 0;
+                const auto [next, error] =
+                    std::from_chars(token.data(), token.data() + token.size(), index);
+                if (error == std::errc{} && next == token.data() + token.size() &&
+                    index < m_uris.size() && m_uris[index] != registered->second.retrievalUri)
+                {
+                    Error(keywordPath, "schema resource conflicts with a registered document");
+                    return;
+                }
+            }
+        }
         const auto [entry, inserted] = table.emplace(std::move(uri), path);
         if (!inserted && entry->second != path)
         {
@@ -204,10 +328,44 @@ private:
         }
         if (!schema.is_object())
         {
+            if (path.find('/', 1) == std::string::npos && !schema.is_bool())
+            {
+                Error(path, "schema must be an object or boolean");
+                return;
+            }
             m_scopes.emplace(path, std::move(base));
             return;
         }
         const auto& object = schema.as_object();
+        if (!m_cataloging && path.find('/', 1) == std::string::npos &&
+            !(path == "/0" && m_dialect == JsonSchemaDialect::Draft7 && object.contains("$ref")))
+        {
+            if (const auto* declared = object.if_contains("$schema"); declared != nullptr)
+            {
+                const std::string_view expected =
+                    m_dialect == JsonSchemaDialect::Draft7
+                        ? "http://json-schema.org/draft-07/schema"
+                    : m_dialect == JsonSchemaDialect::Draft2019_09
+                        ? "https://json-schema.org/draft/2019-09/schema"
+                        : "https://json-schema.org/draft/2020-12/schema";
+                auto text = declared->is_string() ? StringView(declared->as_string()) : "";
+                if (text.ends_with('#'))
+                {
+                    text.remove_suffix(1);
+                }
+                if (text != expected)
+                {
+                    m_error = JsonSchemaCompileError{
+                        declared->is_string() ? JsonSchemaCompileErrorCode::UnsupportedFeature
+                                              : JsonSchemaCompileErrorCode::InvalidSchema,
+                        m_dialect, ChildPath(path, "$schema"),
+                        declared->is_string()
+                            ? "custom or mismatched meta-schemas are not supported"
+                            : "$schema must be a string"};
+                    return;
+                }
+            }
+        }
         const bool ignoredSiblings =
             m_dialect == JsonSchemaDialect::Draft7 && object.contains("$ref");
         if (!ignoredSiblings)
@@ -380,6 +538,12 @@ private:
     [[nodiscard]] std::optional<std::string> Resolve(const std::string& source)
     {
         m_resolutionError.reset();
+        if (const auto failed = m_documentErrors.find(DocumentPath(source));
+            failed != m_documentErrors.end())
+        {
+            m_resolutionError = failed->second;
+            return std::nullopt;
+        }
         const auto keywordPath = ChildPath(source, "$ref");
         const auto* schema = FindJsonSchemaValue(m_root, source);
         const auto& reference = schema->as_object().at("$ref");
@@ -400,19 +564,50 @@ private:
         const auto anchor = m_anchors.find(std::string(uri->buffer()));
         if (anchor != m_anchors.end())
         {
+            if (const auto failed = m_documentErrors.find(DocumentPath(anchor->second));
+                failed != m_documentErrors.end())
+            {
+                m_resolutionError = failed->second;
+                return std::nullopt;
+            }
             return anchor->second;
         }
         uri->remove_fragment();
         const auto resource = m_resources.find(std::string(uri->buffer()));
         if (resource == m_resources.end())
         {
+            const auto document = m_registry.find(std::string(uri->buffer()));
+            if (document != m_registry.end())
+            {
+                // Loading only copies caller-supplied values; resolution never performs I/O.
+                const auto& entry = document->second;
+                if (std::find(m_uris.begin(), m_uris.end(), entry.retrievalUri) == m_uris.end())
+                {
+                    m_root.as_array().push_back(entry.document->schema);
+                    m_uris.push_back(entry.retrievalUri);
+                }
+            }
             m_resolutionError = JsonSchemaCompileError{
                 JsonSchemaCompileErrorCode::UnsupportedFeature, m_dialect, keywordPath,
-                "references to external schema resources are not supported"};
+                "schema document is not registered: " + std::string(uri->buffer())};
+            return std::nullopt;
+        }
+        if (const auto failed = m_documentErrors.find(DocumentPath(resource->second));
+            failed != m_documentErrors.end())
+        {
+            m_resolutionError = failed->second;
             return std::nullopt;
         }
         if (!fragment.empty() && fragment.front() != '/')
         {
+            auto canonical = boost::urls::url(m_scopes.at(resource->second));
+            canonical.set_fragment(fragment);
+            canonical.normalize();
+            const auto named = m_anchors.find(std::string(canonical.buffer()));
+            if (named != m_anchors.end())
+            {
+                return named->second;
+            }
             m_resolutionError =
                 JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, m_dialect,
                                        keywordPath, "$ref anchor does not exist"};
@@ -429,7 +624,11 @@ private:
         return targetPath;
     }
 
-    const JsonValue& m_root;
+    JsonValue& m_root;
+    std::vector<std::string>& m_uris;
+    const JsonSchemaCompileOptions& m_options;
+    std::unordered_map<std::string, RegistryEntry> m_registry;
+    std::unordered_map<std::string, JsonSchemaCompileError> m_documentErrors;
     JsonSchemaDialect m_dialect;
     std::size_t m_maxDepth;
     std::unordered_map<std::string, std::string> m_resources;
@@ -438,6 +637,7 @@ private:
     std::vector<std::string> m_references;
     std::optional<JsonSchemaCompileError> m_error;
     std::optional<JsonSchemaCompileError> m_resolutionError;
+    bool m_cataloging = false;
 }; // class ReferenceIndexBuilder
 
 } // namespace
@@ -513,17 +713,46 @@ const JsonValue* FindJsonSchemaValue(const JsonValue& root, std::string_view poi
 }
 
 Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compile(
-    const JsonValue& schema, JsonSchemaDialect dialect, std::size_t maxDepth)
+    const JsonValue& schema, JsonSchemaDialect dialect, std::size_t maxDepth,
+    const JsonSchemaCompileOptions& options)
 {
-    ReferenceIndexBuilder builder(schema, dialect, maxDepth);
+    JsonSchemaReferences references;
+    references.m_documents = JsonArray{schema};
+    references.m_uris.emplace_back();
+    ReferenceIndexBuilder builder(references.m_documents, references.m_uris, options, dialect,
+                                  maxDepth);
     auto targets = builder.Build();
     if (!targets)
     {
-        return Failure(std::move(targets.error()));
+        auto error = std::move(targets.error());
+        error.schemaUri = references.SchemaUri(error.schemaPath);
+        error.schemaPath = references.SchemaPath(error.schemaPath);
+        return Failure(std::move(error));
     }
-    JsonSchemaReferences references;
     references.m_targets = std::move(targets.value());
     return Success(std::move(references));
+}
+
+const JsonValue& JsonSchemaReferences::Documents() const
+{
+    return m_documents;
+}
+
+std::string JsonSchemaReferences::SchemaPath(std::string_view path) const
+{
+    const auto end = path.find('/', 1);
+    return end == std::string_view::npos ? "" : std::string(path.substr(end));
+}
+
+std::string JsonSchemaReferences::SchemaUri(std::string_view path) const
+{
+    const auto end = path.find('/', 1);
+    const auto token = path.substr(1, end == std::string_view::npos ? end : end - 1);
+    std::size_t index = 0;
+    const auto [next, error] = std::from_chars(token.data(), token.data() + token.size(), index);
+    return error == std::errc{} && next == token.data() + token.size() && index < m_uris.size()
+               ? m_uris[index]
+               : "";
 }
 
 const JsonSchemaReferences::Resolution* JsonSchemaReferences::Find(

@@ -18,12 +18,19 @@ public:
     using Resolution = Result<std::string, JsonSchemaCompileError>;
 
     [[nodiscard]] static Result<JsonSchemaReferences, JsonSchemaCompileError> Compile(
-        const JsonValue& schema, JsonSchemaDialect dialect, std::size_t maxDepth);
+        const JsonValue& schema, JsonSchemaDialect dialect, std::size_t maxDepth,
+        const JsonSchemaCompileOptions& options);
 
     [[nodiscard]] const Resolution* Find(std::string_view referencePath) const;
+    [[nodiscard]] const JsonValue& Documents() const;
+    [[nodiscard]] std::string SchemaPath(std::string_view path) const;
+    [[nodiscard]] std::string SchemaUri(std::string_view path) const;
 
 private:
     std::unordered_map<std::string, Resolution> m_targets;
+    // Internal paths begin with a document index; public diagnostics omit that prefix.
+    JsonValue m_documents;
+    std::vector<std::string> m_uris;
 }; // class JsonSchemaReferences
 
 } // namespace rad::detail
