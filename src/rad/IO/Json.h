@@ -99,11 +99,11 @@ struct JsonSchemaValidationOptions
 // - Draft 2019-09 and 2020-12: dependentRequired, dependentSchemas, minContains, maxContains,
 //   and $defs structure checking.
 // - Draft 2020-12: prefixItems.
+// - Draft 7: dependencies (property-name arrays and schemas).
 //
 // Not supported:
 // - Remote/relative references, anchors, embedded $id resources, vocabularies,
 //   unevaluatedProperties, unevaluatedItems, and fractional multipleOf.
-// - Draft 7: dependencies.
 // - Draft 7 and 2019-09: tuple-form items and additionalItems.
 //
 // definitions and $defs can be referenced by root-local JSON Pointers.

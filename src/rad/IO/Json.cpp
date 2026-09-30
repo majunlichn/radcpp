@@ -1303,10 +1303,7 @@ private:
             }
         }
 
-        if (m_dialect != JsonSchemaDialect::Draft7)
-        {
-            ValidateDependenciesSchema(object, schemaPath, depth);
-        }
+        ValidateDependenciesSchema(object, schemaPath, depth);
 
         if (const auto* contains = object.if_contains("contains"))
         {
@@ -1405,56 +1402,57 @@ private:
     void ValidateDependenciesSchema(const JsonObject& schema,
                                     std::string_view schemaPath, std::size_t depth)
     {
-        if (const auto* dependentRequired = schema.if_contains("dependentRequired"))
+        constexpr std::array keywords = {
+            "dependencies", "dependentRequired", "dependentSchemas",
+        };
+        for (const std::string_view keyword : keywords)
         {
-            const auto keywordPath = ChildPath(schemaPath, "dependentRequired");
-            if (!dependentRequired->is_object())
+            if ((keyword == "dependencies") != (m_dialect == JsonSchemaDialect::Draft7))
             {
-                AddError({}, keywordPath, "dependentRequired must be an object");
+                continue;
             }
-            else
+            const auto* dependencies = schema.if_contains(keyword);
+            if (dependencies == nullptr)
             {
-                for (const auto& dependency : dependentRequired->as_object())
+                continue;
+            }
+            const auto keywordPath = ChildPath(schemaPath, keyword);
+            if (!dependencies->is_object())
+            {
+                AddError({}, keywordPath, std::string(keyword) + " must be an object");
+                continue;
+            }
+            for (const auto& dependency : dependencies->as_object())
+            {
+                const auto dependencyPath = ChildPath(keywordPath, dependency.key());
+                const auto& value = dependency.value();
+                if (keyword == "dependentRequired" ||
+                    (keyword == "dependencies" && value.is_array()))
                 {
-                    const auto dependencyPath = ChildPath(keywordPath, dependency.key());
-                    if (!dependency.value().is_array())
+                    if (!value.is_array())
                     {
                         AddError({}, dependencyPath,
                                  "dependentRequired value must be an array of strings");
                         continue;
                     }
-                    if (HasDuplicates(dependency.value().as_array()))
+                    if (HasDuplicates(value.as_array()))
                     {
                         AddError({}, dependencyPath,
                                  "dependent property names must be unique");
                     }
                     for (std::size_t index = 0;
-                         index < dependency.value().as_array().size(); ++index)
+                         index < value.as_array().size(); ++index)
                     {
-                        if (!dependency.value().as_array()[index].is_string())
+                        if (!value.as_array()[index].is_string())
                         {
                             AddError({}, ChildPath(dependencyPath, std::to_string(index)),
                                      "dependent property name must be a string");
                         }
                     }
                 }
-            }
-        }
-
-        if (const auto* dependentSchemas = schema.if_contains("dependentSchemas"))
-        {
-            const auto keywordPath = ChildPath(schemaPath, "dependentSchemas");
-            if (!dependentSchemas->is_object())
-            {
-                AddError({}, keywordPath, "dependentSchemas must be an object");
-            }
-            else
-            {
-                for (const auto& dependency : dependentSchemas->as_object())
+                else
                 {
-                    ValidateSchemaDefinition(dependency.value(),
-                                             ChildPath(keywordPath, dependency.key()),
-                                             depth + 1);
+                    ValidateSchemaDefinition(value, dependencyPath, depth + 1);
                 }
             }
         }
@@ -1549,13 +1547,6 @@ private:
     void ValidateUnsupportedKeywords(const JsonObject& schema, std::string_view instancePath,
                                      std::string_view schemaPath)
     {
-        if (m_dialect == JsonSchemaDialect::Draft7 && schema.contains("dependencies"))
-        {
-            AddUnsupportedError(
-                instancePath, ChildPath(schemaPath, "dependencies"),
-                "keyword is not supported; use dependentRequired or dependentSchemas");
-        }
-
         if (m_dialect != JsonSchemaDialect::Draft7 && schema.contains("$vocabulary"))
         {
             AddUnsupportedError(instancePath, ChildPath(schemaPath, "$vocabulary"),
@@ -1925,10 +1916,7 @@ private:
             }
         }
 
-        if (m_dialect != JsonSchemaDialect::Draft7)
-        {
-            ValidateDependencies(schema, instanceValue, instancePath, schemaPath, depth);
-        }
+        ValidateDependencies(schema, instanceValue, instancePath, schemaPath, depth);
     }
 
     void ValidateDependencies(const JsonObject& schema, const JsonValue& instanceValue,
@@ -1936,39 +1924,45 @@ private:
                               std::size_t depth)
     {
         const auto& instance = instanceValue.as_object();
-        if (const auto* dependentRequired = schema.if_contains("dependentRequired");
-            dependentRequired != nullptr && dependentRequired->is_object())
+        constexpr std::array keywords = {
+            "dependencies", "dependentRequired", "dependentSchemas",
+        };
+        for (const std::string_view keyword : keywords)
         {
-            const auto keywordPath = ChildPath(schemaPath, "dependentRequired");
-            for (const auto& dependency : dependentRequired->as_object())
+            if ((keyword == "dependencies") != (m_dialect == JsonSchemaDialect::Draft7))
+            {
+                continue;
+            }
+            const auto* dependencies = schema.if_contains(keyword);
+            if (dependencies == nullptr)
+            {
+                continue;
+            }
+            const auto keywordPath = ChildPath(schemaPath, keyword);
+            for (const auto& dependency : dependencies->as_object())
             {
                 if (!instance.contains(dependency.key()))
                 {
                     continue;
                 }
-                for (const auto& required : dependency.value().as_array())
+                const auto dependencyPath = ChildPath(keywordPath, dependency.key());
+                if (keyword == "dependentRequired" ||
+                    (keyword == "dependencies" && dependency.value().is_array()))
                 {
-                    const auto requiredName = ToStringView(required.as_string());
-                    if (!instance.contains(requiredName))
+                    for (const auto& required : dependency.value().as_array())
                     {
-                        AddError(ChildPath(instancePath, requiredName),
-                                 ChildPath(keywordPath, dependency.key()),
-                                 "dependent property is missing");
+                        const auto requiredName = ToStringView(required.as_string());
+                        if (!instance.contains(requiredName))
+                        {
+                            AddError(ChildPath(instancePath, requiredName), dependencyPath,
+                                     "dependent property is missing");
+                        }
                     }
                 }
-            }
-        }
-
-        if (const auto* dependentSchemas = schema.if_contains("dependentSchemas");
-            dependentSchemas != nullptr && dependentSchemas->is_object())
-        {
-            const auto keywordPath = ChildPath(schemaPath, "dependentSchemas");
-            for (const auto& dependency : dependentSchemas->as_object())
-            {
-                if (instance.contains(dependency.key()))
+                else
                 {
                     Validate(dependency.value(), instanceValue, instancePath,
-                             ChildPath(keywordPath, dependency.key()), depth + 1);
+                             dependencyPath, depth + 1);
                 }
             }
         }
