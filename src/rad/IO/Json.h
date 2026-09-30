@@ -93,6 +93,7 @@ struct JsonSchemaValidationOptions
 // - All dialects: boolean schemas; root-local JSON Pointer $ref; type, enum, const;
 //   numeric bounds and integer multipleOf;
 //   min/max string, array, and object sizes; pattern; required, properties,
+//   patternProperties, propertyNames,
 //   additionalProperties; single-schema items, uniqueItems, contains; allOf, anyOf, oneOf,
 //   not; and if/then/else.
 // - Draft 2019-09 and 2020-12: dependentRequired, dependentSchemas, minContains, maxContains,
@@ -101,7 +102,6 @@ struct JsonSchemaValidationOptions
 //
 // Not supported:
 // - Remote/relative references, anchors, embedded $id resources, vocabularies,
-//   patternProperties, propertyNames,
 //   unevaluatedProperties, unevaluatedItems, and fractional multipleOf.
 // - Draft 7: dependencies.
 // - Draft 7 and 2019-09: tuple-form items and additionalItems.
@@ -109,7 +109,8 @@ struct JsonSchemaValidationOptions
 // definitions and $defs can be referenced by root-local JSON Pointers.
 // Embedded $id resources cannot be used as reference sources or targets.
 // Identification and annotation keywords are otherwise ignored; format is not validated.
-// pattern uses std::regex ECMAScript syntax over UTF-8 bytes and is not fully Unicode-aware.
+// pattern and patternProperties use std::regex ECMAScript syntax over UTF-8 bytes and
+// are not fully Unicode-aware; Unicode property escapes are unsupported.
 class JsonSchema
 {
 public:

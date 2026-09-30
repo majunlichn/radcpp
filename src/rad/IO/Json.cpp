@@ -686,6 +686,44 @@ private:
         AddError(instancePath, schemaPath, std::move(message));
     }
 
+    [[nodiscard]] std::optional<std::regex>
+    CompilePattern(std::string_view pattern, std::string_view instancePath,
+                   std::string_view schemaPath)
+    {
+        if (pattern.find("\\p{") != std::string_view::npos ||
+            pattern.find("\\P{") != std::string_view::npos)
+        {
+            AddUnsupportedError(instancePath, schemaPath,
+                                "Unicode property escapes are not supported by std::regex");
+            return std::nullopt;
+        }
+        try
+        {
+            return std::regex(std::string(pattern));
+        }
+        catch (const std::regex_error&)
+        {
+            AddError(instancePath, schemaPath, "pattern is not a valid regular expression");
+            return std::nullopt;
+        }
+    }
+
+    [[nodiscard]] bool MatchesPattern(const std::regex& expression, std::string_view value,
+                                      std::string_view instancePath,
+                                      std::string_view schemaPath)
+    {
+        try
+        {
+            return std::regex_search(value.begin(), value.end(), expression);
+        }
+        catch (const std::regex_error& error)
+        {
+            AddResourceError(instancePath, schemaPath,
+                             std::string("regular expression matching failed: ") + error.what());
+            return false;
+        }
+    }
+
     void ValidateSchemaDefinition(const JsonValue& schema, std::string_view schemaPath,
                                   std::size_t depth)
     {
@@ -866,26 +904,8 @@ private:
             }
             else
             {
-                const auto expression = ToStringView(pattern->as_string());
-                if (expression.find("\\p{") != std::string_view::npos ||
-                    expression.find("\\P{") != std::string_view::npos)
-                {
-                    AddUnsupportedError(
-                        {}, patternPath,
-                        "Unicode property escapes are not supported by std::regex");
-                }
-                else
-                {
-                    try
-                    {
-                        static_cast<void>(std::regex(std::string(expression)));
-                    }
-                    catch (const std::regex_error&)
-                    {
-                        AddError({}, patternPath,
-                                 "pattern is not a valid regular expression");
-                    }
-                }
+                static_cast<void>(CompilePattern(ToStringView(pattern->as_string()), {},
+                                                 patternPath));
             }
         }
 
@@ -937,6 +957,29 @@ private:
                                              depth + 1);
                 }
             }
+        }
+
+        if (const auto* patterns = object.if_contains("patternProperties"))
+        {
+            const auto keywordPath = ChildPath(schemaPath, "patternProperties");
+            if (!patterns->is_object())
+            {
+                AddError({}, keywordPath, "patternProperties must be an object");
+            }
+            else
+            {
+                for (const auto& pattern : patterns->as_object())
+                {
+                    const auto patternPath = ChildPath(keywordPath, pattern.key());
+                    static_cast<void>(CompilePattern(pattern.key(), {}, patternPath));
+                    ValidateSchemaDefinition(pattern.value(), patternPath, depth + 1);
+                }
+            }
+        }
+        if (const auto* names = object.if_contains("propertyNames"))
+        {
+            ValidateSchemaDefinition(*names, ChildPath(schemaPath, "propertyNames"),
+                                     depth + 1);
         }
 
         const std::string_view definitionsKeyword =
@@ -1206,18 +1249,6 @@ private:
     void ValidateUnsupportedKeywords(const JsonObject& schema, std::string_view instancePath,
                                      std::string_view schemaPath)
     {
-        constexpr std::array commonUnsupported = {
-            "patternProperties", "propertyNames",
-        };
-        for (const std::string_view keyword : commonUnsupported)
-        {
-            if (schema.contains(keyword))
-            {
-                AddUnsupportedError(instancePath, ChildPath(schemaPath, keyword),
-                                    "keyword is not supported by this validator");
-            }
-        }
-
         if (m_dialect == JsonSchemaDialect::Draft7 && schema.contains("dependencies"))
         {
             AddUnsupportedError(
@@ -1513,6 +1544,52 @@ private:
             }
         }
 
+        std::vector<bool> patternMatches;
+        if (const auto* patterns = schema.if_contains("patternProperties"))
+        {
+            patternMatches.resize(instance.size(), false);
+            const auto keywordPath = ChildPath(schemaPath, "patternProperties");
+            if (!patterns->is_object())
+            {
+                AddError(instancePath, keywordPath, "patternProperties must be an object");
+            }
+            else
+            {
+                for (const auto& pattern : patterns->as_object())
+                {
+                    const auto patternPath = ChildPath(keywordPath, pattern.key());
+                    const auto expression = CompilePattern(pattern.key(), instancePath,
+                                                           patternPath);
+                    if (!expression)
+                    {
+                        continue;
+                    }
+                    std::size_t index = 0;
+                    for (const auto& property : instance)
+                    {
+                        const auto name = property.key();
+                        if (MatchesPattern(*expression, name, instancePath, patternPath))
+                        {
+                            patternMatches[index] = true;
+                            Validate(pattern.value(), property.value(),
+                                     ChildPath(instancePath, name), patternPath, depth + 1);
+                        }
+                        ++index;
+                    }
+                }
+            }
+        }
+
+        if (const auto* names = schema.if_contains("propertyNames"))
+        {
+            const auto keywordPath = ChildPath(schemaPath, "propertyNames");
+            for (const auto& property : instance)
+            {
+                Validate(*names, JsonValue(property.key()),
+                         ChildPath(instancePath, property.key()), keywordPath, depth + 1);
+            }
+        }
+
         if (const auto* additional = schema.if_contains("additionalProperties"))
         {
             const auto keywordPath = ChildPath(schemaPath, "additionalProperties");
@@ -1522,9 +1599,12 @@ private:
                          "additionalProperties must be a boolean or schema");
                 return;
             }
+            std::size_t index = 0;
             for (const auto& property : instance)
             {
-                if (properties != nullptr && properties->contains(property.key()))
+                const bool matched = !patternMatches.empty() && patternMatches[index];
+                ++index;
+                if (matched || (properties != nullptr && properties->contains(property.key())))
                 {
                     continue;
                 }
@@ -1742,18 +1822,15 @@ private:
                 AddError(instancePath, keywordPath, "pattern must be a string");
                 return;
             }
-            try
+            const auto expression = CompilePattern(ToStringView(pattern->as_string()),
+                                                   instancePath, keywordPath);
+            if (expression)
             {
-                const std::regex expression(std::string(ToStringView(pattern->as_string())));
-                if (!std::regex_search(value.begin(), value.end(), expression))
+                if (!MatchesPattern(*expression, value, instancePath, keywordPath))
                 {
                     AddError(instancePath, keywordPath,
                              "string does not match the required pattern");
                 }
-            }
-            catch (const std::regex_error&)
-            {
-                AddError(instancePath, keywordPath, "pattern is not a valid regular expression");
             }
         }
     }
