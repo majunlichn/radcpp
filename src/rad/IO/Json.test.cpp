@@ -1364,6 +1364,225 @@ TEST(IO, JsonSchemaMultipleOfDecimalGrid)
     }
 }
 
+TEST(IO, JsonSchemaStandardMetaSchemaDocuments)
+{
+    struct Draft
+    {
+        rad::JsonSchemaDialect dialect;
+        std::string_view uri;
+        std::string_view definition;
+        std::vector<std::string_view> components;
+    };
+    const Draft drafts[] = {
+        {rad::JsonSchemaDialect::Draft7, "http://json-schema.org/draft-07/schema",
+         "/definitions/nonNegativeInteger", {}},
+        {rad::JsonSchemaDialect::Draft2019_09, "https://json-schema.org/draft/2019-09/schema",
+         "/$defs/nonNegativeInteger",
+         {"core", "applicator", "validation", "meta-data", "format", "content"}},
+        {rad::JsonSchemaDialect::Draft2020_12, "https://json-schema.org/draft/2020-12/schema",
+         "/$defs/nonNegativeInteger",
+         {"core", "applicator", "unevaluated", "validation", "meta-data",
+          "format-annotation", "content"}},
+    };
+    for (const auto& draft : drafts)
+    {
+        SCOPED_TRACE(draft.uri);
+        std::vector<std::string> documents = {std::string(draft.uri)};
+        for (const auto name : draft.components)
+        {
+            documents.push_back(std::string(draft.uri.substr(0, draft.uri.rfind('/'))) +
+                                "/meta/" + std::string(name));
+        }
+        for (const auto& uri : documents)
+        {
+            SCOPED_TRACE(uri);
+            const auto compiled =
+                rad::JsonSchema::Compile(rad::JsonObject{{"$ref", uri}}, draft.dialect);
+            ASSERT_TRUE(compiled) << compiled.error().schemaUri << compiled.error().schemaPath
+                                  << ": " << compiled.error().message;
+            EXPECT_TRUE(compiled.value().Validate(rad::JsonObject{}));
+            EXPECT_TRUE(compiled.value().Validate(true));
+            EXPECT_FALSE(compiled.value().Validate(1));
+        }
+        const auto fragmentless = rad::JsonSchema::Compile(
+            rad::JsonObject{{"$ref", std::string(draft.uri) + "#"}}, draft.dialect);
+        ASSERT_TRUE(fragmentless) << fragmentless.error().message;
+        EXPECT_TRUE(fragmentless.value().Validate(rad::JsonObject{}));
+
+        const auto definitionUri = draft.components.empty()
+                                       ? std::string(draft.uri)
+                                       : std::string(draft.uri.substr(0, draft.uri.rfind('/'))) +
+                                             "/meta/validation";
+        const auto compiled = rad::JsonSchema::Compile(
+            rad::JsonObject{{"$ref", definitionUri + "#" + std::string(draft.definition)}},
+            draft.dialect);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        auto copied = compiled.value();
+        auto moved = std::move(copied);
+        rad::JsonSchemaValidationOptions options;
+        options.maxErrors = 1;
+        const auto invalid = moved.Validate(-1, options);
+        ASSERT_FALSE(invalid);
+        ASSERT_EQ(invalid.errors.size(), 1);
+        EXPECT_EQ(invalid.errors[0].instancePath, "");
+        EXPECT_EQ(invalid.errors[0].schemaPath, std::string(draft.definition) + "/minimum");
+        EXPECT_EQ(invalid.errors[0].schemaUri, definitionUri);
+        options.maxDepth = 0;
+        const auto exhausted = moved.Validate(1, options);
+        ASSERT_FALSE(exhausted);
+        ASSERT_EQ(exhausted.errors.size(), 1);
+        EXPECT_EQ(exhausted.errors[0].schemaPath, draft.definition);
+        EXPECT_EQ(exhausted.errors[0].schemaUri, definitionUri);
+        EXPECT_EQ(exhausted.errors[0].message, "maximum validation depth exceeded");
+        options.maxDepth = 1;
+        EXPECT_TRUE(moved.Validate(1, options));
+    }
+}
+
+TEST(IO, JsonSchemaStandardMetaSchemaPrecedence)
+{
+    struct Draft
+    {
+        rad::JsonSchemaDialect dialect;
+        std::string_view uri;
+    };
+    constexpr Draft drafts[] = {
+        {rad::JsonSchemaDialect::Draft7, "http://json-schema.org/draft-07/schema"},
+        {rad::JsonSchemaDialect::Draft2019_09, "https://json-schema.org/draft/2019-09/schema"},
+        {rad::JsonSchemaDialect::Draft2020_12, "https://json-schema.org/draft/2020-12/schema"},
+    };
+    for (const auto& draft : drafts)
+    {
+        SCOPED_TRACE(draft.uri);
+        const auto root = rad::JsonObject{{"$ref", draft.uri}};
+        for (const bool alias : {false, true})
+        {
+            rad::JsonSchemaCompileOptions options;
+            options.documents = {
+                {alias ? "https://example.com/meta.json" : std::string(draft.uri),
+                 rad::JsonObject{{"$id", draft.uri}, {"const", "caller"}}},
+            };
+            const auto compiled = rad::JsonSchema::Compile(root, draft.dialect, options);
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            EXPECT_TRUE(compiled.value().Validate("caller"));
+            const auto invalid = compiled.value().Validate(rad::JsonObject{});
+            ASSERT_FALSE(invalid);
+            ASSERT_EQ(invalid.errors.size(), 1);
+            EXPECT_EQ(invalid.errors[0].schemaPath, "/const");
+            EXPECT_EQ(invalid.errors[0].schemaUri, options.documents[0].uri);
+        }
+        const auto local = rad::ParseJson(
+            std::format(R"json({{"$id": "{}", "type": "object",
+                               "properties": {{"value": {{"$ref": "{}"}}}}}})json",
+                        draft.uri, draft.uri));
+        ASSERT_TRUE(local);
+        const auto compiled = rad::JsonSchema::Compile(local.value(), draft.dialect);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(
+            rad::JsonObject{{"value", rad::JsonObject{{"type", 7}}}}));
+
+        if (draft.dialect != rad::JsonSchemaDialect::Draft7)
+        {
+            rad::JsonSchemaCompileOptions options;
+            const auto uri = std::string(draft.uri.substr(0, draft.uri.rfind('/'))) +
+                             "/meta/validation";
+            options.documents = {
+                {uri, rad::JsonObject{{"const", rad::JsonObject{{"type", 42}}}}},
+            };
+            const auto incomplete = rad::JsonSchema::Compile(root, draft.dialect, options);
+            ASSERT_FALSE(incomplete);
+            EXPECT_EQ(incomplete.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+            EXPECT_EQ(incomplete.error().schemaUri, draft.uri);
+            options.documents[0].schema.as_object()["$defs"] =
+                rad::JsonObject{{"stringArray", true}};
+            const auto overridden = rad::JsonSchema::Compile(root, draft.dialect, options);
+            ASSERT_TRUE(overridden) << overridden.error().message;
+            EXPECT_TRUE(overridden.value().Validate(rad::JsonObject{{"type", 42}}));
+        }
+    }
+    const auto mismatched = rad::JsonSchema::Compile(
+        rad::JsonObject{{"$ref", "http://json-schema.org/draft-07/schema"}},
+        rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_FALSE(mismatched);
+    EXPECT_EQ(mismatched.error().code, rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
+    EXPECT_EQ(mismatched.error().schemaPath, "/$schema");
+    EXPECT_EQ(mismatched.error().schemaUri, "http://json-schema.org/draft-07/schema");
+}
+
+TEST(IO, JsonSchemaVocabularyDeclarations)
+{
+    for (const auto dialect :
+         {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string prefix = dialect == rad::JsonSchemaDialect::Draft2019_09
+                                       ? "https://json-schema.org/draft/2019-09/vocab/"
+                                       : "https://json-schema.org/draft/2020-12/vocab/";
+        const auto core = prefix + "core";
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/root.json";
+        const auto base = rad::JsonObject{
+            {"$vocabulary", rad::JsonObject{{core, true}, {"urn:example:optional", false}}},
+            {"type", "integer"}, {"minimum", 2},
+        };
+        const auto compiled = rad::JsonSchema::Compile(base, dialect, options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(2));
+        EXPECT_FALSE(compiled.value().Validate(1));
+        EXPECT_FALSE(compiled.value().Validate("invalid"));
+
+        struct Case
+        {
+            std::string_view uri;
+            rad::JsonValue required;
+            rad::JsonSchemaCompileErrorCode code;
+        };
+        const Case cases[] = {
+            {"urn:example:required", true, rad::JsonSchemaCompileErrorCode::UnsupportedFeature},
+            {"relative", false, rad::JsonSchemaCompileErrorCode::InvalidSchema},
+            {"HTTPS://example.com/optional", false, rad::JsonSchemaCompileErrorCode::InvalidSchema},
+            {"urn:example:optional", 1, rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        };
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(testCase.uri);
+            auto schema = base;
+            schema.at("$vocabulary").as_object()[testCase.uri] = testCase.required;
+            const auto invalid = rad::JsonSchema::Compile(schema, dialect, options);
+            ASSERT_FALSE(invalid);
+            EXPECT_EQ(invalid.error().code, testCase.code);
+            EXPECT_EQ(invalid.error().schemaPath,
+                      testCase.uri.starts_with("HTTPS:")
+                          ? "/$vocabulary/HTTPS:~1~1example.com~1optional"
+                          : "/$vocabulary/" + std::string(testCase.uri));
+            EXPECT_EQ(invalid.error().schemaUri, options.retrievalUri);
+        }
+        auto format = base;
+        const auto formatUri = prefix + (dialect == rad::JsonSchemaDialect::Draft2019_09
+                                             ? "format" : "format-assertion");
+        format.at("$vocabulary").as_object()[formatUri] = false;
+        EXPECT_TRUE(rad::JsonSchema::Compile(format, dialect));
+        format.at("$vocabulary").as_object()[formatUri] = true;
+        const auto requiredFormat = rad::JsonSchema::Compile(format, dialect);
+        ASSERT_FALSE(requiredFormat);
+        EXPECT_EQ(requiredFormat.error().code, rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
+
+        for (const rad::JsonValue vocabulary :
+             {rad::JsonValue(1), rad::JsonValue(rad::JsonObject{}),
+              rad::JsonValue(rad::JsonObject{{core, false}})})
+        {
+            const auto invalid =
+                rad::JsonSchema::Compile(rad::JsonObject{{"$vocabulary", vocabulary}}, dialect);
+            ASSERT_FALSE(invalid);
+            EXPECT_EQ(invalid.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+        }
+    }
+    const auto ignored = rad::JsonSchema::Compile(
+        rad::JsonObject{{"$vocabulary", 42}}, rad::JsonSchemaDialect::Draft7);
+    ASSERT_TRUE(ignored) << ignored.error().message;
+    EXPECT_TRUE(ignored.value().Validate(1));
+}
+
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const char* suitePath = std::getenv("JSON_SCHEMA_TEST_SUITE");

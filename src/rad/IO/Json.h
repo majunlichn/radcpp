@@ -124,6 +124,8 @@ struct JsonSchemaCompileOptions
 //   not; and if/then/else.
 // - Draft 2019-09 and 2020-12: dependentRequired, dependentSchemas, minContains, maxContains,
 //   unevaluatedProperties, unevaluatedItems, $anchor, and $defs structure checking.
+// - Offline references to standard meta-schemas and their default vocabulary meta-schemas.
+// - Standard $vocabulary declarations; unsupported optional vocabularies are ignored.
 // - Draft 2020-12: prefixItems, $dynamicRef, and $dynamicAnchor.
 // - Draft 2019-09: $recursiveRef (only "#") and boolean $recursiveAnchor.
 // - Draft 7: dependencies (property-name arrays and schemas).
@@ -131,14 +133,19 @@ struct JsonSchemaCompileOptions
 // - Draft 7: plain-name fragments in $id.
 //
 // Not supported:
-// - Automatic file/network loading, mixed-dialect resources, and custom vocabularies.
+// - Automatic file/network loading, mixed-dialect resources, custom meta-schema dialects,
+//   and unsupported required vocabularies (including format assertion).
 //
 // definitions and $defs can be referenced by root-local JSON Pointers.
-// References resolve within the root schema and caller-provided document registry.
+// References resolve within the root schema, caller-provided registry, and bundled meta-schemas.
+// Existing resources and caller-provided documents take precedence over bundled meta-schemas.
+// A missing fragment in a caller-provided document is an error, not a built-in fallback.
 // Registered documents without $schema use the selected dialect.
 // Draft 2020-12 $dynamicRef rebinds named dynamic anchors through the active resource scope.
 // JSON Pointer targets and ordinary anchors remain static, as do all $ref targets.
 // CompileFile does not load referenced files or use its path as a retrieval URI.
+// Compilation does not automatically validate schemas against their meta-schema.
+// $vocabulary declarations do not change keyword enablement under the selected standard dialect.
 // Other annotation keywords are ignored; format is not validated.
 // multipleOf uses exact integer arithmetic for integer values and shortest round-trip decimal
 // representations for doubles, without an epsilon. Original numeric text is not retained;

@@ -3,6 +3,7 @@
 
 #include "JsonSchemaRegex.h"
 #include "JsonSchemaReferences.h"
+#include "JsonSchemaMetaSchemas.h"
 
 #include <algorithm>
 #include <array>
@@ -762,7 +763,7 @@ private:
                 ValidateSchemaDefinition(*target->schema, target->path, depth + 1);
             }
         }
-        ValidateUnsupportedKeywords(object, {}, schemaPath);
+        ValidateVocabulary(object, {}, schemaPath);
 
         if (const auto* declaredDialect = object.if_contains("$schema"))
         {
@@ -1318,7 +1319,7 @@ private:
                                           target->path, depth + 1));
             }
         }
-        ValidateUnsupportedKeywords(object, instancePath, schemaPath);
+        ValidateVocabulary(object, instancePath, schemaPath);
         ValidateType(object, instance, instancePath, schemaPath);
         ValidateEnumAndConst(object, instance, instancePath, schemaPath);
         ValidateCompositions(object, instance, instancePath, schemaPath, depth, evaluation);
@@ -1343,13 +1344,56 @@ private:
         return evaluation;
     }
 
-    void ValidateUnsupportedKeywords(const JsonObject& schema, std::string_view instancePath,
-                                     std::string_view schemaPath)
+    void ValidateVocabulary(const JsonObject& schema, std::string_view instancePath,
+                            std::string_view schemaPath)
     {
-        if (m_dialect != JsonSchemaDialect::Draft7 && schema.contains("$vocabulary"))
+        if (m_dialect == JsonSchemaDialect::Draft7)
         {
-            AddUnsupportedError(instancePath, ChildPath(schemaPath, "$vocabulary"),
-                                "custom vocabularies are not supported by this validator");
+            return;
+        }
+        const auto* vocabulary = schema.if_contains("$vocabulary");
+        if (vocabulary == nullptr)
+        {
+            return;
+        }
+        const auto keywordPath = ChildPath(schemaPath, "$vocabulary");
+        if (!vocabulary->is_object())
+        {
+            AddError(instancePath, keywordPath, "$vocabulary must be an object");
+            return;
+        }
+        const auto coreUri = detail::JsonSchemaCoreVocabularyUri(m_dialect);
+        const auto* core = vocabulary->as_object().if_contains(coreUri);
+        if (core == nullptr)
+        {
+            AddError(instancePath, keywordPath, "$vocabulary must require the core vocabulary");
+            return;
+        }
+        if (!core->is_bool() || !core->as_bool())
+        {
+            AddError(instancePath, ChildPath(keywordPath, coreUri),
+                     "core vocabulary must be required (true)");
+            return;
+        }
+        for (const auto& entry : vocabulary->as_object())
+        {
+            const auto entryPath = ChildPath(keywordPath, entry.key());
+            if (!entry.value().is_bool())
+            {
+                AddError(instancePath, entryPath, "vocabulary requirement must be a boolean");
+                continue;
+            }
+            const auto supported = detail::GetJsonSchemaVocabularySupport(entry.key(), m_dialect);
+            if (!supported)
+            {
+                AddError(instancePath, entryPath, supported.error());
+            }
+            else if (entry.value().as_bool() && !supported.value())
+            {
+                AddUnsupportedError(instancePath, entryPath,
+                                    "required vocabulary is not supported: " +
+                                        std::string(entry.key()));
+            }
         }
     }
 

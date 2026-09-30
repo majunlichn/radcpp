@@ -1,0 +1,12 @@
+#pragma once
+
+#include <string_view>
+#include <utility>
+
+namespace rad::detail
+{
+
+inline constexpr std::pair<std::string_view, std::string_view> JsonSchemaMetaSchemaTexts[] = {
+@RAD_JSON_SCHEMA_METASCHEMA_ENTRIES@};
+
+} // namespace rad::detail

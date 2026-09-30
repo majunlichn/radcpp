@@ -98,6 +98,8 @@ set(RAD_SOURCES
     src/rad/IO/Json.h
     src/rad/IO/Json.cpp
     src/rad/IO/JsonSchema.cpp
+    src/rad/IO/JsonSchemaMetaSchemas.h
+    src/rad/IO/JsonSchemaMetaSchemas.cpp
     src/rad/IO/JsonSchemaReferences.h
     src/rad/IO/JsonSchemaReferences.cpp
     src/rad/IO/JsonSchemaRegex.h
@@ -162,6 +164,40 @@ target_include_directories(pcg_cpp
 add_library(rad STATIC)
 add_library(rad::rad ALIAS rad)
 
+set(RAD_JSON_SCHEMA_METASCHEMAS
+    thirdparty/json-schema/draft7/schema.json
+    thirdparty/json-schema/draft2019-09/schema.json
+    thirdparty/json-schema/draft2019-09/meta/core.json
+    thirdparty/json-schema/draft2019-09/meta/applicator.json
+    thirdparty/json-schema/draft2019-09/meta/validation.json
+    thirdparty/json-schema/draft2019-09/meta/meta-data.json
+    thirdparty/json-schema/draft2019-09/meta/format.json
+    thirdparty/json-schema/draft2019-09/meta/content.json
+    thirdparty/json-schema/draft2020-12/schema.json
+    thirdparty/json-schema/draft2020-12/meta/core.json
+    thirdparty/json-schema/draft2020-12/meta/applicator.json
+    thirdparty/json-schema/draft2020-12/meta/unevaluated.json
+    thirdparty/json-schema/draft2020-12/meta/validation.json
+    thirdparty/json-schema/draft2020-12/meta/meta-data.json
+    thirdparty/json-schema/draft2020-12/meta/format-annotation.json
+    thirdparty/json-schema/draft2020-12/meta/content.json
+)
+set(RAD_JSON_SCHEMA_METASCHEMA_ENTRIES "")
+foreach(schema IN LISTS RAD_JSON_SCHEMA_METASCHEMAS)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        "${RAD_PROJECT_ROOT}/${schema}")
+    file(READ "${RAD_PROJECT_ROOT}/${schema}" schema_text)
+    string(JSON schema_uri GET "${schema_text}" "$id")
+    string(REGEX REPLACE "#$" "" schema_uri "${schema_uri}")
+    string(APPEND RAD_JSON_SCHEMA_METASCHEMA_ENTRIES
+        "    {\"${schema_uri}\", R\"radjson(${schema_text})radjson\"},\n")
+endforeach()
+configure_file(
+    cmake/radJsonSchemaMetaSchemas.h.in
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/JsonSchemaMetaSchemasData.h"
+    @ONLY
+)
+
 target_sources(rad PRIVATE ${RAD_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src/rad FILES ${RAD_SOURCES})
 
@@ -202,6 +238,7 @@ target_include_directories(rad
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     PRIVATE
         "${Stb_INCLUDE_DIR}"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
 
 target_link_libraries(rad
@@ -284,6 +321,14 @@ if(RAD_ENABLE_INSTALL)
             PATTERN "*.h"
             PATTERN "JsonSchemaRegex.h" EXCLUDE
             PATTERN "JsonSchemaReferences.h" EXCLUDE
+            PATTERN "JsonSchemaMetaSchemas.h" EXCLUDE
+    )
+
+    install(
+        FILES
+            thirdparty/json-schema/LICENSE
+            thirdparty/json-schema/README.md
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/rad/json-schema"
     )
 
     set(RAD_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/rad")

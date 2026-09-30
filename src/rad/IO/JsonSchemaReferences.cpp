@@ -1,4 +1,5 @@
 #include "JsonSchemaReferences.h"
+#include "JsonSchemaMetaSchemas.h"
 
 #include <boost/url.hpp>
 
@@ -648,6 +649,24 @@ private:
                 {
                     m_root.as_array().push_back(entry.document->schema);
                     m_uris.push_back(entry.retrievalUri);
+                }
+            }
+            else if (const auto text = FindJsonSchemaMetaSchema(uri->buffer()))
+            {
+                const auto identifier = std::string(uri->buffer());
+                if (std::find(m_uris.begin(), m_uris.end(), identifier) == m_uris.end())
+                {
+                    auto parsed = ParseJson(*text);
+                    if (!parsed)
+                    {
+                        m_error = JsonSchemaCompileError{
+                            JsonSchemaCompileErrorCode::InvalidJson, m_dialect, keywordPath,
+                            "invalid bundled meta-schema " + identifier + ": " +
+                                parsed.error().message()};
+                        return std::nullopt;
+                    }
+                    m_root.as_array().push_back(std::move(parsed.value()));
+                    m_uris.push_back(identifier);
                 }
             }
             m_resolutionError = JsonSchemaCompileError{
