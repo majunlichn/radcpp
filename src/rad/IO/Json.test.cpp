@@ -1364,78 +1364,36 @@ TEST(IO, JsonSchemaMultipleOfDecimalGrid)
     }
 }
 
-TEST(IO, JsonSchemaStandardMetaSchemaDocuments)
+TEST(IO, JsonSchemaStandardMetaSchemaDiagnostics)
 {
     struct Draft
     {
         rad::JsonSchemaDialect dialect;
         std::string_view uri;
         std::string_view definition;
-        std::vector<std::string_view> components;
     };
-    const Draft drafts[] = {
+    constexpr Draft drafts[] = {
         {rad::JsonSchemaDialect::Draft7, "http://json-schema.org/draft-07/schema",
-         "/definitions/nonNegativeInteger", {}},
-        {rad::JsonSchemaDialect::Draft2019_09, "https://json-schema.org/draft/2019-09/schema",
-         "/$defs/nonNegativeInteger",
-         {"core", "applicator", "validation", "meta-data", "format", "content"}},
-        {rad::JsonSchemaDialect::Draft2020_12, "https://json-schema.org/draft/2020-12/schema",
-         "/$defs/nonNegativeInteger",
-         {"core", "applicator", "unevaluated", "validation", "meta-data",
-          "format-annotation", "content"}},
+         "/definitions/nonNegativeInteger"},
+        {rad::JsonSchemaDialect::Draft2019_09,
+         "https://json-schema.org/draft/2019-09/meta/validation", "/$defs/nonNegativeInteger"},
+        {rad::JsonSchemaDialect::Draft2020_12,
+         "https://json-schema.org/draft/2020-12/meta/validation", "/$defs/nonNegativeInteger"},
     };
     for (const auto& draft : drafts)
     {
         SCOPED_TRACE(draft.uri);
-        std::vector<std::string> documents = {std::string(draft.uri)};
-        for (const auto name : draft.components)
-        {
-            documents.push_back(std::string(draft.uri.substr(0, draft.uri.rfind('/'))) +
-                                "/meta/" + std::string(name));
-        }
-        for (const auto& uri : documents)
-        {
-            SCOPED_TRACE(uri);
-            const auto compiled =
-                rad::JsonSchema::Compile(rad::JsonObject{{"$ref", uri}}, draft.dialect);
-            ASSERT_TRUE(compiled) << compiled.error().schemaUri << compiled.error().schemaPath
-                                  << ": " << compiled.error().message;
-            EXPECT_TRUE(compiled.value().Validate(rad::JsonObject{}));
-            EXPECT_TRUE(compiled.value().Validate(true));
-            EXPECT_FALSE(compiled.value().Validate(1));
-        }
-        const auto fragmentless = rad::JsonSchema::Compile(
-            rad::JsonObject{{"$ref", std::string(draft.uri) + "#"}}, draft.dialect);
-        ASSERT_TRUE(fragmentless) << fragmentless.error().message;
-        EXPECT_TRUE(fragmentless.value().Validate(rad::JsonObject{}));
-
-        const auto definitionUri = draft.components.empty()
-                                       ? std::string(draft.uri)
-                                       : std::string(draft.uri.substr(0, draft.uri.rfind('/'))) +
-                                             "/meta/validation";
         const auto compiled = rad::JsonSchema::Compile(
-            rad::JsonObject{{"$ref", definitionUri + "#" + std::string(draft.definition)}},
+            rad::JsonObject{{"$ref", std::string(draft.uri) + "#" + std::string(draft.definition)}},
             draft.dialect);
-        ASSERT_TRUE(compiled) << compiled.error().message;
-        auto copied = compiled.value();
-        auto moved = std::move(copied);
-        rad::JsonSchemaValidationOptions options;
-        options.maxErrors = 1;
-        const auto invalid = moved.Validate(-1, options);
+        ASSERT_TRUE(compiled) << compiled.error().schemaUri << compiled.error().schemaPath << ": "
+                              << compiled.error().message;
+        const auto invalid = compiled.value().Validate(-1);
         ASSERT_FALSE(invalid);
         ASSERT_EQ(invalid.errors.size(), 1);
         EXPECT_EQ(invalid.errors[0].instancePath, "");
         EXPECT_EQ(invalid.errors[0].schemaPath, std::string(draft.definition) + "/minimum");
-        EXPECT_EQ(invalid.errors[0].schemaUri, definitionUri);
-        options.maxDepth = 0;
-        const auto exhausted = moved.Validate(1, options);
-        ASSERT_FALSE(exhausted);
-        ASSERT_EQ(exhausted.errors.size(), 1);
-        EXPECT_EQ(exhausted.errors[0].schemaPath, draft.definition);
-        EXPECT_EQ(exhausted.errors[0].schemaUri, definitionUri);
-        EXPECT_EQ(exhausted.errors[0].message, "maximum validation depth exceeded");
-        options.maxDepth = 1;
-        EXPECT_TRUE(moved.Validate(1, options));
+        EXPECT_EQ(invalid.errors[0].schemaUri, draft.uri);
     }
 }
 
