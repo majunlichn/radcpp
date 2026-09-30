@@ -6,13 +6,16 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <limits>
 #include <iterator>
 #include <optional>
+#include <numeric>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
 namespace rad
@@ -143,6 +146,129 @@ using detail::ChildPath;
         return static_cast<std::uint64_t>(integer);
     }
     return static_cast<std::uint64_t>(-(integer + 1)) + 1;
+}
+
+struct DecimalNumber
+{
+    std::uint64_t coefficient;
+    int exponent;
+};
+
+[[nodiscard]] Result<DecimalNumber, std::string> AsDecimal(const JsonValue& value)
+{
+    if (!value.is_double())
+    {
+        auto coefficient = IntegerMagnitude(value);
+        int exponent = 0;
+        while (coefficient != 0 && coefficient % 10 == 0)
+        {
+            coefficient /= 10;
+            ++exponent;
+        }
+        return Success(DecimalNumber{coefficient, exponent});
+    }
+
+    std::array<char, 64> buffer;
+    const auto [end, error] =
+        std::to_chars(buffer.data(), buffer.data() + buffer.size(), std::fabs(value.as_double()),
+                      std::chars_format::general);
+    if (error != std::errc{})
+    {
+        return Failure(std::string("unable to convert number to a round-trip decimal"));
+    }
+    const std::string_view text(buffer.data(), static_cast<std::size_t>(end - buffer.data()));
+    const auto exponentStart = text.find_first_of("eE");
+    const auto mantissa = text.substr(0, exponentStart);
+    int exponent = 0;
+    if (exponentStart != std::string_view::npos)
+    {
+        auto exponentText = text.substr(exponentStart + 1);
+        if (exponentText.starts_with('+'))
+        {
+            exponentText.remove_prefix(1);
+        }
+        const auto [next, exponentError] = std::from_chars(
+            exponentText.data(), exponentText.data() + exponentText.size(), exponent);
+        if (exponentError != std::errc{} || next != exponentText.data() + exponentText.size())
+        {
+            return Failure(std::string("unable to decode round-trip decimal exponent"));
+        }
+    }
+    const auto point = mantissa.find('.');
+    if (point != std::string_view::npos)
+    {
+        exponent -= static_cast<int>(mantissa.size() - point - 1);
+    }
+    std::array<char, 64> digits;
+    std::size_t count = 0;
+    for (const char c : mantissa)
+    {
+        if (c != '.')
+        {
+            digits[count++] = c;
+        }
+    }
+    while (count != 0 && digits[count - 1] == '0')
+    {
+        --count;
+        ++exponent;
+    }
+    if (count == 0)
+    {
+        return Success(DecimalNumber{0, 0});
+    }
+    std::uint64_t coefficient = 0;
+    const auto [next, coefficientError] =
+        std::from_chars(digits.data(), digits.data() + count, coefficient);
+    if (coefficientError != std::errc{} || next != digits.data() + count)
+    {
+        return Failure(std::string("unable to decode round-trip decimal coefficient"));
+    }
+    return Success(DecimalNumber{coefficient, exponent});
+}
+
+[[nodiscard]] bool IsDecimalMultiple(DecimalNumber value, DecimalNumber divisor) noexcept
+{
+    if (value.coefficient == 0)
+    {
+        return true;
+    }
+    const auto common = std::gcd(value.coefficient, divisor.coefficient);
+    auto numerator = value.coefficient / common;
+    auto denominator = divisor.coefficient / common;
+    int power = value.exponent - divisor.exponent;
+    if (power < 0)
+    {
+        if (denominator != 1)
+        {
+            return false;
+        }
+        while (power < 0)
+        {
+            if (numerator % 10 != 0)
+            {
+                return false;
+            }
+            numerator /= 10;
+            ++power;
+        }
+        return true;
+    }
+
+    // The reduced denominator must divide 10^power, whose only prime factors are 2 and 5.
+    int twos = 0;
+    int fives = 0;
+    while (denominator % 2 == 0)
+    {
+        denominator /= 2;
+        ++twos;
+    }
+    while (denominator % 5 == 0)
+    {
+        denominator /= 5;
+        ++fives;
+    }
+    return denominator == 1 && twos <= power && fives <= power;
 }
 
 [[nodiscard]] std::size_t Utf8CodePointCount(std::string_view value) noexcept
@@ -653,12 +779,6 @@ private:
                 AsNumber(*value) <= 0)
             {
                 AddError({}, keywordPath, "multipleOf must be a positive finite number");
-            }
-            else if (value->is_double() && !IsInteger(*value))
-            {
-                AddUnsupportedError(
-                    {}, keywordPath,
-                    "fractional multipleOf is not supported by this validator");
             }
         }
 
@@ -1763,27 +1883,25 @@ private:
                 return;
             }
             bool isMultiple = false;
-            if (!instance.is_double())
+            if (!instance.is_double() && !multipleOf->is_double())
             {
-                const auto value = IntegerMagnitude(instance);
-                if (!multipleOf->is_double())
-                {
-                    isMultiple = value % IntegerMagnitude(*multipleOf) == 0;
-                }
-                else
-                {
-                    constexpr double uint64Limit = 18446744073709551616.0;
-                    const double divisor = multipleOf->as_double();
-                    isMultiple = divisor >= uint64Limit
-                                     ? value == 0
-                                     : value % static_cast<std::uint64_t>(divisor) == 0;
-                }
+                isMultiple = IntegerMagnitude(instance) % IntegerMagnitude(*multipleOf) == 0;
             }
             else
             {
-                const auto divisor = AsNumber(*multipleOf);
-                const auto remainder = std::fmod(std::fabs(AsNumber(instance)), divisor);
-                isMultiple = remainder == 0;
+                const auto value = AsDecimal(instance);
+                if (!value)
+                {
+                    AddError(instancePath, keywordPath, value.error());
+                    return;
+                }
+                const auto divisor = AsDecimal(*multipleOf);
+                if (!divisor)
+                {
+                    AddError(instancePath, keywordPath, divisor.error());
+                    return;
+                }
+                isMultiple = IsDecimalMultiple(value.value(), divisor.value());
             }
             if (!isMultiple)
             {

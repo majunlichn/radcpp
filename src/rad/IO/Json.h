@@ -117,7 +117,7 @@ struct JsonSchemaCompileOptions
 // - All dialects: boolean schemas; $ref across registered documents, $id resources,
 //   and JSON Pointers;
 //   type, enum, const;
-//   numeric bounds and integer multipleOf;
+//   numeric bounds and multipleOf;
 //   min/max string, array, and object sizes; pattern; required, properties,
 //   patternProperties, propertyNames,
 //   additionalProperties; single-schema items, uniqueItems, contains; allOf, anyOf, oneOf,
@@ -131,13 +131,16 @@ struct JsonSchemaCompileOptions
 //
 // Not supported:
 // - Automatic file/network loading, recursive/dynamic references, mixed-dialect resources,
-//   custom vocabularies, and fractional multipleOf.
+//   and custom vocabularies.
 //
 // definitions and $defs can be referenced by root-local JSON Pointers.
 // References resolve within the root schema and caller-provided document registry.
 // Registered documents without $schema use the selected dialect.
 // CompileFile does not load referenced files or use its path as a retrieval URI.
 // Other annotation keywords are ignored; format is not validated.
+// multipleOf uses exact integer arithmetic for integer values and shortest round-trip decimal
+// representations for doubles, without an epsilon. Original numeric text is not retained;
+// a computed value such as 0.1 + 0.2 need not be a multiple of 0.1.
 // pattern and patternProperties use PCRE2 with UTF-8 and Unicode category escape support.
 // Matching is unanchored unless the pattern supplies anchors; \d and \w are ASCII by default.
 // ECMAScript whitespace semantics are used for \s and \S, including inside character classes.

@@ -14,6 +14,8 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <cmath>
+#include <limits>
 
 namespace
 {
@@ -950,6 +952,114 @@ TEST(IO, JsonSchemaDocumentRegistryDiagnostics)
     EXPECT_EQ(malformedId.error().schemaUri, "https://example.com/child.json");
 }
 
+TEST(IO, JsonSchemaMultipleOfDecimalSemantics)
+{
+    struct Case
+    {
+        rad::JsonValue value;
+        rad::JsonValue divisor;
+        bool valid;
+    };
+    const Case cases[] = {
+        {0.3, 0.1, true},
+        {0.1 + 0.2, 0.1, false},
+        {std::nextafter(0.3, 0.0), 0.1, false},
+        {std::nextafter(0.3, 1.0), 0.1, false},
+        {0.3, std::nextafter(0.1, 0.0), false},
+        {0.3, std::nextafter(0.1, 1.0), false},
+        {-0.0, std::numeric_limits<double>::denorm_min(), true},
+        {std::numeric_limits<double>::denorm_min(), std::numeric_limits<double>::denorm_min(),
+         true},
+        {std::numeric_limits<double>::denorm_min(), 1e-323, false},
+        {1e-323, std::numeric_limits<double>::denorm_min(), true},
+        {std::numeric_limits<double>::max(), 0.5, true},
+        {std::numeric_limits<double>::max(), 3, false},
+        {std::numeric_limits<std::uint64_t>::max(), 0.5, true},
+        {std::numeric_limits<std::uint64_t>::max(), 10.0, false},
+        {std::numeric_limits<std::int64_t>::min(), 0.5, true},
+        {std::numeric_limits<std::int64_t>::min(), 3, false},
+        {0.125, 0.25, false},
+        {0.25, 0.125, true},
+        {1e-300, 1e300, false},
+        {1e300, 1e-300, true},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(rad::PrettyJson(testCase.value));
+            SCOPED_TRACE(rad::PrettyJson(testCase.divisor));
+            const auto compiled = rad::JsonSchema::Compile(
+                rad::JsonObject{{"multipleOf", testCase.divisor}}, dialect);
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            rad::JsonSchemaValidationOptions options;
+            options.maxErrors = 1;
+            const auto result = compiled.value().Validate(testCase.value, options);
+            EXPECT_EQ(static_cast<bool>(result), testCase.valid) << FormatValidationErrors(result);
+            if (!testCase.valid)
+            {
+                ASSERT_EQ(result.errors.size(), 1);
+                EXPECT_EQ(result.errors[0].schemaPath, "/multipleOf");
+            }
+        }
+        for (const double divisor : {0.0, -0.1, std::numeric_limits<double>::infinity(),
+                                     std::numeric_limits<double>::quiet_NaN()})
+        {
+            const auto compiled =
+                rad::JsonSchema::Compile(rad::JsonObject{{"multipleOf", divisor}}, dialect);
+            ASSERT_FALSE(compiled);
+            EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+            EXPECT_EQ(compiled.error().schemaPath, "/multipleOf");
+        }
+    }
+}
+
+TEST(IO, JsonSchemaMultipleOfDecimalGrid)
+{
+    const auto powerOfTen = [](int exponent)
+    {
+        std::int64_t power = 1;
+        for (int index = 0; index < exponent; ++index)
+        {
+            power *= 10;
+        }
+        return power;
+    };
+    for (int divisorCoefficient = 1; divisorCoefficient <= 25; ++divisorCoefficient)
+    {
+        for (int divisorExponent = -3; divisorExponent <= 3; ++divisorExponent)
+        {
+            const auto divisor =
+                rad::ParseJson(std::format("{}e{}", divisorCoefficient, divisorExponent));
+            ASSERT_TRUE(divisor);
+            const auto compiled =
+                rad::JsonSchema::Compile(rad::JsonObject{{"multipleOf", divisor.value()}},
+                                         rad::JsonSchemaDialect::Draft2020_12);
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            for (int coefficient = -50; coefficient <= 50; ++coefficient)
+            {
+                for (int exponent = -3; exponent <= 3; ++exponent)
+                {
+                    const auto text = std::format("{}e{}", coefficient, exponent);
+                    const auto instance = rad::ParseJson(text);
+                    ASSERT_TRUE(instance);
+                    const int difference = exponent - divisorExponent;
+                    const auto numerator = coefficient * powerOfTen(std::max(difference, 0));
+                    const auto denominator =
+                        divisorCoefficient * powerOfTen(std::max(-difference, 0));
+                    const bool expected = numerator % denominator == 0;
+                    const auto result = compiled.value().Validate(instance.value());
+                    EXPECT_EQ(static_cast<bool>(result), expected)
+                        << text << " / " << rad::PrettyJson(divisor.value()) << "\n"
+                        << FormatValidationErrors(result);
+                }
+            }
+        }
+    }
+}
+
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const char* suitePath = std::getenv("JSON_SCHEMA_TEST_SUITE");
@@ -1022,7 +1132,8 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                 files.push_back(entry.path());
             }
         }
-        for (const auto* name : {"ecmascript-regex.json", "non-bmp-regex.json"})
+        for (const auto* name : {"ecmascript-regex.json", "non-bmp-regex.json",
+                                 "float-overflow.json"})
         {
             const auto file = testsDirectory / "optional" / name;
             if (std::filesystem::is_regular_file(file))
