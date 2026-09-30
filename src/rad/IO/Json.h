@@ -111,58 +111,61 @@ struct JsonSchemaCompileOptions
     std::vector<JsonSchemaDocument> documents;
 };
 
-// Implements a practical subset of JSON Schema Draft 7, Draft 2019-09, and Draft 2020-12.
+// Compiles and validates a practical subset of JSON Schema Draft 7, 2019-09, and 2020-12.
+// Compiled schemas own their documents and expressions; copies share immutable state.
 //
-// Supported:
-// - All dialects: boolean schemas; $ref across registered documents, $id resources,
-//   and JSON Pointers;
-//   type, enum, const;
-//   numeric bounds and multipleOf;
-//   min/max string, array, and object sizes; pattern; required, properties,
-//   patternProperties, propertyNames,
-//   additionalProperties; single-schema items, uniqueItems, contains; allOf, anyOf, oneOf,
-//   not; and if/then/else.
-// - Draft 2019-09 and 2020-12: dependentRequired, dependentSchemas, minContains, maxContains,
-//   unevaluatedProperties, unevaluatedItems, $anchor, and $defs structure checking.
-// - Offline references to standard meta-schemas and their default vocabulary meta-schemas.
-// - Standard $vocabulary declarations; unsupported optional vocabularies are ignored.
-// - Draft 2019-09 and 2020-12: registered custom meta-schema vocabulary selection.
-// - Draft 2020-12: prefixItems, $dynamicRef, and $dynamicAnchor.
-// - Draft 2019-09: $recursiveRef (only "#") and boolean $recursiveAnchor.
-// - Draft 7: dependencies (property-name arrays and schemas).
+// Supported keywords:
+// - All drafts: boolean schemas; $ref, $id, and JSON Pointers; type, enum, const;
+//   numeric bounds and multipleOf; min/max string, array, and object sizes; pattern;
+//   required, properties, patternProperties, propertyNames, additionalProperties;
+//   single-schema items, uniqueItems, contains; allOf, anyOf, oneOf, not, and if/then/else.
+// - Draft 7: dependencies (property-name arrays and schemas), definitions structure checking,
+//   and plain-name fragments in $id.
 // - Draft 7 and 2019-09: tuple-form items and additionalItems.
-// - Draft 7: plain-name fragments in $id.
+// - Draft 2019-09 and 2020-12: dependentRequired, dependentSchemas, minContains, maxContains,
+//   unevaluatedProperties, unevaluatedItems, $anchor, $defs structure checking, and $vocabulary.
+// - Draft 2019-09: $recursiveRef (only "#") and boolean $recursiveAnchor.
+// - Draft 2020-12: prefixItems, $dynamicRef, and $dynamicAnchor.
 //
-// Not supported:
-// - Automatic file/network loading, mixed-base-draft resources, custom Draft 7 dialects,
-//   custom keyword implementations,
-//   and unsupported required vocabularies (including format assertion).
+// References:
+// - Resolution is offline, using the root schema, registered documents, and bundled standard
+//   meta-schemas and their default vocabulary meta-schemas. JSON Pointers can address definitions
+//   and $defs. Existing resources and registered documents take precedence over bundled ones;
+//   a missing fragment in a registered document is an error, not a built-in fallback.
+// - $ref targets are static. $dynamicRef can rebind named dynamic anchors through the active
+//   resource scope; JSON Pointer targets and ordinary anchors remain static.
+// - CompileFile reads only the supplied file and does not use its path as a retrieval URI.
 //
-// definitions and $defs can be referenced by root-local JSON Pointers.
-// References resolve within the root schema, caller-provided registry, and bundled meta-schemas.
-// Existing resources and caller-provided documents take precedence over bundled meta-schemas.
-// A missing fragment in a caller-provided document is an error, not a built-in fallback.
-// Registered documents without $schema use the selected dialect.
-// Custom $schema URIs resolve through registered resources and derive an underlying standard draft.
-// Vocabularies are selected per schema resource; an absent $vocabulary uses standard defaults.
-// A vocabulary-changing $schema in a subschema requires its own $id resource boundary.
-// Supported optional vocabularies remain enabled. Unknown optional vocabularies are ignored.
-// Draft 2020-12 $dynamicRef rebinds named dynamic anchors through the active resource scope.
-// JSON Pointer targets and ordinary anchors remain static, as do all $ref targets.
-// CompileFile does not load referenced files or use its path as a retrieval URI.
-// Compilation does not automatically validate schemas against their meta-schema.
-// A schema's own $vocabulary does not change its keyword enablement; its $schema selects that.
-// Other annotation keywords are ignored; format is not validated.
-// multipleOf uses exact integer arithmetic for integer values and shortest round-trip decimal
-// representations for doubles, without an epsilon. Original numeric text is not retained;
-// a computed value such as 0.1 + 0.2 need not be a multiple of 0.1.
-// pattern and patternProperties use PCRE2 with UTF-8 and Unicode category escape support.
-// Matching is unanchored unless the pattern supplies anchors; \d and \w are ASCII by default.
-// ECMAScript whitespace semantics are used for \s and \S, including inside character classes.
-// Other PCRE2 syntax and semantics are not fully ECMAScript-compatible.
-// PCRE2 matching limits: match limit 1,000,000, depth 1,000, and 8 MiB of matching heap.
-// For debugging, rebuild rad with RAD_JSON_SCHEMA_USE_STD_REGEX=1 to use std::regex
-// ECMAScript over UTF-8 bytes instead; that backend is not fully Unicode-aware.
+// Dialects and vocabularies:
+// - Draft 2019-09 and 2020-12 support registered custom meta-schemas. A resource's $schema
+//   selects its vocabulary profile and underlying standard draft, reported by Dialect().
+// - Registered documents without $schema inherit the root dialect and vocabulary profile.
+//   A vocabulary-changing $schema in a subschema requires its own $id resource boundary.
+// - The selected meta-schema's $vocabulary enables the listed supported vocabularies, even
+//   when optional (false); omitted vocabularies are disabled. An absent $vocabulary uses
+//   standard defaults. Unknown optional vocabularies are ignored; unsupported required ones fail.
+// - A schema's own $vocabulary does not change its keyword enablement. Compilation checks
+//   supported keyword definitions but does not automatically validate against the meta-schema.
+//
+// Numeric semantics:
+// - multipleOf uses exact arithmetic on integers and shortest round-trip decimal representations
+//   of doubles, without an epsilon. Original numeric text is not retained; a computed value
+//   such as 0.1 + 0.2 need not be a multiple of 0.1.
+//
+// Regular expressions:
+// - pattern and patternProperties use PCRE2 with UTF-8 and Unicode category escape support.
+//   Expressions compile once per schema location; matching scratch state is local to each call.
+// - Matching is unanchored unless the pattern supplies anchors. \d and \w are ASCII by default;
+//   \s and \S use ECMAScript whitespace semantics, including inside character classes.
+//   Other PCRE2 syntax and semantics are not fully ECMAScript-compatible.
+// - PCRE2 limits: match limit 1,000,000, depth 1,000, and 8 MiB of matching heap.
+// - For debugging, RAD_JSON_SCHEMA_USE_STD_REGEX=1 selects std::regex ECMAScript over UTF-8
+//   bytes instead; this backend is not fully Unicode-aware.
+//
+// Limitations:
+// - No automatic file/network loading, mixed-base-draft resources, custom Draft 7 dialects,
+//   custom keyword implementations, or unsupported required vocabularies (including format
+//   assertion). format and other annotation keywords do not assert instance validity.
 class JsonSchema
 {
 public:

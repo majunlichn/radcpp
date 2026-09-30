@@ -449,12 +449,16 @@ public:
     {
     }
 
-    [[nodiscard]] std::optional<JsonSchemaCompileError>
+    [[nodiscard]] Result<detail::JsonSchemaReferences::Patterns, JsonSchemaCompileError>
     CheckSchema(const JsonValue& schema)
     {
         m_checkingSchema = true;
         ValidateSchemaDefinition(schema, "/0", 0);
-        return std::move(m_compileError);
+        if (m_compileError)
+        {
+            return Failure(std::move(*m_compileError));
+        }
+        return Success(std::move(m_patterns));
     }
 
     [[nodiscard]] JsonSchemaValidationResult ValidateInstance(const JsonValue& schema,
@@ -667,17 +671,30 @@ private:
         }
     }
 
-    [[nodiscard]] std::optional<detail::JsonSchemaRegex>
-    CompilePattern(std::string_view pattern, std::string_view instancePath,
-                   std::string_view schemaPath)
+    void CheckPattern(std::string_view pattern, std::string_view schemaPath)
     {
+        if (m_patterns.contains(std::string(schemaPath)))
+        {
+            return;
+        }
         auto expression = detail::JsonSchemaRegex::Compile(pattern);
         if (!expression)
         {
-            AddRegexError(expression.error(), instancePath, schemaPath);
-            return std::nullopt;
+            AddRegexError(expression.error(), {}, schemaPath);
+            return;
         }
-        return std::move(expression.value());
+        m_patterns.emplace(std::string(schemaPath), std::move(expression.value()));
+    }
+
+    [[nodiscard]] const detail::JsonSchemaRegex*
+    FindPattern(std::string_view instancePath, std::string_view schemaPath)
+    {
+        const auto* expression = m_references.FindPattern(schemaPath);
+        if (expression == nullptr)
+        {
+            AddResourceError(instancePath, schemaPath, "compiled regular expression does not exist");
+        }
+        return expression;
     }
 
     [[nodiscard]] bool MatchesPattern(const detail::JsonSchemaRegex& expression,
@@ -902,8 +919,7 @@ private:
             }
             else
             {
-                static_cast<void>(CompilePattern(ToStringView(pattern->as_string()), {},
-                                                 patternPath));
+                CheckPattern(ToStringView(pattern->as_string()), patternPath);
             }
         }
 
@@ -969,7 +985,7 @@ private:
                 for (const auto& pattern : patterns->as_object())
                 {
                     const auto patternPath = ChildPath(keywordPath, pattern.key());
-                    static_cast<void>(CompilePattern(pattern.key(), {}, patternPath));
+                    CheckPattern(pattern.key(), patternPath);
                     ValidateSchemaDefinition(pattern.value(), patternPath, depth + 1);
                 }
             }
@@ -1684,8 +1700,7 @@ private:
                 for (const auto& pattern : patterns->as_object())
                 {
                     const auto patternPath = ChildPath(keywordPath, pattern.key());
-                    const auto expression = CompilePattern(pattern.key(), instancePath,
-                                                           patternPath);
+                    const auto* expression = FindPattern(instancePath, patternPath);
                     if (!expression)
                     {
                         continue;
@@ -2042,8 +2057,7 @@ private:
                 AddError(instancePath, keywordPath, "pattern must be a string");
                 return;
             }
-            const auto expression = CompilePattern(ToStringView(pattern->as_string()),
-                                                   instancePath, keywordPath);
+            const auto* expression = FindPattern(instancePath, keywordPath);
             if (expression)
             {
                 if (!MatchesPattern(*expression, value, instancePath, keywordPath))
@@ -2170,6 +2184,7 @@ private:
     std::optional<JsonSchemaCompileError> m_compileError;
     std::vector<const JsonValue*> m_checkedSchemas;
     std::vector<std::string> m_checkedResources;
+    detail::JsonSchemaReferences::Patterns m_patterns;
     std::vector<const std::string*> m_dynamicScope;
     bool m_checkingSchema = false;
     bool m_resourceError = false;
@@ -2189,11 +2204,12 @@ CompileReferences(const JsonValue& schema, std::optional<JsonSchemaDialect> dial
     const auto& documents = references.value().Documents();
     JsonSchemaValidator validator(references.value().Dialect(), options, documents,
                                   references.value());
-    auto error = validator.CheckSchema(documents.as_array()[0]);
-    if (error)
+    auto patterns = validator.CheckSchema(documents.as_array()[0]);
+    if (!patterns)
     {
-        return Failure(std::move(*error));
+        return Failure(std::move(patterns.error()));
     }
+    references.value().SetPatterns(std::move(patterns.value()));
     return references;
 }
 

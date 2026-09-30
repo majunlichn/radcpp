@@ -1050,6 +1050,17 @@ const JsonSchemaVocabularyProfile* JsonSchemaReferences::Profile(std::string_vie
     return found == m_profiles.end() ? nullptr : &found->second;
 }
 
+void JsonSchemaReferences::SetPatterns(Patterns patterns)
+{
+    m_patterns = std::move(patterns);
+}
+
+const JsonSchemaRegex* JsonSchemaReferences::FindPattern(std::string_view schemaPath) const
+{
+    const auto found = m_patterns.find(std::string(schemaPath));
+    return found == m_patterns.end() ? nullptr : &found->second;
+}
+
 const JsonSchemaCompileError* JsonSchemaReferences::ProfileError(std::string_view schemaPath) const
 {
     std::string path(schemaPath);

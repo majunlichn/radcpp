@@ -16,6 +16,7 @@
 #include <vector>
 #include <cmath>
 #include <limits>
+#include <future>
 
 namespace
 {
@@ -679,6 +680,63 @@ TEST(IO, JsonSchemaRegexWhitespaceCompatibility)
     }
 }
 #endif
+
+TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
+{
+    const auto makeSchema = []
+    {
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/root.json";
+        options.documents = {
+            {"https://example.com/remote.json", rad::JsonObject{{"pattern", "^remote$"}}},
+        };
+        return rad::JsonSchema::Compile(
+            rad::JsonObject{
+                {"properties", rad::JsonObject{
+                    {"local", rad::JsonObject{{"pattern", "^local$"}}},
+                    {"remote", rad::JsonObject{{"$ref", "remote.json"}}}}},
+                {"patternProperties", rad::JsonObject{
+                    {"^x/~", rad::JsonObject{{"pattern", "^extra$"}}}}},
+            },
+            rad::JsonSchemaDialect::Draft2020_12, options);
+    };
+    const auto compiled = makeSchema();
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    auto copied = compiled.value();
+    auto moved = std::move(copied);
+    const rad::JsonValue valid =
+        rad::JsonObject{{"local", "local"}, {"remote", "remote"}, {"x/~tag", "extra"}};
+    const rad::JsonValue invalid =
+        rad::JsonObject{{"local", "remote"}, {"remote", "local"}, {"x/~tag", "bad"}};
+    const auto result = moved.Validate(invalid);
+    ASSERT_EQ(result.errors.size(), 3);
+    EXPECT_EQ(result.errors[0].schemaPath, "/properties/local/pattern");
+    EXPECT_EQ(result.errors[0].schemaUri, "https://example.com/root.json");
+    EXPECT_EQ(result.errors[1].schemaPath, "/pattern");
+    EXPECT_EQ(result.errors[1].schemaUri, "https://example.com/remote.json");
+    EXPECT_EQ(result.errors[2].schemaPath, "/patternProperties/^x~1~0/pattern");
+    EXPECT_EQ(result.errors[2].instancePath, "/x~1~0tag");
+
+    std::vector<std::future<bool>> workers;
+    for (std::size_t worker = 0; worker < 4; ++worker)
+    {
+        workers.push_back(std::async(std::launch::async, [schema = moved, valid, invalid]
+        {
+            for (std::size_t iteration = 0; iteration < 16; ++iteration)
+            {
+                if (!schema.Validate(valid) || schema.Validate(invalid).errors.size() != 3)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }));
+    }
+    for (auto& worker : workers)
+    {
+        EXPECT_TRUE(worker.get());
+    }
+}
 
 TEST(IO, JsonSchemaResourceFailureWithErrorLimit)
 {

@@ -3,6 +3,7 @@
 #include <rad/IO/Json.h>
 
 #include "JsonSchemaDialects.h"
+#include "JsonSchemaRegex.h"
 
 #include <string>
 #include <string_view>
@@ -25,6 +26,7 @@ public:
 
     using Resolution = Result<Target, JsonSchemaCompileError>;
     using Anchors = std::unordered_map<std::string, std::string>;
+    using Patterns = std::unordered_map<std::string, JsonSchemaRegex>;
 
     [[nodiscard]] static Result<JsonSchemaReferences, JsonSchemaCompileError> Compile(
         const JsonValue& schema, std::optional<JsonSchemaDialect> dialect, std::size_t maxDepth,
@@ -40,6 +42,8 @@ public:
     [[nodiscard]] JsonSchemaDialect Dialect() const;
     [[nodiscard]] const JsonSchemaVocabularyProfile* Profile(std::string_view schemaPath) const;
     [[nodiscard]] const JsonSchemaCompileError* ProfileError(std::string_view schemaPath) const;
+    void SetPatterns(Patterns patterns);
+    [[nodiscard]] const JsonSchemaRegex* FindPattern(std::string_view schemaPath) const;
 
 private:
     std::unordered_map<std::string, Resolution> m_targets;
@@ -51,6 +55,7 @@ private:
     JsonSchemaDialect m_dialect = JsonSchemaDialect::Draft2020_12;
     std::unordered_map<std::string, JsonSchemaVocabularyProfile> m_profiles;
     std::unordered_map<std::string, JsonSchemaCompileError> m_profileErrors;
+    Patterns m_patterns;
 }; // class JsonSchemaReferences
 
 } // namespace rad::detail
