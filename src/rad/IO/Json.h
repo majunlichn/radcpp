@@ -109,8 +109,13 @@ struct JsonSchemaValidationOptions
 // definitions and $defs can be referenced by root-local JSON Pointers.
 // Embedded $id resources cannot be used as reference sources or targets.
 // Identification and annotation keywords are otherwise ignored; format is not validated.
-// pattern and patternProperties use std::regex ECMAScript syntax over UTF-8 bytes and
-// are not fully Unicode-aware; Unicode property escapes are unsupported.
+// pattern and patternProperties use PCRE2 with UTF-8 and Unicode category escape support.
+// Matching is unanchored unless the pattern supplies anchors; \d and \w are ASCII by default.
+// ECMAScript whitespace semantics are used for \s and \S, including inside character classes.
+// Other PCRE2 syntax and semantics are not fully ECMAScript-compatible.
+// PCRE2 matching limits: match limit 1,000,000, depth 1,000, and 8 MiB of matching heap.
+// For debugging, rebuild rad with RAD_JSON_SCHEMA_USE_STD_REGEX=1 to use std::regex
+// ECMAScript over UTF-8 bytes instead; that backend is not fully Unicode-aware.
 class JsonSchema
 {
 public:

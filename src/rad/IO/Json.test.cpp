@@ -1,5 +1,6 @@
 #include <rad/IO/File.h>
 #include <rad/IO/Json.h>
+#include <rad/Core/Unicode.h>
 
 #include <boost/json.hpp>
 
@@ -457,6 +458,101 @@ TEST(IO, JsonSchemaInvalidReferences)
               rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
 }
 
+#if !defined(RAD_JSON_SCHEMA_USE_STD_REGEX) || !RAD_JSON_SCHEMA_USE_STD_REGEX
+TEST(IO, JsonSchemaRegexWhitespaceCompatibility)
+{
+    struct Pattern
+    {
+        std::string_view text;
+        bool complement;
+        bool includeUnderscore;
+    };
+    constexpr Pattern patterns[] = {
+        {R"(^\s$)", false, false},
+        {R"(^\S$)", true, false},
+        {R"(^[\s]$)", false, false},
+        {R"(^[^\S]$)", false, false},
+        {R"(^[\S]$)", true, false},
+        {R"(^[^\s]$)", true, false},
+        {R"(^[\s_]$)", false, true},
+        {R"(^[_\S]$)", true, true},
+        {R"(^[\s\S]$)", true, true},
+    };
+    constexpr char32_t boundaries[] = {
+        0x0009, 0x000d, 0x0020, 0x00a0, 0x1680, 0x2000, 0x200a,
+        0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff,
+    };
+    std::vector<char32_t> points = {0, 0x0085, 0x180e, U'_', U'a',
+                                   0xd7ff, 0xe000, 0x10000, 0x10ffff};
+    for (const char32_t boundary : boundaries)
+    {
+        points.push_back(boundary - 1);
+        points.push_back(boundary);
+        points.push_back(boundary + 1);
+    }
+    const auto isWhitespace = [](char32_t point) {
+        return (point >= 0x0009 && point <= 0x000d) || point == 0x0020 ||
+               point == 0x00a0 || point == 0x1680 ||
+               (point >= 0x2000 && point <= 0x200a) ||
+               point == 0x2028 || point == 0x2029 || point == 0x202f ||
+               point == 0x205f || point == 0x3000 || point == 0xfeff;
+    };
+    for (const auto& pattern : patterns)
+    {
+        SCOPED_TRACE(pattern.text);
+        const auto compiled = rad::JsonSchema::Compile(
+            rad::JsonObject{{"pattern", pattern.text}},
+            rad::JsonSchemaDialect::Draft2020_12);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        for (const char32_t point : points)
+        {
+            SCOPED_TRACE(static_cast<std::uint32_t>(point));
+            const bool expected = pattern.text == R"(^[\s\S]$)" ||
+                                  (isWhitespace(point) != pattern.complement) ||
+                                  (pattern.includeUnderscore && point == U'_');
+            const auto result = compiled.value().Validate(
+                rad::JsonValue(rad::Utf32ToUtf8(std::u32string_view(&point, 1))));
+            EXPECT_EQ(static_cast<bool>(result), expected) << FormatValidationErrors(result);
+        }
+    }
+
+    struct Literal
+    {
+        std::string_view pattern;
+        std::string_view value;
+    };
+    constexpr Literal literals[] = {
+        {R"(^\\s$)", R"(\s)"},
+        {R"(^\Q\s\S\E$)", R"(\s\S)"},
+        {R"(^[\s\-]$)", "-"},
+        {R"(^[-\s]$)", "-"},
+        {R"(^[^\-\S]$)", " "},
+        {R"(^\[\s\]$)", "[ ]"},
+        {R"(^[[:digit:]\s]$)", " "},
+        {R"(^(?# [\s)\s$)", " "},
+        {R"(^\c[\s$)", "\x1b "},
+    };
+    for (const auto& literal : literals)
+    {
+        SCOPED_TRACE(literal.pattern);
+        const auto compiled = rad::JsonSchema::Compile(
+            rad::JsonObject{{"pattern", literal.pattern}},
+            rad::JsonSchemaDialect::Draft2020_12);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(rad::JsonValue(literal.value)));
+    }
+    for (const auto* pattern : {R"([a-\s])", R"([\S-a])", R"([\s-\S])"})
+    {
+        SCOPED_TRACE(pattern);
+        const auto compiled = rad::JsonSchema::Compile(
+            rad::JsonObject{{"pattern", pattern}},
+            rad::JsonSchemaDialect::Draft2020_12);
+        ASSERT_FALSE(compiled);
+        EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+    }
+}
+#endif
+
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const char* suitePath = std::getenv("JSON_SCHEMA_TEST_SUITE");
@@ -507,6 +603,14 @@ TEST(IO, JsonSchemaOfficialTestSuite)
             if (entry.is_regular_file() && entry.path().extension() == ".json")
             {
                 files.push_back(entry.path());
+            }
+        }
+        for (const auto* name : {"ecmascript-regex.json", "non-bmp-regex.json"})
+        {
+            const auto file = testsDirectory / "optional" / name;
+            if (std::filesystem::is_regular_file(file))
+            {
+                files.push_back(file);
             }
         }
         std::sort(files.begin(), files.end());

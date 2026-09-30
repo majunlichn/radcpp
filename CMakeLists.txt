@@ -184,6 +184,7 @@ else()
     set(RAD_STACKTRACE_BACKEND Boost::stacktrace_basic)
 endif()
 find_package(pystring CONFIG REQUIRED)
+find_package(pcre2 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(Threads REQUIRED)
@@ -215,6 +216,7 @@ target_link_libraries(rad
     PRIVATE "$<BUILD_INTERFACE:pcg_cpp>"
     PUBLIC Boost::smart_ptr
     PRIVATE pystring::pystring
+    PRIVATE PCRE2::8BIT
     PUBLIC spdlog::spdlog
     PRIVATE Threads::Threads
     PUBLIC Imath::Imath

@@ -18,6 +18,7 @@
     "eigen3",
     "gtest",
     "imath",
+    "pcre2",
     "pystring",
     "spdlog",
     "stb",
