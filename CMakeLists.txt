@@ -97,6 +97,9 @@ set(RAD_SOURCES
     src/rad/IO/Image.cpp
     src/rad/IO/Json.h
     src/rad/IO/Json.cpp
+    src/rad/IO/JsonSchema.cpp
+    src/rad/IO/JsonSchemaRegex.h
+    src/rad/IO/JsonSchemaRegex.cpp
     src/rad/IO/Logging.h
     src/rad/IO/Logging.cpp
     src/rad/System/Application.h
@@ -275,6 +278,7 @@ if(RAD_ENABLE_INSTALL)
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/rad"
         FILES_MATCHING
             PATTERN "*.h"
+            PATTERN "JsonSchemaRegex.h" EXCLUDE
     )
 
     set(RAD_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/rad")
