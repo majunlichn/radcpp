@@ -952,6 +952,133 @@ TEST(IO, JsonSchemaDocumentRegistryDiagnostics)
     EXPECT_EQ(malformedId.error().schemaUri, "https://example.com/child.json");
 }
 
+TEST(IO, JsonSchemaRecursiveReferenceDiagnostics)
+{
+    constexpr auto dialect = rad::JsonSchemaDialect::Draft2019_09;
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view path;
+        rad::JsonSchemaCompileErrorCode code;
+    };
+    constexpr Case cases[] = {
+        {R"json({"$recursiveAnchor": 1})json", "/$recursiveAnchor",
+         rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json({"$recursiveRef": false})json", "/$recursiveRef",
+         rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json({"$recursiveRef": "#/%ZZ"})json", "/$recursiveRef",
+         rad::JsonSchemaCompileErrorCode::InvalidSchema},
+        {R"json({"$recursiveRef": "#/$defs/value", "$defs": {"value": true}})json",
+         "/$recursiveRef", rad::JsonSchemaCompileErrorCode::UnsupportedFeature},
+        {R"json({"$recursiveRef": "other.json#"})json", "/$recursiveRef",
+         rad::JsonSchemaCompileErrorCode::UnsupportedFeature},
+        {R"json({"properties": {"child": {"$recursiveAnchor": "true"}}})json",
+         "/properties/child/$recursiveAnchor", rad::JsonSchemaCompileErrorCode::InvalidSchema},
+    };
+    rad::JsonSchemaCompileOptions options;
+    options.retrievalUri = "https://example.com/root.json";
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.schema);
+        const auto parsed = rad::ParseJson(testCase.schema);
+        ASSERT_TRUE(parsed);
+        const auto compiled = rad::JsonSchema::Compile(parsed.value(), dialect, options);
+        ASSERT_FALSE(compiled);
+        EXPECT_EQ(compiled.error().code, testCase.code);
+        EXPECT_EQ(compiled.error().schemaPath, testCase.path);
+        EXPECT_EQ(compiled.error().schemaUri, options.retrievalUri);
+    }
+    for (const auto otherDraft :
+         {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        const auto ignored = rad::JsonSchema::Compile(
+            rad::JsonObject{{"$recursiveRef", false}, {"$recursiveAnchor", 1}}, otherDraft);
+        ASSERT_TRUE(ignored) << ignored.error().message;
+        EXPECT_TRUE(ignored.value().Validate(1));
+    }
+}
+
+TEST(IO, JsonSchemaRecursiveReferenceRegistryAndCopies)
+{
+    const auto makeSchema = []
+    {
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/strict.json";
+        options.documents = {
+            {"https://example.com/tree.json",
+             rad::ParseJson(R"json({"$id": "trees/base.json", "$recursiveAnchor": true,
+                 "type": ["object", "integer"],
+                 "properties": {"child": {"$recursiveRef": "#"},
+                                "static": {"$ref": "#"}}})json").value()},
+        };
+        return rad::JsonSchema::Compile(
+            rad::JsonObject{{"$recursiveAnchor", true}, {"$ref", "tree.json"}, {"minimum", 2}},
+            rad::JsonSchemaDialect::Draft2019_09, options);
+    };
+    const auto compiled = makeSchema();
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    auto copied = compiled.value();
+    auto moved = std::move(copied);
+    for (const std::size_t maxErrors : {0U, 1U, 2U})
+    {
+        rad::JsonSchemaValidationOptions options;
+        options.maxErrors = maxErrors;
+        EXPECT_TRUE(moved.Validate(rad::JsonObject{{"child", 2}, {"static", 1}}, options));
+        const auto invalid = moved.Validate(rad::JsonObject{{"child", 1}}, options);
+        ASSERT_FALSE(invalid);
+        ASSERT_EQ(invalid.errors.size(), 1);
+        EXPECT_EQ(invalid.errors[0].instancePath, "/child");
+        EXPECT_EQ(invalid.errors[0].schemaPath, "/minimum");
+        EXPECT_EQ(invalid.errors[0].schemaUri, "https://example.com/strict.json");
+        EXPECT_TRUE(moved.Validate(rad::JsonObject{{"child", 2}}, options));
+    }
+}
+
+TEST(IO, JsonSchemaRecursiveReferenceResourceLimits)
+{
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view data;
+        std::size_t maxDepth;
+    };
+    constexpr Case cases[] = {
+        {R"json({"$recursiveAnchor": true, "$recursiveRef": "#"})json", "1", 4},
+        {R"json({"$recursiveAnchor": true, "type": "integer",
+                 "properties": {"child": {"$recursiveRef": "#"}}})json",
+         R"json({"child": {}})json", 3},
+    };
+    rad::JsonSchemaCompileOptions compileOptions;
+    compileOptions.retrievalUri = "https://example.com/root.json";
+    const auto schema = rad::ParseJson(R"json({"anyOf": [{"$ref": "cycle.json"}, true]})json");
+    ASSERT_TRUE(schema);
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.schema);
+        const auto document = rad::ParseJson(testCase.schema);
+        const auto data = rad::ParseJson(testCase.data);
+        ASSERT_TRUE(document);
+        ASSERT_TRUE(data);
+        compileOptions.documents = {{"https://example.com/cycle.json", document.value()}};
+        const auto compiled = rad::JsonSchema::Compile(
+            schema.value(), rad::JsonSchemaDialect::Draft2019_09, compileOptions);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        for (const std::size_t maxErrors : {0U, 1U, 2U})
+        {
+            rad::JsonSchemaValidationOptions options;
+            options.maxErrors = maxErrors;
+            options.maxDepth = testCase.maxDepth;
+            const auto result = compiled.value().Validate(data.value(), options);
+            ASSERT_FALSE(result);
+            ASSERT_EQ(result.errors.size(), 1);
+            EXPECT_EQ(result.errors[0].instancePath, testCase.maxDepth == 3 ? "/child" : "");
+            EXPECT_EQ(result.errors[0].schemaPath, "");
+            EXPECT_EQ(result.errors[0].schemaUri, "https://example.com/cycle.json");
+            EXPECT_EQ(result.errors[0].message, "maximum validation depth exceeded");
+        }
+    }
+}
+
 TEST(IO, JsonSchemaMultipleOfDecimalSemantics)
 {
     struct Case

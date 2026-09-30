@@ -481,12 +481,37 @@ private:
         std::string path;
     };
 
+    struct ResourceScope
+    {
+        std::vector<const std::string*>& scope;
+        bool pushed;
+
+        ResourceScope(std::vector<const std::string*>& scope, const std::string* resource) :
+            scope(scope),
+            pushed(resource != nullptr && (scope.empty() || *scope.back() != *resource))
+        {
+            if (pushed)
+            {
+                scope.push_back(resource);
+            }
+        }
+
+        ~ResourceScope()
+        {
+            if (pushed)
+            {
+                scope.pop_back();
+            }
+        }
+    };
+
     [[nodiscard]] std::optional<ReferenceTarget>
-    ResolveReference(const JsonValue& reference, std::string_view schemaPath)
+    ResolveReference(const JsonValue& reference, std::string_view schemaPath,
+                     std::string_view keyword = "$ref")
     {
         if (!reference.is_string())
         {
-            AddError({}, schemaPath, "$ref must be a string");
+            AddError({}, schemaPath, std::string(keyword) + " must be a string");
             return std::nullopt;
         }
         const auto* resolution = m_references.Find(schemaPath);
@@ -508,7 +533,7 @@ private:
             targetPath ? detail::FindJsonSchemaValue(m_rootSchema, *targetPath) : nullptr;
         if (target == nullptr)
         {
-            AddError({}, schemaPath, "compiled $ref target does not exist");
+            AddError({}, schemaPath, "compiled " + std::string(keyword) + " target does not exist");
             return std::nullopt;
         }
         return ReferenceTarget{target, *targetPath};
@@ -657,6 +682,25 @@ private:
             if (m_dialect == JsonSchemaDialect::Draft7)
             {
                 return;
+            }
+        }
+        if (m_dialect == JsonSchemaDialect::Draft2019_09)
+        {
+            if (const auto* anchor = object.if_contains("$recursiveAnchor");
+                anchor != nullptr && !anchor->is_bool())
+            {
+                AddError({}, ChildPath(schemaPath, "$recursiveAnchor"),
+                         "$recursiveAnchor must be a boolean");
+            }
+            if (const auto* reference = object.if_contains("$recursiveRef"))
+            {
+                const auto target = ResolveReference(
+                    *reference, ChildPath(schemaPath, "$recursiveRef"), "$recursiveRef");
+                if (!target)
+                {
+                    return;
+                }
+                ValidateSchemaDefinition(*target->schema, target->path, depth + 1);
             }
         }
         ValidateUnsupportedKeywords(object, {}, schemaPath);
@@ -1083,6 +1127,7 @@ private:
         JsonSchemaValidationOptions options = m_options;
         options.maxErrors = 1;
         JsonSchemaValidator validator(m_dialect, options, m_rootSchema, m_references);
+        validator.m_dynamicScope = m_dynamicScope;
         auto evaluation = validator.Validate(schema, instance, instancePath, schemaPath, depth);
         if (validator.m_resourceError)
         {
@@ -1136,6 +1181,16 @@ private:
             return evaluation;
         }
 
+        const auto* resource = m_dialect == JsonSchemaDialect::Draft2019_09
+                                   ? m_references.Resource(schemaPath)
+                                   : nullptr;
+        if (m_dialect == JsonSchemaDialect::Draft2019_09 && resource == nullptr)
+        {
+            AddResourceError(instancePath, schemaPath, "compiled schema resource does not exist");
+            evaluation.valid = false;
+            return evaluation;
+        }
+        ResourceScope resourceScope(m_dynamicScope, resource);
         const auto& object = schema.as_object();
         if (const auto* reference = object.if_contains("$ref"))
         {
@@ -1151,6 +1206,42 @@ private:
             if (m_dialect == JsonSchemaDialect::Draft7)
             {
                 return referenced;
+            }
+        }
+        if (m_dialect == JsonSchemaDialect::Draft2019_09)
+        {
+            if (const auto* reference = object.if_contains("$recursiveRef"))
+            {
+                auto target = ResolveReference(
+                    *reference, ChildPath(schemaPath, "$recursiveRef"), "$recursiveRef");
+                if (!target)
+                {
+                    evaluation.valid = false;
+                    return evaluation;
+                }
+                if (m_references.HasRecursiveAnchor(target->path))
+                {
+                    // An unanchored resource ends the chain of recursive extensions.
+                    for (auto scope = m_dynamicScope.rbegin(); scope != m_dynamicScope.rend();
+                         ++scope)
+                    {
+                        if (!m_references.HasRecursiveAnchor(**scope))
+                        {
+                            break;
+                        }
+                        target->path = **scope;
+                    }
+                    target->schema = detail::FindJsonSchemaValue(m_rootSchema, target->path);
+                    if (target->schema == nullptr)
+                    {
+                        AddResourceError(instancePath, ChildPath(schemaPath, "$recursiveRef"),
+                                         "compiled recursive resource does not exist");
+                        evaluation.valid = false;
+                        return evaluation;
+                    }
+                }
+                evaluation.Merge(Validate(*target->schema, instance, instancePath,
+                                          target->path, depth + 1));
             }
         }
         ValidateUnsupportedKeywords(object, instancePath, schemaPath);
@@ -1187,19 +1278,7 @@ private:
                                 "custom vocabularies are not supported by this validator");
         }
 
-        if (m_dialect == JsonSchemaDialect::Draft2019_09)
-        {
-            constexpr std::array recursiveReferences = {"$recursiveRef", "$recursiveAnchor"};
-            for (const std::string_view keyword : recursiveReferences)
-            {
-                if (schema.contains(keyword))
-                {
-                    AddUnsupportedError(instancePath, ChildPath(schemaPath, keyword),
-                                        "keyword is not supported by this validator");
-                }
-            }
-        }
-        else if (m_dialect == JsonSchemaDialect::Draft2020_12)
+        if (m_dialect == JsonSchemaDialect::Draft2020_12)
         {
             constexpr std::array dynamicReferences = {"$dynamicRef", "$dynamicAnchor"};
             for (const std::string_view keyword : dynamicReferences)
@@ -1970,6 +2049,7 @@ private:
     std::optional<JsonSchemaValidationError> m_resourceDiagnostic;
     std::optional<JsonSchemaCompileError> m_compileError;
     std::vector<const JsonValue*> m_checkedSchemas;
+    std::vector<const std::string*> m_dynamicScope;
     bool m_checkingSchema = false;
     bool m_resourceError = false;
 };

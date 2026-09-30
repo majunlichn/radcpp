@@ -61,10 +61,12 @@ public:
     using Targets = std::unordered_map<std::string, JsonSchemaReferences::Resolution>;
 
     ReferenceIndexBuilder(JsonValue& root, std::vector<std::string>& uris,
+                          std::unordered_map<std::string, std::string>& schemaResources,
                           const JsonSchemaCompileOptions& options, JsonSchemaDialect dialect,
                           std::size_t maxDepth) :
         m_root(root),
         m_uris(uris),
+        m_schemaResources(schemaResources),
         m_options(options),
         m_dialect(dialect),
         m_maxDepth(maxDepth)
@@ -140,16 +142,29 @@ public:
             const auto target = Resolve(source);
             if (target)
             {
-                targets.emplace(ChildPath(source, "$ref"), Success(*target));
+                targets.emplace(ChildPath(source.path, source.keyword), Success(*target));
             }
             else if (!m_error)
             {
-                targets.emplace(ChildPath(source, "$ref"), Failure(*m_resolutionError));
+                targets.emplace(ChildPath(source.path, source.keyword), Failure(*m_resolutionError));
             }
         }
         if (m_error)
         {
             return Failure(std::move(*m_error));
+        }
+        if (m_dialect == JsonSchemaDialect::Draft2019_09)
+        {
+            for (const auto& [path, base] : m_scopes)
+            {
+                auto uri = boost::urls::url(base);
+                uri.remove_fragment();
+                if (const auto resource = m_resources.find(std::string(uri.buffer()));
+                    resource != m_resources.end())
+                {
+                    m_schemaResources.emplace(path, resource->second);
+                }
+            }
         }
         return Success(std::move(targets));
     }
@@ -174,6 +189,12 @@ private:
     {
         const JsonSchemaDocument* document;
         std::string retrievalUri;
+    };
+
+    struct PendingReference
+    {
+        std::string path;
+        std::string_view keyword;
     };
 
     [[nodiscard]] std::optional<std::string> DocumentUri(std::string_view text)
@@ -424,7 +445,11 @@ private:
         m_scopes.emplace(path, base);
         if (object.contains("$ref"))
         {
-            m_references.push_back(path);
+            m_references.push_back({path, "$ref"});
+        }
+        if (m_dialect == JsonSchemaDialect::Draft2019_09 && object.contains("$recursiveRef"))
+        {
+            m_references.push_back({path, "$recursiveRef"});
         }
 
         const auto indexMap = [&](std::string_view keyword, bool dependencies = false)
@@ -535,29 +560,37 @@ private:
         }
     }
 
-    [[nodiscard]] std::optional<std::string> Resolve(const std::string& source)
+    [[nodiscard]] std::optional<std::string> Resolve(const PendingReference& source)
     {
         m_resolutionError.reset();
-        if (const auto failed = m_documentErrors.find(DocumentPath(source));
+        if (const auto failed = m_documentErrors.find(DocumentPath(source.path));
             failed != m_documentErrors.end())
         {
             m_resolutionError = failed->second;
             return std::nullopt;
         }
-        const auto keywordPath = ChildPath(source, "$ref");
-        const auto* schema = FindJsonSchemaValue(m_root, source);
-        const auto& reference = schema->as_object().at("$ref");
+        const auto keywordPath = ChildPath(source.path, source.keyword);
+        const auto* schema = FindJsonSchemaValue(m_root, source.path);
+        const auto& reference = schema->as_object().at(source.keyword);
         if (!reference.is_string())
         {
             m_resolutionError =
                 JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, m_dialect,
-                                       keywordPath, "$ref must be a string"};
+                                       keywordPath, std::string(source.keyword) + " must be a string"};
             return std::nullopt;
         }
         auto uri =
-            ResolveUri(StringView(reference.as_string()), m_scopes.at(source), keywordPath, true);
+            ResolveUri(StringView(reference.as_string()), m_scopes.at(source.path),
+                       keywordPath, true);
         if (!uri)
         {
+            return std::nullopt;
+        }
+        if (source.keyword == "$recursiveRef" && StringView(reference.as_string()) != "#")
+        {
+            m_resolutionError = JsonSchemaCompileError{
+                JsonSchemaCompileErrorCode::UnsupportedFeature, m_dialect, keywordPath,
+                "$recursiveRef supports only the value \"#\""};
             return std::nullopt;
         }
         const auto fragment = uri->fragment();
@@ -626,6 +659,7 @@ private:
 
     JsonValue& m_root;
     std::vector<std::string>& m_uris;
+    std::unordered_map<std::string, std::string>& m_schemaResources;
     const JsonSchemaCompileOptions& m_options;
     std::unordered_map<std::string, RegistryEntry> m_registry;
     std::unordered_map<std::string, JsonSchemaCompileError> m_documentErrors;
@@ -634,7 +668,7 @@ private:
     std::unordered_map<std::string, std::string> m_resources;
     std::unordered_map<std::string, std::string> m_anchors;
     std::unordered_map<std::string, std::string> m_scopes;
-    std::vector<std::string> m_references;
+    std::vector<PendingReference> m_references;
     std::optional<JsonSchemaCompileError> m_error;
     std::optional<JsonSchemaCompileError> m_resolutionError;
     bool m_cataloging = false;
@@ -719,8 +753,8 @@ Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compi
     JsonSchemaReferences references;
     references.m_documents = JsonArray{schema};
     references.m_uris.emplace_back();
-    ReferenceIndexBuilder builder(references.m_documents, references.m_uris, options, dialect,
-                                  maxDepth);
+    ReferenceIndexBuilder builder(references.m_documents, references.m_uris,
+                                  references.m_schemaResources, options, dialect, maxDepth);
     auto targets = builder.Build();
     if (!targets)
     {
@@ -760,6 +794,23 @@ const JsonSchemaReferences::Resolution* JsonSchemaReferences::Find(
 {
     const auto found = m_targets.find(std::string(referencePath));
     return found == m_targets.end() ? nullptr : &found->second;
+}
+
+const std::string* JsonSchemaReferences::Resource(std::string_view schemaPath) const
+{
+    const auto found = m_schemaResources.find(std::string(schemaPath));
+    return found == m_schemaResources.end() ? nullptr : &found->second;
+}
+
+bool JsonSchemaReferences::HasRecursiveAnchor(std::string_view resourcePath) const
+{
+    const auto* schema = FindJsonSchemaValue(m_documents, resourcePath);
+    if (schema == nullptr || !schema->is_object())
+    {
+        return false;
+    }
+    const auto* anchor = schema->as_object().if_contains("$recursiveAnchor");
+    return anchor != nullptr && anchor->is_bool() && anchor->as_bool();
 }
 
 } // namespace rad::detail

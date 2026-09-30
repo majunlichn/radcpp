@@ -25,12 +25,15 @@ public:
     [[nodiscard]] const JsonValue& Documents() const;
     [[nodiscard]] std::string SchemaPath(std::string_view path) const;
     [[nodiscard]] std::string SchemaUri(std::string_view path) const;
+    [[nodiscard]] const std::string* Resource(std::string_view schemaPath) const;
+    [[nodiscard]] bool HasRecursiveAnchor(std::string_view resourcePath) const;
 
 private:
     std::unordered_map<std::string, Resolution> m_targets;
     // Internal paths begin with a document index; public diagnostics omit that prefix.
     JsonValue m_documents;
     std::vector<std::string> m_uris;
+    std::unordered_map<std::string, std::string> m_schemaResources;
 }; // class JsonSchemaReferences
 
 } // namespace rad::detail

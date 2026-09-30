@@ -125,12 +125,13 @@ struct JsonSchemaCompileOptions
 // - Draft 2019-09 and 2020-12: dependentRequired, dependentSchemas, minContains, maxContains,
 //   unevaluatedProperties, unevaluatedItems, $anchor, and $defs structure checking.
 // - Draft 2020-12: prefixItems.
+// - Draft 2019-09: $recursiveRef (only "#") and boolean $recursiveAnchor.
 // - Draft 7: dependencies (property-name arrays and schemas).
 // - Draft 7 and 2019-09: tuple-form items and additionalItems.
 // - Draft 7: plain-name fragments in $id.
 //
 // Not supported:
-// - Automatic file/network loading, recursive/dynamic references, mixed-dialect resources,
+// - Automatic file/network loading, dynamic references, mixed-dialect resources,
 //   and custom vocabularies.
 //
 // definitions and $defs can be referenced by root-local JSON Pointers.
