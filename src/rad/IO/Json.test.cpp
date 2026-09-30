@@ -18,6 +18,7 @@
 #include <cmath>
 #include <limits>
 #include <future>
+#include <iostream>
 
 namespace
 {
@@ -2269,7 +2270,8 @@ TEST(IO, JsonSchemaOfficialTestSuite)
         ++availableSuites;
         std::size_t suiteExecutedCases = 0;
         std::size_t suiteReferenceCases = 0;
-        std::size_t failedReferenceGroups = 0;
+        std::size_t suiteSchemaRejectionChecks = 0;
+        std::size_t failedCompileGroups = 0;
 
         std::vector<std::filesystem::path> files;
         for (const auto& entry : std::filesystem::directory_iterator(testsDirectory))
@@ -2318,6 +2320,7 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                     rad::JsonSchema::Compile(group.at("schema"), suite.dialect, compileOptions);
                 if (IsKnownInvalidOfficialSchema(group.at("schema")))
                 {
+                    ++suiteSchemaRejectionChecks;
                     if (compiled)
                     {
                         ADD_FAILURE() << "empty enum schema must be rejected";
@@ -2332,10 +2335,7 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                 }
                 if (!compiled)
                 {
-                    if (referenceFile)
-                    {
-                        ++failedReferenceGroups;
-                    }
+                    ++failedCompileGroups;
                     ADD_FAILURE() << compiled.error().schemaUri
                                   << compiled.error().schemaPath << ": "
                                   << compiled.error().message;
@@ -2372,9 +2372,11 @@ TEST(IO, JsonSchemaOfficialTestSuite)
         }
         EXPECT_GT(suiteExecutedCases, 0) << testsDirectory.string();
         EXPECT_GT(suiteReferenceCases, 0) << testsDirectory.string() << "\\ref.json";
-        GTEST_LOG_(INFO) << suite.directory << ": " << suiteReferenceCases
-                         << " reference cases executed, " << failedReferenceGroups
-                         << " reference groups failed to compile";
+        std::cout << std::format(
+            "[ SCHEMA   ] {:<12} {:>4} cases, {:>2} reference, {:>2} rejection checks, "
+            "{} unexpected compile failures\n",
+            suite.directory, suiteExecutedCases, suiteReferenceCases,
+            suiteSchemaRejectionChecks, failedCompileGroups);
     }
 
     if (availableSuites == 0)
