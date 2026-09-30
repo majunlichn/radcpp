@@ -777,7 +777,7 @@ private:
                                      std::string_view value, std::string_view instancePath,
                                      std::string_view schemaPath)
     {
-        const auto result = expression.Matches(value);
+        const auto result = expression.Matches(value, m_options.regex);
         if (!result)
         {
             AddRegexError(result.error(), instancePath, schemaPath);

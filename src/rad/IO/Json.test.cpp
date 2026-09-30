@@ -738,6 +738,89 @@ TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
     }
 }
 
+#if !defined(RAD_JSON_SCHEMA_USE_STD_REGEX) || !RAD_JSON_SCHEMA_USE_STD_REGEX
+TEST(IO, JsonSchemaRegexMatchLimits)
+{
+    constexpr std::string_view pattern = "^((((((((((a+))))))))))$";
+    struct LimitCase
+    {
+        rad::JsonSchemaRegexMatchLimits limits;
+        std::string_view message;
+    };
+    constexpr LimitCase limits[] = {
+        {{0, 1'000, 8'192}, "match limit"},     {{1, 1'000, 8'192}, "match limit"},
+        {{1'000'000, 0, 8'192}, "depth limit"}, {{1'000'000, 1, 8'192}, "depth limit"},
+        {{1'000'000, 1'000, 0}, "heap limit"},  {{1'000'000, 1'000, 1}, "heap limit"},
+    };
+    struct SchemaCase
+    {
+        rad::JsonValue schema;
+        rad::JsonValue instance;
+        std::string_view path;
+    };
+    const SchemaCase schemas[] = {
+        {rad::JsonObject{{"pattern", pattern}}, "aaaa", "/pattern"},
+        {rad::JsonObject{{"patternProperties", rad::JsonObject{{pattern, true}}}},
+         rad::JsonObject{{"aaaa", 1}}, "/patternProperties/^((((((((((a+))))))))))$"},
+        {rad::JsonObject{{"anyOf", rad::JsonArray{rad::JsonObject{{"pattern", pattern}}, true}}},
+         "aaaa", "/anyOf/0/pattern"},
+    };
+    rad::JsonSchemaCompileOptions compileOptions;
+    compileOptions.retrievalUri = "https://example.com/root.json";
+    for (const auto& schema : schemas)
+    {
+        const auto compiled = rad::JsonSchema::Compile(
+            schema.schema, rad::JsonSchemaDialect::Draft2020_12, compileOptions);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(schema.instance));
+        for (const auto& limit : limits)
+        {
+            SCOPED_TRACE(limit.message);
+            SCOPED_TRACE(std::format("match={}, backtrackingDepth={}, heapKiB={}",
+                                     limit.limits.matchLimit, limit.limits.backtrackingDepthLimit,
+                                     limit.limits.heapLimitKiB));
+            rad::JsonSchemaValidationOptions options;
+            options.regex = limit.limits;
+            options.maxErrors = 1;
+            const auto result = compiled.value().Validate(schema.instance, options);
+            ASSERT_EQ(result.errors.size(), 1);
+            EXPECT_NE(result.errors[0].message.find(limit.message), std::string::npos);
+            EXPECT_EQ(result.errors[0].schemaPath, schema.path);
+            EXPECT_EQ(result.errors[0].schemaUri, compileOptions.retrievalUri);
+        }
+        EXPECT_TRUE(compiled.value().Validate(schema.instance));
+    }
+
+    const auto compiled =
+        rad::JsonSchema::Compile(schemas[0].schema, rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_TRUE(compiled);
+    std::vector<std::future<bool>> workers;
+    for (std::size_t worker = 0; worker < 4; ++worker)
+    {
+        workers.push_back(
+            std::async(std::launch::async,
+                       [schema = compiled.value(), worker]
+                       {
+                           rad::JsonSchemaValidationOptions options;
+                           const bool expected = worker % 2 == 0;
+                           options.regex.matchLimit = expected ? 2'000'000 : 0;
+                           for (std::size_t iteration = 0; iteration < 16; ++iteration)
+                           {
+                               if (static_cast<bool>(schema.Validate("aaaa", options)) != expected)
+                               {
+                                   return false;
+                               }
+                           }
+                           return true;
+                       }));
+    }
+    for (auto& worker : workers)
+    {
+        EXPECT_TRUE(worker.get());
+    }
+}
+#endif
+
 TEST(IO, JsonSchemaResourceFailureWithErrorLimit)
 {
     const auto schema = rad::ParseJson(

@@ -12,6 +12,7 @@
 #include <boost/system/error_code.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <memory>
 #include <optional>
@@ -88,11 +89,20 @@ struct JsonSchemaValidationResult
     [[nodiscard]] explicit operator bool() const noexcept { return errors.empty(); }
 };
 
+struct JsonSchemaRegexMatchLimits
+{
+    // Per PCRE2 match, not per validation call. Zero is restrictive, not unlimited.
+    std::uint32_t matchLimit = 1'000'000;
+    std::uint32_t backtrackingDepthLimit = 1'000;
+    std::uint32_t heapLimitKiB = 8'192;
+};
+
 struct JsonSchemaValidationOptions
 {
     // Limits diagnostics, not evaluation. A zero value is treated as one.
     std::size_t maxErrors = 64;
     std::size_t maxDepth = 128;
+    JsonSchemaRegexMatchLimits regex;
 };
 
 struct JsonSchemaDocument
@@ -163,9 +173,12 @@ struct JsonSchemaCompileOptions
 // - Matching is unanchored unless the pattern supplies anchors. \d and \w are ASCII by default;
 //   \s and \S use ECMAScript whitespace semantics, including inside character classes.
 //   Other PCRE2 syntax and semantics are not fully ECMAScript-compatible.
-// - PCRE2 limits: match limit 1,000,000, depth 1,000, and 8 MiB of matching heap.
+// - JsonSchemaValidationOptions::regex controls each match's limits. Defaults: match limit
+//   1,000,000, backtracking depth 1,000, and 8 MiB of backtracking heap. Exhaustion fails
+//   validation as a resource error, not an ordinary pattern mismatch.
 // - For debugging, RAD_JSON_SCHEMA_USE_STD_REGEX=1 selects std::regex ECMAScript over UTF-8
-//   bytes instead; this backend is not fully Unicode-aware.
+//   bytes instead; this backend is not fully Unicode-aware and cannot enforce matching limits.
+//   It rejects non-default regex limits when matching is attempted.
 //
 // Limitations:
 // - No automatic file/network loading, mixed-base-draft resources, custom Draft 7 dialects,

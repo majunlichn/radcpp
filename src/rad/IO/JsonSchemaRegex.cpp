@@ -316,9 +316,19 @@ JsonSchemaRegex::Compile(std::string_view pattern)
 #endif
 }
 
-Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(std::string_view value) const
+Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(
+    std::string_view value, const JsonSchemaRegexMatchLimits& limits) const
 {
 #if RAD_JSON_SCHEMA_USE_STD_REGEX
+    const JsonSchemaRegexMatchLimits defaults;
+    if (limits.matchLimit != defaults.matchLimit ||
+        limits.backtrackingDepthLimit != defaults.backtrackingDepthLimit ||
+        limits.heapLimitKiB != defaults.heapLimitKiB)
+    {
+        return Failure(JsonSchemaRegexError{
+            true, true,
+            "custom regular expression matching limits are not supported by std::regex"});
+    }
     try
     {
         return Success(std::regex_search(value.begin(), value.end(), m_impl->expression));
@@ -341,9 +351,9 @@ Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(std::string_view val
         return Failure(JsonSchemaRegexError{
             false, true, "unable to allocate regular expression matching state"});
     }
-    if (pcre2_set_match_limit(context.get(), 1000000) != 0 ||
-        pcre2_set_depth_limit(context.get(), 1000) != 0 ||
-        pcre2_set_heap_limit(context.get(), 8192) != 0)
+    if (pcre2_set_match_limit(context.get(), limits.matchLimit) != 0 ||
+        pcre2_set_depth_limit(context.get(), limits.backtrackingDepthLimit) != 0 ||
+        pcre2_set_heap_limit(context.get(), limits.heapLimitKiB) != 0)
     {
         return Failure(JsonSchemaRegexError{
             false, true, "unable to set regular expression matching limits"});

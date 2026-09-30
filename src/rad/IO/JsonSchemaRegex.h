@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rad/Core/Result.h>
+#include <rad/IO/Json.h>
 
 #include <exception>
 #include <memory>
@@ -31,7 +31,8 @@ public:
 
     [[nodiscard]] static Result<JsonSchemaRegex, JsonSchemaRegexError>
     Compile(std::string_view pattern);
-    [[nodiscard]] Result<bool, JsonSchemaRegexError> Matches(std::string_view value) const;
+    [[nodiscard]] Result<bool, JsonSchemaRegexError> Matches(
+        std::string_view value, const JsonSchemaRegexMatchLimits& limits) const;
 
 private:
     struct Impl;
