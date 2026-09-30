@@ -2302,21 +2302,18 @@ JsonSchema::JsonSchema(JsonSchemaDialect dialect,
 }
 
 Result<JsonSchema, JsonSchemaCompileError>
-JsonSchema::CompileFile(const FilePath& path, JsonSchemaDialect dialect)
-{
-    return CompileFile(path, dialect, {});
-}
-
-Result<JsonSchema, JsonSchemaCompileError>
 JsonSchema::CompileFile(const FilePath& path, JsonSchemaDialect dialect,
                         const JsonSchemaCompileOptions& options)
 {
+    const auto errorDialect = dialect == JsonSchemaDialect::Auto
+                                  ? std::nullopt
+                                  : std::optional<JsonSchemaDialect>(dialect);
     const auto text = File::ReadAllText(path);
     if (!text)
     {
         return Failure(JsonSchemaCompileError{
             JsonSchemaCompileErrorCode::FileReadError,
-            dialect,
+            errorDialect,
             {},
             "unable to read schema file: " + path.string(),
             options.retrievalUri,
@@ -2328,7 +2325,7 @@ JsonSchema::CompileFile(const FilePath& path, JsonSchemaDialect dialect,
     {
         return Failure(JsonSchemaCompileError{
             JsonSchemaCompileErrorCode::InvalidJson,
-            dialect,
+            errorDialect,
             {},
             "unable to parse schema file: " + schema.error().message(),
             options.retrievalUri,
@@ -2339,61 +2336,11 @@ JsonSchema::CompileFile(const FilePath& path, JsonSchemaDialect dialect,
 }
 
 Result<JsonSchema, JsonSchemaCompileError>
-JsonSchema::Compile(const JsonValue& schema)
-{
-    return Compile(schema, JsonSchemaCompileOptions{});
-}
-
-Result<JsonSchema, JsonSchemaCompileError>
-JsonSchema::Compile(const JsonValue& schema, const JsonSchemaCompileOptions& options)
-{
-    if (!schema.is_object() || !schema.as_object().contains("$schema"))
-    {
-        return Failure(JsonSchemaCompileError{
-            JsonSchemaCompileErrorCode::MissingDialect,
-            std::nullopt,
-            {},
-            "schema does not declare $schema",
-            options.retrievalUri,
-        });
-    }
-
-    const auto& declaredValue = schema.as_object().at("$schema");
-    if (!declaredValue.is_string())
-    {
-        return Failure(JsonSchemaCompileError{
-            JsonSchemaCompileErrorCode::InvalidSchema,
-            std::nullopt,
-            "/$schema",
-            "$schema must be a string",
-            options.retrievalUri,
-        });
-    }
-
-    auto references = CompileReferences(schema, std::nullopt, options);
-    if (!references)
-    {
-        return Failure(std::move(references.error()));
-    }
-    const auto dialect = references.value().Dialect();
-    return Success(JsonSchema(
-        dialect,
-        std::make_shared<const detail::JsonSchemaReferences>(std::move(references.value()))));
-}
-
-Result<JsonSchema, JsonSchemaCompileError>
-JsonSchema::Compile(const JsonValue& schema, JsonSchemaDialect dialect)
-{
-    return Compile(schema, dialect, {});
-}
-
-Result<JsonSchema, JsonSchemaCompileError>
 JsonSchema::Compile(const JsonValue& schema, JsonSchemaDialect dialect,
                     const JsonSchemaCompileOptions& compileOptions)
 {
-    if (dialect != JsonSchemaDialect::Draft7 &&
-        dialect != JsonSchemaDialect::Draft2019_09 &&
-        dialect != JsonSchemaDialect::Draft2020_12)
+    if (dialect != JsonSchemaDialect::Auto && dialect != JsonSchemaDialect::Draft7 &&
+        dialect != JsonSchemaDialect::Draft2019_09 && dialect != JsonSchemaDialect::Draft2020_12)
     {
         return Failure(JsonSchemaCompileError{
             JsonSchemaCompileErrorCode::UnsupportedDialect,
@@ -2404,14 +2351,17 @@ JsonSchema::Compile(const JsonValue& schema, JsonSchemaDialect dialect,
         });
     }
 
-    auto references = CompileReferences(schema, dialect, compileOptions);
+    const auto selectedDialect = dialect == JsonSchemaDialect::Auto
+                                     ? std::nullopt
+                                     : std::optional<JsonSchemaDialect>(dialect);
+    auto references = CompileReferences(schema, selectedDialect, compileOptions);
     if (!references)
     {
         return Failure(std::move(references.error()));
     }
-    return Success(JsonSchema(
-        dialect,
-        std::make_shared<const detail::JsonSchemaReferences>(std::move(references.value()))));
+    const auto resolvedDialect = references.value().Dialect();
+    return Success(JsonSchema(resolvedDialect, std::make_shared<const detail::JsonSchemaReferences>(
+                                                   std::move(references.value()))));
 }
 
 JsonSchemaDialect JsonSchema::Dialect() const noexcept

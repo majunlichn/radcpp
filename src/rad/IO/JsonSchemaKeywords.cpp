@@ -98,6 +98,8 @@ JsonSchemaChildShape JsonSchemaKeyword::Shape(JsonSchemaDialect dialect) const
 {
     switch (dialect)
     {
+    case JsonSchemaDialect::Auto:
+        return JsonSchemaChildShape::Unsupported;
     case JsonSchemaDialect::Draft7:
         return shapes[0];
     case JsonSchemaDialect::Draft2019_09:

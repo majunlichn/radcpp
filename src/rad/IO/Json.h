@@ -43,6 +43,7 @@ using JsonParseOptions = boost::json::parse_options;
 
 enum class JsonSchemaDialect
 {
+    Auto,
     Draft7,
     Draft2019_09,
     Draft2020_12,
@@ -187,23 +188,15 @@ struct JsonSchemaCompileOptions
 class JsonSchema
 {
 public:
-    // Detects the underlying standard dialect from the required root $schema keyword.
+    // Auto follows the root $schema declaration; a missing declaration is an error.
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
-    Compile(const JsonValue& schema);
+    Compile(const JsonValue& schema, JsonSchemaDialect dialect = JsonSchemaDialect::Auto,
+            const JsonSchemaCompileOptions& options = {});
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
-    Compile(const JsonValue& schema, const JsonSchemaCompileOptions& options);
-    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
-    Compile(const JsonValue& schema, JsonSchemaDialect dialect);
-    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
-    Compile(const JsonValue& schema, JsonSchemaDialect dialect,
-            const JsonSchemaCompileOptions& options);
-    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
-    CompileFile(const FilePath& path, JsonSchemaDialect dialect);
-    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
-    CompileFile(const FilePath& path, JsonSchemaDialect dialect,
-                const JsonSchemaCompileOptions& options);
+    CompileFile(const FilePath& path, JsonSchemaDialect dialect = JsonSchemaDialect::Auto,
+                const JsonSchemaCompileOptions& options = {});
 
-    // Returns the underlying standard draft, including for a custom vocabulary dialect.
+    // Returns the resolved standard draft, never Auto, including for a custom vocabulary dialect.
     [[nodiscard]] JsonSchemaDialect Dialect() const noexcept;
     [[nodiscard]] JsonSchemaValidationResult
     Validate(const JsonValue& instance,
