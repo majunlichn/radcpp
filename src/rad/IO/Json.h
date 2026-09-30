@@ -100,11 +100,11 @@ struct JsonSchemaValidationOptions
 //   and $defs structure checking.
 // - Draft 2020-12: prefixItems.
 // - Draft 7: dependencies (property-name arrays and schemas).
+// - Draft 7 and 2019-09: tuple-form items and additionalItems.
 //
 // Not supported:
 // - Remote/relative references, anchors, embedded $id resources, vocabularies,
 //   unevaluatedProperties, unevaluatedItems, and fractional multipleOf.
-// - Draft 7 and 2019-09: tuple-form items and additionalItems.
 //
 // definitions and $defs can be referenced by root-local JSON Pointers.
 // Embedded $id resources cannot be used as reference sources or targets.

@@ -1359,14 +1359,30 @@ private:
         if (const auto* items = object.if_contains("items"))
         {
             const auto itemsPath = ChildPath(schemaPath, "items");
-            if (items->is_array())
+            if (items->is_array() && m_dialect != JsonSchemaDialect::Draft2020_12)
             {
-                AddUnsupportedError(
-                    {}, itemsPath, "tuple validation is not supported by this validator");
+                if (items->as_array().empty())
+                {
+                    AddError({}, itemsPath, "tuple items must be a non-empty array of schemas");
+                }
+                for (std::size_t index = 0; index < items->as_array().size(); ++index)
+                {
+                    ValidateSchemaDefinition(
+                        items->as_array()[index],
+                        ChildPath(itemsPath, std::to_string(index)), depth + 1);
+                }
             }
             else
             {
                 ValidateSchemaDefinition(*items, itemsPath, depth + 1);
+            }
+        }
+        if (m_dialect != JsonSchemaDialect::Draft2020_12)
+        {
+            if (const auto* additional = object.if_contains("additionalItems"))
+            {
+                ValidateSchemaDefinition(*additional, ChildPath(schemaPath, "additionalItems"),
+                                         depth + 1);
             }
         }
 
@@ -1551,13 +1567,6 @@ private:
         {
             AddUnsupportedError(instancePath, ChildPath(schemaPath, "$vocabulary"),
                                 "custom vocabularies are not supported by this validator");
-        }
-
-        if (m_dialect != JsonSchemaDialect::Draft2020_12 &&
-            schema.contains("additionalItems"))
-        {
-            AddUnsupportedError(instancePath, ChildPath(schemaPath, "additionalItems"),
-                                "tuple validation is not supported by this validator");
         }
 
         if (m_dialect != JsonSchemaDialect::Draft7)
@@ -1968,6 +1977,21 @@ private:
         }
     }
 
+    [[nodiscard]] std::size_t
+    ValidateTupleItems(const JsonArray& schemas, const JsonArray& instance,
+                       std::string_view instancePath, std::string_view schemaPath,
+                       std::size_t depth)
+    {
+        const auto count = std::min(instance.size(), schemas.size());
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const auto token = std::to_string(index);
+            Validate(schemas[index], instance[index], ChildPath(instancePath, token),
+                     ChildPath(schemaPath, token), depth + 1);
+        }
+        return count;
+    }
+
     void ValidateArray(const JsonObject& schema, const JsonArray& instance,
                        std::string_view instancePath, std::string_view schemaPath,
                        std::size_t depth)
@@ -1983,14 +2007,8 @@ private:
             if (const auto* prefixItems = schema.if_contains("prefixItems");
                 prefixItems != nullptr && prefixItems->is_array())
             {
-                itemStart = std::min(instance.size(), prefixItems->as_array().size());
-                const auto keywordPath = ChildPath(schemaPath, "prefixItems");
-                for (std::size_t index = 0; index < itemStart; ++index)
-                {
-                    Validate(prefixItems->as_array()[index], instance[index],
-                             ChildPath(instancePath, std::to_string(index)),
-                             ChildPath(keywordPath, std::to_string(index)), depth + 1);
-                }
+                itemStart = ValidateTupleItems(prefixItems->as_array(), instance, instancePath,
+                                              ChildPath(schemaPath, "prefixItems"), depth);
             }
         }
 
@@ -2029,9 +2047,18 @@ private:
             const auto keywordPath = ChildPath(schemaPath, "items");
             if (items->is_array())
             {
-                AddUnsupportedError(
-                    instancePath, keywordPath,
-                    "tuple validation is not supported by this validator");
+                itemStart = ValidateTupleItems(items->as_array(), instance, instancePath,
+                                              keywordPath, depth);
+                if (const auto* additional = schema.if_contains("additionalItems"))
+                {
+                    const auto additionalPath = ChildPath(schemaPath, "additionalItems");
+                    for (std::size_t index = itemStart; index < instance.size(); ++index)
+                    {
+                        Validate(*additional, instance[index],
+                                 ChildPath(instancePath, std::to_string(index)),
+                                 additionalPath, depth + 1);
+                    }
+                }
             }
             else
             {
