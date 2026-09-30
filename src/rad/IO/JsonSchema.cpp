@@ -528,7 +528,25 @@ private:
             }
             return std::nullopt;
         }
-        const auto* targetPath = resolution ? &resolution->value() : nullptr;
+        const auto* targetPath = resolution ? &resolution->value().path : nullptr;
+        if (resolution != nullptr && !m_checkingSchema && keyword == "$dynamicRef" &&
+            !resolution->value().dynamicAnchor.empty())
+        {
+            for (const auto* resource : m_dynamicScope)
+            {
+                const auto* anchors = m_references.DynamicAnchors(*resource);
+                if (anchors == nullptr)
+                {
+                    continue;
+                }
+                const auto anchor = anchors->find(resolution->value().dynamicAnchor);
+                if (anchor != anchors->end())
+                {
+                    targetPath = &anchor->second;
+                    break;
+                }
+            }
+        }
         const auto* target =
             targetPath ? detail::FindJsonSchemaValue(m_rootSchema, *targetPath) : nullptr;
         if (target == nullptr)
@@ -670,6 +688,34 @@ private:
         }
         m_checkedSchemas.push_back(&schema);
 
+        if (m_dialect == JsonSchemaDialect::Draft2020_12)
+        {
+            const auto* resource = m_references.Resource(schemaPath);
+            if (resource == nullptr)
+            {
+                AddError({}, schemaPath, "compiled schema resource does not exist");
+                return;
+            }
+            if (std::find(m_checkedResources.begin(), m_checkedResources.end(), *resource) ==
+                m_checkedResources.end())
+            {
+                m_checkedResources.push_back(*resource);
+                // Dynamic references can reach anchors outside the static validation path.
+                if (const auto* anchors = m_references.DynamicAnchors(*resource))
+                {
+                    for (const auto& [name, path] : *anchors)
+                    {
+                        const auto* target = detail::FindJsonSchemaValue(m_rootSchema, path);
+                        if (target == nullptr)
+                        {
+                            AddError({}, path, "compiled dynamic anchor does not exist");
+                            return;
+                        }
+                        ValidateSchemaDefinition(*target, path, depth + 1);
+                    }
+                }
+            }
+        }
         const auto& object = schema.as_object();
         if (const auto* reference = object.if_contains("$ref"))
         {
@@ -696,6 +742,19 @@ private:
             {
                 const auto target = ResolveReference(
                     *reference, ChildPath(schemaPath, "$recursiveRef"), "$recursiveRef");
+                if (!target)
+                {
+                    return;
+                }
+                ValidateSchemaDefinition(*target->schema, target->path, depth + 1);
+            }
+        }
+        else if (m_dialect == JsonSchemaDialect::Draft2020_12)
+        {
+            if (const auto* reference = object.if_contains("$dynamicRef"))
+            {
+                const auto target = ResolveReference(
+                    *reference, ChildPath(schemaPath, "$dynamicRef"), "$dynamicRef");
                 if (!target)
                 {
                     return;
@@ -1181,10 +1240,10 @@ private:
             return evaluation;
         }
 
-        const auto* resource = m_dialect == JsonSchemaDialect::Draft2019_09
+        const auto* resource = m_dialect != JsonSchemaDialect::Draft7
                                    ? m_references.Resource(schemaPath)
                                    : nullptr;
-        if (m_dialect == JsonSchemaDialect::Draft2019_09 && resource == nullptr)
+        if (m_dialect != JsonSchemaDialect::Draft7 && resource == nullptr)
         {
             AddResourceError(instancePath, schemaPath, "compiled schema resource does not exist");
             evaluation.valid = false;
@@ -1244,6 +1303,21 @@ private:
                                           target->path, depth + 1));
             }
         }
+        else if (m_dialect == JsonSchemaDialect::Draft2020_12)
+        {
+            if (const auto* reference = object.if_contains("$dynamicRef"))
+            {
+                const auto target = ResolveReference(
+                    *reference, ChildPath(schemaPath, "$dynamicRef"), "$dynamicRef");
+                if (!target)
+                {
+                    evaluation.valid = false;
+                    return evaluation;
+                }
+                evaluation.Merge(Validate(*target->schema, instance, instancePath,
+                                          target->path, depth + 1));
+            }
+        }
         ValidateUnsupportedKeywords(object, instancePath, schemaPath);
         ValidateType(object, instance, instancePath, schemaPath);
         ValidateEnumAndConst(object, instance, instancePath, schemaPath);
@@ -1276,19 +1350,6 @@ private:
         {
             AddUnsupportedError(instancePath, ChildPath(schemaPath, "$vocabulary"),
                                 "custom vocabularies are not supported by this validator");
-        }
-
-        if (m_dialect == JsonSchemaDialect::Draft2020_12)
-        {
-            constexpr std::array dynamicReferences = {"$dynamicRef", "$dynamicAnchor"};
-            for (const std::string_view keyword : dynamicReferences)
-            {
-                if (schema.contains(keyword))
-                {
-                    AddUnsupportedError(instancePath, ChildPath(schemaPath, keyword),
-                                        "keyword is not supported by this validator");
-                }
-            }
         }
     }
 
@@ -2049,6 +2110,7 @@ private:
     std::optional<JsonSchemaValidationError> m_resourceDiagnostic;
     std::optional<JsonSchemaCompileError> m_compileError;
     std::vector<const JsonValue*> m_checkedSchemas;
+    std::vector<std::string> m_checkedResources;
     std::vector<const std::string*> m_dynamicScope;
     bool m_checkingSchema = false;
     bool m_resourceError = false;

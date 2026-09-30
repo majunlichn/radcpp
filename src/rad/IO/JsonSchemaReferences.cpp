@@ -59,6 +59,7 @@ class ReferenceIndexBuilder
 {
 public:
     using Targets = std::unordered_map<std::string, JsonSchemaReferences::Resolution>;
+    using Target = JsonSchemaReferences::Target;
 
     ReferenceIndexBuilder(JsonValue& root, std::vector<std::string>& uris,
                           std::unordered_map<std::string, std::string>& schemaResources,
@@ -85,6 +86,7 @@ public:
         {
             m_resources.clear();
             m_anchors.clear();
+            m_dynamicAnchors.clear();
             m_scopes.clear();
             m_references.clear();
             m_documentErrors.clear();
@@ -116,14 +118,14 @@ public:
             for (const auto& source : m_references)
             {
                 const auto target = Resolve(source);
-                if (!target || m_scopes.contains(*target))
+                if (!target || m_scopes.contains(target->path))
                 {
                     continue;
                 }
-                if (std::find(discoveredPaths.begin(), discoveredPaths.end(), *target) ==
+                if (std::find(discoveredPaths.begin(), discoveredPaths.end(), target->path) ==
                     discoveredPaths.end())
                 {
-                    discoveredPaths.push_back(*target);
+                    discoveredPaths.push_back(target->path);
                 }
             }
             if (discoveredPaths.size() == previousSize && m_uris.size() == previousDocuments)
@@ -153,7 +155,7 @@ public:
         {
             return Failure(std::move(*m_error));
         }
-        if (m_dialect == JsonSchemaDialect::Draft2019_09)
+        if (m_dialect != JsonSchemaDialect::Draft7)
         {
             for (const auto& [path, base] : m_scopes)
             {
@@ -241,6 +243,7 @@ private:
             retrieval.normalize();
             m_resources.clear();
             m_anchors.clear();
+            m_dynamicAnchors.clear();
             m_scopes.clear();
             m_references.clear();
             m_cataloging = true;
@@ -426,19 +429,34 @@ private:
             }
             if (m_dialect != JsonSchemaDialect::Draft7)
             {
-                if (const auto* anchor = object.if_contains("$anchor"))
+                for (const std::string_view keyword : {"$anchor", "$dynamicAnchor"})
                 {
-                    const auto keywordPath = ChildPath(path, "$anchor");
+                    if (keyword == "$dynamicAnchor" &&
+                        m_dialect != JsonSchemaDialect::Draft2020_12)
+                    {
+                        continue;
+                    }
+                    const auto* anchor = object.if_contains(keyword);
+                    if (anchor == nullptr)
+                    {
+                        continue;
+                    }
+                    const auto keywordPath = ChildPath(path, keyword);
                     if (!anchor->is_string() ||
                         !IsAnchor(StringView(anchor->as_string()), m_dialect))
                     {
-                        Error(keywordPath, "$anchor must be a valid plain-name identifier");
+                        Error(keywordPath,
+                              std::string(keyword) + " must be a valid plain-name identifier");
                         return;
                     }
                     auto uri = boost::urls::url(base);
                     uri.set_fragment(StringView(anchor->as_string()));
                     uri.normalize();
                     Register(m_anchors, std::string(uri.buffer()), path, keywordPath);
+                    if (keyword == "$dynamicAnchor")
+                    {
+                        Register(m_dynamicAnchors, std::string(uri.buffer()), path, keywordPath);
+                    }
                 }
             }
         }
@@ -450,6 +468,10 @@ private:
         if (m_dialect == JsonSchemaDialect::Draft2019_09 && object.contains("$recursiveRef"))
         {
             m_references.push_back({path, "$recursiveRef"});
+        }
+        if (m_dialect == JsonSchemaDialect::Draft2020_12 && object.contains("$dynamicRef"))
+        {
+            m_references.push_back({path, "$dynamicRef"});
         }
 
         const auto indexMap = [&](std::string_view keyword, bool dependencies = false)
@@ -560,7 +582,15 @@ private:
         }
     }
 
-    [[nodiscard]] std::optional<std::string> Resolve(const PendingReference& source)
+    [[nodiscard]] Target AnchorTarget(const std::string& path, const boost::urls::url& uri,
+                                      std::string_view keyword) const
+    {
+        const bool dynamic =
+            keyword == "$dynamicRef" && m_dynamicAnchors.contains(std::string(uri.buffer()));
+        return {path, dynamic ? std::string(uri.fragment()) : ""};
+    }
+
+    [[nodiscard]] std::optional<Target> Resolve(const PendingReference& source)
     {
         m_resolutionError.reset();
         if (const auto failed = m_documentErrors.find(DocumentPath(source.path));
@@ -603,7 +633,7 @@ private:
                 m_resolutionError = failed->second;
                 return std::nullopt;
             }
-            return anchor->second;
+            return AnchorTarget(anchor->second, *uri, source.keyword);
         }
         uri->remove_fragment();
         const auto resource = m_resources.find(std::string(uri->buffer()));
@@ -639,11 +669,12 @@ private:
             const auto named = m_anchors.find(std::string(canonical.buffer()));
             if (named != m_anchors.end())
             {
-                return named->second;
+                return AnchorTarget(named->second, canonical, source.keyword);
             }
             m_resolutionError =
                 JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, m_dialect,
-                                       keywordPath, "$ref anchor does not exist"};
+                                       keywordPath,
+                                       std::string(source.keyword) + " anchor does not exist"};
             return std::nullopt;
         }
         const auto targetPath = resource->second + fragment;
@@ -651,10 +682,11 @@ private:
         {
             m_resolutionError = JsonSchemaCompileError{
                 JsonSchemaCompileErrorCode::InvalidSchema, m_dialect, keywordPath,
-                "$ref target does not exist or has an invalid JSON Pointer"};
+                std::string(source.keyword) +
+                    " target does not exist or has an invalid JSON Pointer"};
             return std::nullopt;
         }
-        return targetPath;
+        return Target{targetPath, {}};
     }
 
     JsonValue& m_root;
@@ -667,6 +699,7 @@ private:
     std::size_t m_maxDepth;
     std::unordered_map<std::string, std::string> m_resources;
     std::unordered_map<std::string, std::string> m_anchors;
+    std::unordered_map<std::string, std::string> m_dynamicAnchors;
     std::unordered_map<std::string, std::string> m_scopes;
     std::vector<PendingReference> m_references;
     std::optional<JsonSchemaCompileError> m_error;
@@ -764,6 +797,23 @@ Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compi
         return Failure(std::move(error));
     }
     references.m_targets = std::move(targets.value());
+    if (dialect == JsonSchemaDialect::Draft2020_12)
+    {
+        for (const auto& [path, resource] : references.m_schemaResources)
+        {
+            const auto* value = FindJsonSchemaValue(references.m_documents, path);
+            if (value == nullptr || !value->is_object())
+            {
+                continue;
+            }
+            const auto* anchor = value->as_object().if_contains("$dynamicAnchor");
+            if (anchor != nullptr && anchor->is_string())
+            {
+                references.m_dynamicAnchors[resource].emplace(
+                    StringView(anchor->as_string()), path);
+            }
+        }
+    }
     return Success(std::move(references));
 }
 
@@ -811,6 +861,13 @@ bool JsonSchemaReferences::HasRecursiveAnchor(std::string_view resourcePath) con
     }
     const auto* anchor = schema->as_object().if_contains("$recursiveAnchor");
     return anchor != nullptr && anchor->is_bool() && anchor->as_bool();
+}
+
+const JsonSchemaReferences::Anchors* JsonSchemaReferences::DynamicAnchors(
+    std::string_view resourcePath) const
+{
+    const auto found = m_dynamicAnchors.find(std::string(resourcePath));
+    return found == m_dynamicAnchors.end() ? nullptr : &found->second;
 }
 
 } // namespace rad::detail

@@ -15,7 +15,14 @@ namespace rad::detail
 class JsonSchemaReferences
 {
 public:
-    using Resolution = Result<std::string, JsonSchemaCompileError>;
+    struct Target
+    {
+        std::string path;
+        std::string dynamicAnchor;
+    };
+
+    using Resolution = Result<Target, JsonSchemaCompileError>;
+    using Anchors = std::unordered_map<std::string, std::string>;
 
     [[nodiscard]] static Result<JsonSchemaReferences, JsonSchemaCompileError> Compile(
         const JsonValue& schema, JsonSchemaDialect dialect, std::size_t maxDepth,
@@ -27,6 +34,7 @@ public:
     [[nodiscard]] std::string SchemaUri(std::string_view path) const;
     [[nodiscard]] const std::string* Resource(std::string_view schemaPath) const;
     [[nodiscard]] bool HasRecursiveAnchor(std::string_view resourcePath) const;
+    [[nodiscard]] const Anchors* DynamicAnchors(std::string_view resourcePath) const;
 
 private:
     std::unordered_map<std::string, Resolution> m_targets;
@@ -34,6 +42,7 @@ private:
     JsonValue m_documents;
     std::vector<std::string> m_uris;
     std::unordered_map<std::string, std::string> m_schemaResources;
+    std::unordered_map<std::string, Anchors> m_dynamicAnchors;
 }; // class JsonSchemaReferences
 
 } // namespace rad::detail

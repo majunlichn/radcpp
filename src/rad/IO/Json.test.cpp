@@ -1079,6 +1079,183 @@ TEST(IO, JsonSchemaRecursiveReferenceResourceLimits)
     }
 }
 
+TEST(IO, JsonSchemaDynamicReferenceDiagnostics)
+{
+    constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view path;
+        rad::JsonSchemaCompileErrorCode code = rad::JsonSchemaCompileErrorCode::InvalidSchema;
+    };
+    constexpr Case cases[] = {
+        {R"json({"$dynamicAnchor": false})json", "/$dynamicAnchor"},
+        {R"json({"$dynamicAnchor": ""})json", "/$dynamicAnchor"},
+        {R"json({"$dynamicAnchor": "1node"})json", "/$dynamicAnchor"},
+        {R"json({"$dynamicAnchor": "node:child"})json", "/$dynamicAnchor"},
+        {R"json({"$dynamicAnchor": "node/child"})json", "/$dynamicAnchor"},
+        {R"json({"$dynamicRef": 42})json", "/$dynamicRef"},
+        {R"json({"$dynamicRef": "#/%ZZ"})json", "/$dynamicRef"},
+        {R"json({"$dynamicRef": "#unknown"})json", "/$dynamicRef"},
+        {R"json({"$dynamicRef": "#/missing"})json", "/$dynamicRef"},
+        {R"json({"properties": {"value": {"$dynamicAnchor": 1}}})json",
+         "/properties/value/$dynamicAnchor"},
+        {R"json({"$defs": {"one": {"$anchor": "node"},
+                          "two": {"$dynamicAnchor": "node"}}})json",
+         "/$defs/two/$dynamicAnchor"},
+        {R"json({"$defs": {"one": {"$dynamicAnchor": "node"},
+                          "two": {"$dynamicAnchor": "node"}}})json",
+         "/$defs/two/$dynamicAnchor"},
+        {R"json({"$dynamicRef": "external.json#node"})json", "/$dynamicRef",
+         rad::JsonSchemaCompileErrorCode::UnsupportedFeature},
+    };
+    rad::JsonSchemaCompileOptions options;
+    options.retrievalUri = "https://example.com/root.json";
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.schema);
+        const auto parsed = rad::ParseJson(testCase.schema);
+        ASSERT_TRUE(parsed);
+        const auto compiled = rad::JsonSchema::Compile(parsed.value(), dialect, options);
+        ASSERT_FALSE(compiled);
+        EXPECT_EQ(compiled.error().code, testCase.code);
+        EXPECT_EQ(compiled.error().schemaPath, testCase.path);
+        EXPECT_EQ(compiled.error().schemaUri, options.retrievalUri);
+    }
+    EXPECT_TRUE(rad::JsonSchema::Compile(
+        rad::JsonObject{{"$dynamicAnchor", "_node-1.2"}}, dialect));
+    for (const auto otherDraft :
+         {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09})
+    {
+        const auto ignored = rad::JsonSchema::Compile(
+            rad::JsonObject{{"$dynamicRef", false}, {"$dynamicAnchor", 1}}, otherDraft);
+        ASSERT_TRUE(ignored) << ignored.error().message;
+        EXPECT_TRUE(ignored.value().Validate(1));
+    }
+}
+
+TEST(IO, JsonSchemaDynamicReferenceRegistryAndCopies)
+{
+    const auto makeSchema = [](std::string_view reference)
+    {
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/strict.json";
+        options.documents = {
+            {"https://example.com/tree.json",
+             rad::ParseJson(R"json({"$id": "trees/base.json", "$dynamicAnchor": "node",
+                 "type": ["object", "integer"],
+                 "properties": {"child": {"$dynamicRef": "#node"},
+                                "static": {"$ref": "#node"}}})json").value()},
+        };
+        return rad::JsonSchema::Compile(
+            rad::JsonObject{{"$dynamicAnchor", "node"}, {"$ref", reference}, {"minimum", 2}},
+            rad::JsonSchemaDialect::Draft2020_12, options);
+    };
+    for (const std::string_view reference :
+         {"tree.json#node", "trees/base.json#node", "tree.json#%6Eode"})
+    {
+        SCOPED_TRACE(reference);
+        const auto compiled = makeSchema(reference);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        auto copied = compiled.value();
+        auto moved = std::move(copied);
+        for (const std::size_t maxErrors : {0U, 1U, 2U})
+        {
+            rad::JsonSchemaValidationOptions options;
+            options.maxErrors = maxErrors;
+            EXPECT_TRUE(moved.Validate(rad::JsonObject{{"child", 2}, {"static", 1}}, options));
+            const auto invalid = moved.Validate(rad::JsonObject{{"child", 1}}, options);
+            ASSERT_FALSE(invalid);
+            ASSERT_EQ(invalid.errors.size(), 1);
+            EXPECT_EQ(invalid.errors[0].instancePath, "/child");
+            EXPECT_EQ(invalid.errors[0].schemaPath, "/minimum");
+            EXPECT_EQ(invalid.errors[0].schemaUri, "https://example.com/strict.json");
+            EXPECT_TRUE(moved.Validate(rad::JsonObject{{"child", 2}}, options));
+        }
+    }
+}
+
+TEST(IO, JsonSchemaDynamicAnchorTargetCompilation)
+{
+    constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;
+    rad::JsonSchemaCompileOptions options;
+    options.retrievalUri = "https://example.com/root.json";
+    const auto document = rad::ParseJson(R"json({"$defs": {
+        "entry": {"$dynamicRef": "other.json#node"},
+        "hidden": {"$dynamicAnchor": "node", "type": 42}
+    }})json");
+    ASSERT_TRUE(document);
+    options.documents = {
+        {"https://example.com/child.json", document.value()},
+        {"https://example.com/other.json",
+         rad::JsonObject{{"$dynamicAnchor", "node"}, {"type", "string"}}},
+    };
+    const auto root = rad::JsonObject{{"$ref", "child.json#/$defs/entry"}};
+    const auto invalid = rad::JsonSchema::Compile(root, dialect, options);
+    ASSERT_FALSE(invalid);
+    EXPECT_EQ(invalid.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+    EXPECT_EQ(invalid.error().schemaPath, "/$defs/hidden/type");
+    EXPECT_EQ(invalid.error().schemaUri, "https://example.com/child.json");
+    EXPECT_TRUE(rad::JsonSchema::Compile(rad::JsonObject{}, dialect, options));
+
+    options.documents[0].schema.as_object().at("$defs").as_object()
+        .at("hidden").as_object()["type"] = "integer";
+    const auto compiled = rad::JsonSchema::Compile(root, dialect, options);
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    EXPECT_TRUE(compiled.value().Validate(1));
+    const auto result = compiled.value().Validate("invalid");
+    ASSERT_FALSE(result);
+    ASSERT_EQ(result.errors.size(), 1);
+    EXPECT_EQ(result.errors[0].schemaPath, "/$defs/hidden/type");
+    EXPECT_EQ(result.errors[0].schemaUri, "https://example.com/child.json");
+}
+
+TEST(IO, JsonSchemaDynamicReferenceResourceLimits)
+{
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view data;
+        std::size_t maxDepth;
+        std::string_view instancePath;
+    };
+    constexpr Case cases[] = {
+        {R"json({"$dynamicAnchor": "node", "$dynamicRef": "#node"})json", "1", 4, ""},
+        {R"json({"$dynamicAnchor": "node", "type": "integer",
+                 "properties": {"child": {"$dynamicRef": "#node"}}})json",
+         R"json({"child": {}})json", 3, "/child"},
+    };
+    rad::JsonSchemaCompileOptions compileOptions;
+    compileOptions.retrievalUri = "https://example.com/root.json";
+    const auto schema = rad::ParseJson(R"json({"anyOf": [{"$ref": "cycle.json"}, true]})json");
+    ASSERT_TRUE(schema);
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.schema);
+        const auto document = rad::ParseJson(testCase.schema);
+        const auto data = rad::ParseJson(testCase.data);
+        ASSERT_TRUE(document);
+        ASSERT_TRUE(data);
+        compileOptions.documents = {{"https://example.com/cycle.json", document.value()}};
+        const auto compiled = rad::JsonSchema::Compile(
+            schema.value(), rad::JsonSchemaDialect::Draft2020_12, compileOptions);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        for (const std::size_t maxErrors : {0U, 1U, 2U})
+        {
+            rad::JsonSchemaValidationOptions options;
+            options.maxErrors = maxErrors;
+            options.maxDepth = testCase.maxDepth;
+            const auto result = compiled.value().Validate(data.value(), options);
+            ASSERT_FALSE(result);
+            ASSERT_EQ(result.errors.size(), 1);
+            EXPECT_EQ(result.errors[0].instancePath, testCase.instancePath);
+            EXPECT_EQ(result.errors[0].schemaPath, "");
+            EXPECT_EQ(result.errors[0].schemaUri, "https://example.com/cycle.json");
+            EXPECT_EQ(result.errors[0].message, "maximum validation depth exceeded");
+        }
+    }
+}
+
 TEST(IO, JsonSchemaMultipleOfDecimalSemantics)
 {
     struct Case
