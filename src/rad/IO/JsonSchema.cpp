@@ -2,10 +2,10 @@
 #include <rad/IO/Json.h>
 
 #include "JsonSchemaRegex.h"
+#include "JsonSchemaReferences.h"
 
 #include <algorithm>
 #include <array>
-#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <limits>
@@ -13,7 +13,6 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <utility>
 
 namespace rad
@@ -26,99 +25,7 @@ namespace
     return {value.data(), value.size()};
 }
 
-[[nodiscard]] std::string EscapeJsonPointerToken(std::string_view token)
-{
-    std::string escaped;
-    escaped.reserve(token.size());
-    for (const char character : token)
-    {
-        if (character == '~')
-        {
-            escaped += "~0";
-        }
-        else if (character == '/')
-        {
-            escaped += "~1";
-        }
-        else
-        {
-            escaped += character;
-        }
-    }
-    return escaped;
-}
-
-[[nodiscard]] std::string ChildPath(std::string_view path, std::string_view token)
-{
-    std::string child(path);
-    child += '/';
-    child += EscapeJsonPointerToken(token);
-    return child;
-}
-
-[[nodiscard]] int HexDigit(char character) noexcept
-{
-    if (character >= '0' && character <= '9')
-    {
-        return character - '0';
-    }
-    if (character >= 'a' && character <= 'f')
-    {
-        return character - 'a' + 10;
-    }
-    if (character >= 'A' && character <= 'F')
-    {
-        return character - 'A' + 10;
-    }
-    return -1;
-}
-
-[[nodiscard]] std::optional<std::string> DecodePointerFragment(std::string_view fragment)
-{
-    std::string pointer;
-    for (std::size_t index = 0; index < fragment.size(); ++index)
-    {
-        if (fragment[index] == '%')
-        {
-            if (index + 2 >= fragment.size())
-            {
-                return std::nullopt;
-            }
-            const int high = HexDigit(fragment[index + 1]);
-            const int low = HexDigit(fragment[index + 2]);
-            if (high < 0 || low < 0)
-            {
-                return std::nullopt;
-            }
-            pointer += static_cast<char>((high << 4) | low);
-            index += 2;
-        }
-        else
-        {
-            pointer += fragment[index];
-        }
-    }
-    return pointer;
-}
-
-[[nodiscard]] std::optional<std::string> DecodePointerToken(std::string_view token)
-{
-    std::string decoded;
-    for (std::size_t index = 0; index < token.size(); ++index)
-    {
-        if (token[index] != '~')
-        {
-            decoded += token[index];
-            continue;
-        }
-        if (++index == token.size() || (token[index] != '0' && token[index] != '1'))
-        {
-            return std::nullopt;
-        }
-        decoded += token[index] == '0' ? '~' : '/';
-    }
-    return decoded;
-}
+using detail::ChildPath;
 
 [[nodiscard]] bool IsNumber(const JsonValue& value) noexcept
 {
@@ -383,8 +290,10 @@ class JsonSchemaValidator
 public:
     JsonSchemaValidator(JsonSchemaDialect dialect,
                         const JsonSchemaValidationOptions& options,
-                        const JsonValue& rootSchema)
-        : m_dialect(dialect), m_options(options), m_rootSchema(rootSchema)
+                        const JsonValue& rootSchema,
+                        const detail::JsonSchemaReferences& references)
+        : m_dialect(dialect), m_options(options), m_rootSchema(rootSchema),
+          m_references(references)
     {
     }
 
@@ -446,55 +355,6 @@ private:
         std::string path;
     };
 
-    [[nodiscard]] bool IsEmbeddedResourcePath(std::string_view path) const
-    {
-        const JsonValue* value = &m_rootSchema;
-        for (std::size_t begin = 1; value != nullptr;)
-        {
-            if (value != &m_rootSchema && value->is_object() &&
-                value->as_object().contains("$id"))
-            {
-                return true;
-            }
-            if (begin > path.size())
-            {
-                break;
-            }
-            const auto end = path.find('/', begin);
-            const auto token = DecodePointerToken(path.substr(
-                begin, end == std::string_view::npos ? end : end - begin));
-            if (!token)
-            {
-                break;
-            }
-            if (value->is_object())
-            {
-                value = value->as_object().if_contains(*token);
-            }
-            else if (value->is_array())
-            {
-                std::size_t index = 0;
-                const auto [next, error] = std::from_chars(
-                    token->data(), token->data() + token->size(), index);
-                value = error == std::errc{} && next == token->data() + token->size() &&
-                                index < value->as_array().size()
-                            ? &value->as_array()[index]
-                            : nullptr;
-            }
-            else
-            {
-                value = nullptr;
-            }
-            if (end == std::string_view::npos)
-            {
-                break;
-            }
-            begin = end + 1;
-        }
-        return value != nullptr && value != &m_rootSchema && value->is_object() &&
-               value->as_object().contains("$id");
-    }
-
     [[nodiscard]] std::optional<ReferenceTarget>
     ResolveReference(const JsonValue& reference, std::string_view schemaPath)
     {
@@ -503,104 +363,29 @@ private:
             AddError({}, schemaPath, "$ref must be a string");
             return std::nullopt;
         }
-        if (IsEmbeddedResourcePath(schemaPath.substr(0, schemaPath.size() - 5)))
+        const auto* resolution = m_references.Find(schemaPath);
+        if (resolution != nullptr && !*resolution)
         {
-            AddUnsupportedError(
-                {}, schemaPath,
-                "references inside embedded $id resources are not supported");
-            return std::nullopt;
-        }
-        const auto uri = ToStringView(reference.as_string());
-        if (uri.empty() || uri.front() != '#')
-        {
-            AddUnsupportedError(
-                {}, schemaPath, "only root-local JSON Pointer references are supported");
-            return std::nullopt;
-        }
-        if (uri.size() > 1 && uri[1] != '/' && uri[1] != '%')
-        {
-            AddUnsupportedError({}, schemaPath, "anchor references are not supported");
-            return std::nullopt;
-        }
-        const auto pointer = DecodePointerFragment(uri.substr(1));
-        if (!pointer)
-        {
-            AddError({}, schemaPath, "invalid percent escape in $ref");
-            return std::nullopt;
-        }
-        if (!pointer->empty() && pointer->front() != '/')
-        {
-            AddUnsupportedError({}, schemaPath, "anchor references are not supported");
-            return std::nullopt;
-        }
-
-        const JsonValue* target = &m_rootSchema;
-        std::string targetPath;
-        for (std::size_t begin = 1; begin <= pointer->size();)
-        {
-            const auto end = pointer->find('/', begin);
-            const auto token = DecodePointerToken(std::string_view(*pointer).substr(
-                begin, end == std::string::npos ? end : end - begin));
-            if (!token)
+            const auto& error = resolution->error();
+            if (error.code == JsonSchemaCompileErrorCode::UnsupportedFeature)
             {
-                AddError({}, schemaPath, "invalid JSON Pointer escape in $ref");
-                return std::nullopt;
-            }
-            targetPath = ChildPath(targetPath, *token);
-            if (target->is_object())
-            {
-                target = target->as_object().if_contains(*token);
-            }
-            else if (target->is_array())
-            {
-                const auto& array = target->as_array();
-                std::size_t index = 0;
-                if (token->empty() || (token->size() > 1 && token->front() == '0'))
-                {
-                    target = nullptr;
-                }
-                else
-                {
-                    for (const char digit : *token)
-                    {
-                        if (digit < '0' || digit > '9' ||
-                            index > (std::numeric_limits<std::size_t>::max() -
-                                     static_cast<std::size_t>(digit - '0')) / 10)
-                        {
-                            target = nullptr;
-                            break;
-                        }
-                        index = index * 10 + static_cast<std::size_t>(digit - '0');
-                    }
-                    if (target != nullptr)
-                    {
-                        target = index < array.size() ? &array[index] : nullptr;
-                    }
-                }
+                AddUnsupportedError({}, schemaPath, error.message);
             }
             else
             {
-                target = nullptr;
+                AddError({}, schemaPath, error.message);
             }
-            if (target == nullptr)
-            {
-                AddError({}, schemaPath, "$ref target does not exist");
-                return std::nullopt;
-            }
-            if (end == std::string::npos)
-            {
-                break;
-            }
-            begin = end + 1;
-        }
-        if (IsEmbeddedResourcePath(targetPath))
-        {
-            AddUnsupportedError(
-                {}, schemaPath,
-                "references into embedded $id resources are not supported");
             return std::nullopt;
         }
-        return ReferenceTarget{target, std::move(targetPath)};
+        const auto* targetPath = resolution ? &resolution->value() : nullptr;
+        const auto* target =
+            targetPath ? detail::FindJsonSchemaValue(m_rootSchema, *targetPath) : nullptr;
+        if (target == nullptr)
+        {
+            AddError({}, schemaPath, "compiled $ref target does not exist");
+            return std::nullopt;
+        }
+        return ReferenceTarget{target, *targetPath};
     }
 
     void AddError(std::string_view instancePath, std::string_view schemaPath,
@@ -1173,7 +958,7 @@ private:
     {
         JsonSchemaValidationOptions options = m_options;
         options.maxErrors = 1;
-        JsonSchemaValidator validator(m_dialect, options, m_rootSchema);
+        JsonSchemaValidator validator(m_dialect, options, m_rootSchema, m_references);
         auto evaluation = validator.Validate(schema, instance, instancePath, schemaPath, depth);
         if (validator.m_resourceError)
         {
@@ -2048,6 +1833,7 @@ private:
     JsonSchemaDialect m_dialect;
     JsonSchemaValidationOptions m_options;
     const JsonValue& m_rootSchema;
+    const detail::JsonSchemaReferences& m_references;
     JsonSchemaValidationResult m_result;
     std::size_t m_errorCount = 0;
     std::optional<JsonSchemaValidationError> m_resourceDiagnostic;
@@ -2059,8 +1845,9 @@ private:
 
 } // namespace
 
-JsonSchema::JsonSchema(JsonValue schema, JsonSchemaDialect dialect)
-    : m_schema(std::move(schema)), m_dialect(dialect)
+JsonSchema::JsonSchema(JsonValue schema, JsonSchemaDialect dialect,
+                       std::shared_ptr<const detail::JsonSchemaReferences> references)
+    : m_schema(std::move(schema)), m_dialect(dialect), m_references(std::move(references))
 {
 }
 
@@ -2159,14 +1946,21 @@ JsonSchema::Compile(const JsonValue& schema, JsonSchemaDialect dialect)
     }
 
     const JsonSchemaValidationOptions options;
-    JsonSchemaValidator validator(dialect, options, schema);
+    auto references = detail::JsonSchemaReferences::Compile(schema, dialect, options.maxDepth);
+    if (!references)
+    {
+        return Failure(std::move(references.error()));
+    }
+    JsonSchemaValidator validator(dialect, options, schema, references.value());
     auto error = validator.CheckSchema(schema);
     if (error)
     {
         return Failure(std::move(*error));
     }
 
-    return Success(JsonSchema(schema, dialect));
+    return Success(JsonSchema(
+        schema, dialect,
+        std::make_shared<const detail::JsonSchemaReferences>(std::move(references.value()))));
 }
 
 JsonSchemaDialect JsonSchema::Dialect() const noexcept
@@ -2178,7 +1972,7 @@ JsonSchemaValidationResult
 JsonSchema::Validate(const JsonValue& instance,
                      const JsonSchemaValidationOptions& options) const
 {
-    JsonSchemaValidator validator(m_dialect, options, m_schema);
+    JsonSchemaValidator validator(m_dialect, options, m_schema, *m_references);
     return validator.ValidateInstance(m_schema, instance);
 }
 

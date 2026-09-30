@@ -98,6 +98,8 @@ set(RAD_SOURCES
     src/rad/IO/Json.h
     src/rad/IO/Json.cpp
     src/rad/IO/JsonSchema.cpp
+    src/rad/IO/JsonSchemaReferences.h
+    src/rad/IO/JsonSchemaReferences.cpp
     src/rad/IO/JsonSchemaRegex.h
     src/rad/IO/JsonSchemaRegex.cpp
     src/rad/IO/Logging.h
@@ -178,6 +180,7 @@ find_package(boost_nowide CONFIG REQUIRED)
 find_package(boost_outcome CONFIG REQUIRED)
 find_package(boost_process CONFIG REQUIRED)
 find_package(boost_smart_ptr CONFIG REQUIRED)
+find_package(boost_url CONFIG REQUIRED)
 find_package(CpuFeatures CONFIG REQUIRED)
 if(WIN32)
     find_package(boost_stacktrace_windbg CONFIG REQUIRED)
@@ -213,6 +216,7 @@ target_link_libraries(rad
     PRIVATE Boost::nowide
     PUBLIC Boost::outcome
     PRIVATE Boost::process
+    PRIVATE Boost::url
     PRIVATE Backward::Backward
     PUBLIC CpuFeatures::cpu_features
     PUBLIC ${RAD_STACKTRACE_BACKEND}
@@ -279,6 +283,7 @@ if(RAD_ENABLE_INSTALL)
         FILES_MATCHING
             PATTERN "*.h"
             PATTERN "JsonSchemaRegex.h" EXCLUDE
+            PATTERN "JsonSchemaReferences.h" EXCLUDE
     )
 
     set(RAD_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/rad")

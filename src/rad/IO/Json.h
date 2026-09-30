@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <exception>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -20,6 +21,10 @@
 
 namespace rad
 {
+namespace detail
+{
+class JsonSchemaReferences;
+} // namespace detail
 
 using JsonValue = boost::json::value;
 using JsonObject = boost::json::object;
@@ -90,25 +95,28 @@ struct JsonSchemaValidationOptions
 // Implements a practical subset of JSON Schema Draft 7, Draft 2019-09, and Draft 2020-12.
 //
 // Supported:
-// - All dialects: boolean schemas; root-local JSON Pointer $ref; type, enum, const;
+// - All dialects: boolean schemas; in-document $ref, $id resources, and JSON Pointers;
+//   type, enum, const;
 //   numeric bounds and integer multipleOf;
 //   min/max string, array, and object sizes; pattern; required, properties,
 //   patternProperties, propertyNames,
 //   additionalProperties; single-schema items, uniqueItems, contains; allOf, anyOf, oneOf,
 //   not; and if/then/else.
 // - Draft 2019-09 and 2020-12: dependentRequired, dependentSchemas, minContains, maxContains,
-//   unevaluatedProperties, unevaluatedItems, and $defs structure checking.
+//   unevaluatedProperties, unevaluatedItems, $anchor, and $defs structure checking.
 // - Draft 2020-12: prefixItems.
 // - Draft 7: dependencies (property-name arrays and schemas).
 // - Draft 7 and 2019-09: tuple-form items and additionalItems.
+// - Draft 7: plain-name fragments in $id.
 //
 // Not supported:
-// - Remote/relative references, anchors, embedded $id resources, vocabularies,
-//   and fractional multipleOf.
+// - External-document loading, recursive/dynamic references, mixed-dialect resources,
+//   custom vocabularies, and fractional multipleOf.
 //
 // definitions and $defs can be referenced by root-local JSON Pointers.
-// Embedded $id resources cannot be used as reference sources or targets.
-// Identification and annotation keywords are otherwise ignored; format is not validated.
+// Relative and absolute reference URIs resolve only to resources within the supplied schema.
+// CompileFile does not load referenced files or use its path as a retrieval URI.
+// Other annotation keywords are ignored; format is not validated.
 // pattern and patternProperties use PCRE2 with UTF-8 and Unicode category escape support.
 // Matching is unanchored unless the pattern supplies anchors; \d and \w are ASCII by default.
 // ECMAScript whitespace semantics are used for \s and \S, including inside character classes.
@@ -133,10 +141,12 @@ public:
              const JsonSchemaValidationOptions& options = {}) const;
 
 private:
-    JsonSchema(JsonValue schema, JsonSchemaDialect dialect);
+    JsonSchema(JsonValue schema, JsonSchemaDialect dialect,
+               std::shared_ptr<const detail::JsonSchemaReferences> references);
 
     JsonValue m_schema;
     JsonSchemaDialect m_dialect;
+    std::shared_ptr<const detail::JsonSchemaReferences> m_references;
 }; // class JsonSchema
 
 } // namespace rad

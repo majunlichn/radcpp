@@ -395,6 +395,151 @@ TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
               std::string::npos);
 }
 
+TEST(IO, JsonSchemaReferenceResourceLimitsAndCopies)
+{
+    const auto nestedSource = rad::ParseJson(
+        R"json({"$defs": {"inner": {"$id": "sub.json", "$ref": "#"}},
+                 "$ref": "#/$defs/inner"})json");
+    ASSERT_TRUE(nestedSource);
+    const auto nestedCompiled =
+        rad::JsonSchema::Compile(nestedSource.value(), rad::JsonSchemaDialect::Draft2020_12);
+    ASSERT_TRUE(nestedCompiled) << nestedCompiled.error().message;
+    rad::JsonSchemaValidationOptions options;
+    options.maxDepth = 2;
+    const auto recursive = nestedCompiled.value().Validate(1, options);
+    ASSERT_FALSE(recursive);
+    ASSERT_EQ(recursive.errors.size(), 1);
+    EXPECT_EQ(recursive.errors[0].schemaPath, "/$defs/inner");
+    EXPECT_EQ(recursive.errors[0].message, "maximum validation depth exceeded");
+
+    const auto makeSchema = []
+    {
+        const auto schema = rad::ParseJson(
+            R"json({"$defs": {"inner": {"$id": "sub.json", "type": "string"}},
+                     "$ref": "sub.json"})json");
+        return rad::JsonSchema::Compile(schema.value(), rad::JsonSchemaDialect::Draft2020_12);
+    };
+    const auto compiled = makeSchema();
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    auto copied = compiled.value();
+    auto moved = std::move(copied);
+    const auto invalid = moved.Validate(1);
+    ASSERT_FALSE(invalid);
+    ASSERT_EQ(invalid.errors.size(), 1);
+    EXPECT_EQ(invalid.errors[0].schemaPath, "/$defs/inner/type");
+}
+
+TEST(IO, JsonSchemaResourceIdentifierDiagnostics)
+{
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view path;
+    };
+    constexpr Case cases[] = {
+        {R"json({"$id": 42})json", "/$id"},
+        {R"json({"$id": "https://example.com/%ZZ"})json", "/$id"},
+        {R"json({"$id": "#name"})json", "/$id"},
+        {R"json({"$anchor": 42})json", "/$anchor"},
+        {R"json({"$anchor": "1invalid"})json", "/$anchor"},
+        {R"json({"$defs": {"a": {"$anchor": "same"}, "b": {"$anchor": "same"}}})json",
+         "/$defs/b/$anchor"},
+        {R"json({"$defs": {"a": {"$id": "https://example.com/a"},
+                           "b": {"$id": "https://EXAMPLE.COM/%61"}}})json",
+         "/$defs/b/$id"},
+    };
+    for (const auto dialect :
+         {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(testCase.schema);
+            const auto schema = rad::ParseJson(testCase.schema);
+            ASSERT_TRUE(schema);
+            const auto compiled = rad::JsonSchema::Compile(schema.value(), dialect);
+            ASSERT_FALSE(compiled);
+            EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+            EXPECT_EQ(compiled.error().schemaPath, testCase.path);
+        }
+
+        const auto deferred = rad::ParseJson(
+            R"json({"allOf": [{"$ref": "child#target"}, {"$ref": "#/storage"}],
+                     "storage": {"$id": "child", "$anchor": "target",
+                                 "$defs": {"value": {"type": "string"}},
+                                 "$ref": "#/$defs/value"}})json");
+        ASSERT_TRUE(deferred);
+        const auto compiled = rad::JsonSchema::Compile(deferred.value(), dialect);
+        ASSERT_TRUE(compiled) << compiled.error().schemaPath << ": " << compiled.error().message;
+        const auto result = compiled.value().Validate(1);
+        ASSERT_FALSE(result);
+        EXPECT_EQ(result.errors[0].schemaPath, "/storage/$defs/value/type");
+
+        const auto annotations = rad::ParseJson(
+            R"json({"const": {"$id": 42, "$anchor": "1invalid"},
+                     "examples": [{"$id": "hidden", "$ref": "external"}]})json");
+        ASSERT_TRUE(annotations);
+        EXPECT_TRUE(rad::JsonSchema::Compile(annotations.value(), dialect));
+    }
+    const auto ignored = rad::ParseJson(
+        R"json({"$ref": "#/definitions/value", "$id": 42,
+                 "definitions": {"value": true, "unused": {"$ref": "external.json"},
+                                 "malformed": {"$ref": 42}}})json");
+    ASSERT_TRUE(ignored);
+    EXPECT_TRUE(rad::JsonSchema::Compile(ignored.value(), rad::JsonSchemaDialect::Draft7));
+}
+
+TEST(IO, JsonSchemaReferenceDiscoveryOrder)
+{
+    for (const auto dialect :
+         {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        for (const bool descendantFirst : {true, false})
+        {
+            SCOPED_TRACE(descendantFirst);
+            constexpr std::string_view schemas[] = {
+                R"json({"allOf": [{"$ref": "#/storage/$defs/use"}, {"$ref": "#/storage"}],
+                         "storage": {"$id": "child",
+                                     "$defs": {"use": {"$ref": "#/$defs/value"},
+                                               "value": {"type": "integer"}}}})json",
+                R"json({"allOf": [{"$ref": "#/storage/$defs/use"}, {"$ref": "#/entry"},
+                                 {"$ref": "child/use.json#use"}],
+                         "entry": {"$ref": "#/storage"},
+                         "storage": {"$id": "child/",
+                                     "$defs": {"use": {"$id": "use.json", "$anchor": "use",
+                                                       "$ref": "value.json"},
+                                               "value": {"$id": "value.json",
+                                                         "type": "integer"}}}})json",
+            };
+            for (const auto text : schemas)
+            {
+                SCOPED_TRACE(text);
+                const auto schema = rad::ParseJson(text);
+                ASSERT_TRUE(schema);
+                auto value = schema.value();
+                if (!descendantFirst)
+                {
+                    auto& branches = value.as_object().at("allOf").as_array();
+                    std::swap(branches[0], branches[1]);
+                }
+                const auto compiled = rad::JsonSchema::Compile(value, dialect);
+                ASSERT_TRUE(compiled) << compiled.error().schemaPath << ": "
+                                      << compiled.error().message;
+                EXPECT_TRUE(compiled.value().Validate(1));
+                const auto invalid = compiled.value().Validate("invalid");
+                ASSERT_FALSE(invalid);
+                rad::JsonSchemaValidationOptions options;
+                options.maxErrors = 1;
+                const auto limited = compiled.value().Validate("invalid", options);
+                ASSERT_FALSE(limited);
+                ASSERT_EQ(limited.errors.size(), 1);
+                EXPECT_EQ(limited.errors[0].schemaPath, "/storage/$defs/value/type");
+            }
+        }
+    }
+}
+
 TEST(IO, JsonSchemaInvalidReferences)
 {
     struct Case
@@ -412,7 +557,7 @@ TEST(IO, JsonSchemaInvalidReferences)
         {R"json("#/list/1")json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
         {R"json("other.json#/$defs/item")json",
          rad::JsonSchemaCompileErrorCode::UnsupportedFeature},
-        {R"json("#named")json", rad::JsonSchemaCompileErrorCode::UnsupportedFeature},
+        {R"json("#named")json", rad::JsonSchemaCompileErrorCode::InvalidSchema},
     };
     for (const auto& testCase : cases)
     {
@@ -436,26 +581,6 @@ TEST(IO, JsonSchemaInvalidReferences)
     ASSERT_FALSE(invalidTarget);
     EXPECT_EQ(invalidTarget.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
     EXPECT_EQ(invalidTarget.error().schemaPath, "/list/0/type");
-
-    const auto nestedSource = rad::ParseJson(
-        R"json({"$defs": {"inner": {"$id": "sub.json", "$ref": "#"}},
-                 "$ref": "#/$defs/inner"})json");
-    ASSERT_TRUE(nestedSource);
-    const auto nestedCompiled = rad::JsonSchema::Compile(
-        nestedSource.value(), rad::JsonSchemaDialect::Draft2020_12);
-    ASSERT_FALSE(nestedCompiled);
-    EXPECT_EQ(nestedCompiled.error().code,
-              rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
-
-    const auto nestedTarget = rad::ParseJson(
-        R"json({"$defs": {"inner": {"$id": "sub.json", "type": "string"}},
-                 "$ref": "#/$defs/inner"})json");
-    ASSERT_TRUE(nestedTarget);
-    const auto targetCompiled = rad::JsonSchema::Compile(
-        nestedTarget.value(), rad::JsonSchemaDialect::Draft2020_12);
-    ASSERT_FALSE(targetCompiled);
-    EXPECT_EQ(targetCompiled.error().code,
-              rad::JsonSchemaCompileErrorCode::UnsupportedFeature);
 }
 
 #if !defined(RAD_JSON_SCHEMA_USE_STD_REGEX) || !RAD_JSON_SCHEMA_USE_STD_REGEX
