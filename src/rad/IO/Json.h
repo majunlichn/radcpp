@@ -148,6 +148,11 @@ struct JsonSchemaCompileOptions
 //   supported keyword definitions but does not automatically validate against the meta-schema.
 //
 // Numeric semantics:
+// - Instances must contain only finite numbers, including in unconstrained objects and arrays.
+//   Non-finite values fail before schema evaluation, even for boolean schemas; diagnostics use
+//   the offending instance paths and the root schema location.
+//   This check traverses the instance once without applying the schema evaluation depth limit.
+// - Enabled enum and const assertions reject non-finite values in their literal payloads.
 // - multipleOf uses exact arithmetic on integers and shortest round-trip decimal representations
 //   of doubles, without an epsilon. Original numeric text is not retained; a computed value
 //   such as 0.1 + 0.2 need not be a multiple of 0.1.

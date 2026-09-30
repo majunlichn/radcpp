@@ -18,6 +18,7 @@
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <compare>
 
 namespace rad
 {
@@ -59,30 +60,34 @@ using detail::ChildPath;
            std::trunc(value.as_double()) == value.as_double();
 }
 
-[[nodiscard]] int CompareNumbers(const JsonValue& left, const JsonValue& right) noexcept
+[[nodiscard]] std::partial_ordering CompareNumbers(const JsonValue& left,
+                                                   const JsonValue& right) noexcept
 {
+    if ((left.is_double() && std::isnan(left.as_double())) ||
+        (right.is_double() && std::isnan(right.as_double())))
+    {
+        return std::partial_ordering::unordered;
+    }
     if (left.is_int64() && right.is_int64())
     {
-        return (left.as_int64() > right.as_int64()) -
-               (left.as_int64() < right.as_int64());
+        return left.as_int64() <=> right.as_int64();
     }
     if (left.is_uint64() && right.is_uint64())
     {
-        return (left.as_uint64() > right.as_uint64()) -
-               (left.as_uint64() < right.as_uint64());
+        return left.as_uint64() <=> right.as_uint64();
     }
     if (left.is_int64() && right.is_uint64())
     {
         if (left.as_int64() < 0)
         {
-            return -1;
+            return std::partial_ordering::less;
         }
         const auto converted = static_cast<std::uint64_t>(left.as_int64());
-        return (converted > right.as_uint64()) - (converted < right.as_uint64());
+        return converted <=> right.as_uint64();
     }
     if (left.is_uint64() && right.is_int64())
     {
-        return -CompareNumbers(right, left);
+        return 0 <=> CompareNumbers(right, left);
     }
     if (left.is_int64() && right.is_double())
     {
@@ -91,19 +96,18 @@ using detail::ChildPath;
         constexpr double upperBound = 9223372036854775808.0;
         if (number < lowerBound)
         {
-            return 1;
+            return std::partial_ordering::greater;
         }
         if (number >= upperBound)
         {
-            return -1;
+            return std::partial_ordering::less;
         }
         const auto integer = static_cast<std::int64_t>(number);
         if (left.as_int64() != integer)
         {
-            return (left.as_int64() > integer) - (left.as_int64() < integer);
+            return left.as_int64() <=> integer;
         }
-        return (static_cast<double>(integer) > number) -
-               (static_cast<double>(integer) < number);
+        return static_cast<double>(integer) <=> number;
     }
     if (left.is_uint64() && right.is_double())
     {
@@ -111,28 +115,91 @@ using detail::ChildPath;
         constexpr double upperBound = 18446744073709551616.0;
         if (number < 0)
         {
-            return 1;
+            return std::partial_ordering::greater;
         }
         if (number >= upperBound)
         {
-            return -1;
+            return std::partial_ordering::less;
         }
         const auto integer = static_cast<std::uint64_t>(number);
         if (left.as_uint64() != integer)
         {
-            return (left.as_uint64() > integer) - (left.as_uint64() < integer);
+            return left.as_uint64() <=> integer;
         }
-        return (static_cast<double>(integer) > number) -
-               (static_cast<double>(integer) < number);
+        return static_cast<double>(integer) <=> number;
     }
     if (left.is_double() && !right.is_double())
     {
-        return -CompareNumbers(right, left);
+        return 0 <=> CompareNumbers(right, left);
     }
 
     const auto leftNumber = AsNumber(left);
     const auto rightNumber = AsNumber(right);
-    return (leftNumber > rightNumber) - (leftNumber < rightNumber);
+    return leftNumber <=> rightNumber;
+}
+
+template <typename OnError>
+[[nodiscard]] bool CheckFiniteNumbers(const JsonValue& root, OnError onError)
+{
+    struct Frame
+    {
+        const JsonValue* value;
+        std::size_t next = 0;
+    };
+    std::vector<Frame> frames;
+    const JsonValue* value = &root;
+    bool finite = true;
+    for (;;)
+    {
+        if (value->is_double() && !std::isfinite(value->as_double()))
+        {
+            finite = false;
+            std::string path;
+            for (const auto& frame : frames)
+            {
+                const auto index = frame.next - 1;
+                path = frame.value->is_array()
+                           ? ChildPath(path, std::to_string(index))
+                           : ChildPath(path, (frame.value->as_object().begin() + index)->key());
+            }
+            if (!onError(path))
+            {
+                return false;
+            }
+        }
+        if ((value->is_array() && !value->as_array().empty()) ||
+            (value->is_object() && !value->as_object().empty()))
+        {
+            frames.push_back({value});
+        }
+        while (!frames.empty())
+        {
+            auto& frame = frames.back();
+            if (frame.value->is_array())
+            {
+                const auto& array = frame.value->as_array();
+                if (frame.next < array.size())
+                {
+                    value = &array[frame.next++];
+                    break;
+                }
+            }
+            else
+            {
+                const auto& object = frame.value->as_object();
+                if (frame.next < object.size())
+                {
+                    value = &(object.begin() + frame.next++)->value();
+                    break;
+                }
+            }
+            frames.pop_back();
+        }
+        if (frames.empty())
+        {
+            return finite;
+        }
+    }
 }
 
 [[nodiscard]] std::uint64_t IntegerMagnitude(const JsonValue& value) noexcept
@@ -464,7 +531,16 @@ public:
     [[nodiscard]] JsonSchemaValidationResult ValidateInstance(const JsonValue& schema,
                                                               const JsonValue& instance)
     {
-        Validate(schema, instance, {}, "/0", 0);
+        if (CheckFiniteNumbers(instance,
+                               [this](std::string_view path)
+                               {
+                                   AddError(path, "/0", "number must be finite");
+                                   return m_result.errors.size() <
+                                          std::max<std::size_t>(m_options.maxErrors, 1);
+                               }))
+        {
+            Validate(schema, instance, {}, "/0", 0);
+        }
         return std::move(m_result);
     }
 
@@ -849,13 +925,35 @@ private:
             }
         }
 
-        if (const auto* enumeration = object.if_contains("enum");
-            enumeration != nullptr &&
-            (!enumeration->is_array() || enumeration->as_array().empty() ||
-             HasDuplicates(enumeration->as_array())))
+        if (const auto* enumeration = object.if_contains("enum"))
         {
-            AddError({}, ChildPath(schemaPath, "enum"),
-                     "enum must be a non-empty array of unique values");
+            const auto keywordPath = ChildPath(schemaPath, "enum");
+            if (!enumeration->is_array() || enumeration->as_array().empty())
+            {
+                AddError({}, keywordPath, "enum must be a non-empty array of unique values");
+            }
+            else if (CheckFiniteNumbers(*enumeration,
+                                        [this, &keywordPath](std::string_view path)
+                                        {
+                                            AddError({}, keywordPath + std::string(path),
+                                                     "number must be finite");
+                                            return false;
+                                        }) &&
+                     HasDuplicates(enumeration->as_array()))
+            {
+                AddError({}, keywordPath, "enum must be a non-empty array of unique values");
+            }
+        }
+        if (const auto* constant = object.if_contains("const"))
+        {
+            const auto keywordPath = ChildPath(schemaPath, "const");
+            static_cast<void>(CheckFiniteNumbers(*constant,
+                                                 [this, &keywordPath](std::string_view path)
+                                                 {
+                                                     AddError({}, keywordPath + std::string(path),
+                                                              "number must be finite");
+                                                     return false;
+                                                 }));
         }
 
         constexpr std::array sizeKeywords = {
@@ -2164,6 +2262,11 @@ private:
             return;
         }
         const auto comparison = CompareNumbers(instance, *limit);
+        if (comparison == std::partial_ordering::unordered)
+        {
+            AddError(instancePath, keywordPath, "numbers cannot be compared");
+            return;
+        }
         const bool fails = maximum ? (exclusive ? comparison >= 0 : comparison > 0)
                                    : (exclusive ? comparison <= 0 : comparison < 0);
         if (fails)
