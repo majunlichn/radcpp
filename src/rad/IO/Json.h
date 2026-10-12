@@ -75,19 +75,43 @@ make_exception_ptr(const JsonSchemaCompileError& error)
     return std::make_exception_ptr(error);
 }
 
-struct JsonSchemaValidationError
+// Source locations and explanation for a schema violation or an evaluation failure.
+struct JsonSchemaDiagnostic
 {
+    // JSON Pointer into the instance; empty denotes its root. Missing-property locations
+    // need not exist.
     std::string instancePath;
-    std::string schemaPath;
-    std::string message;
+    // Retrieval URI of the containing schema document, not its $id; empty for an anonymous root.
     std::string schemaUri;
+    // JSON Pointer within that schema document, e.g. "/properties/name/type".
+    // Empty denotes the document root, not necessarily the resource root selected by $id.
+    std::string schemaPath;
+    // Human-readable explanation, not a stable error code.
+    std::string message;
+};
+
+enum class JsonSchemaValidationStatus
+{
+    Complete,
+    DepthLimitExceeded,
+    RegexResourceLimitExceeded,
+    RegexEvaluationFailed,
+    InternalError,
 };
 
 struct JsonSchemaValidationResult
 {
-    std::vector<JsonSchemaValidationError> errors;
+    // Complete means a conclusion was reached, not that every branch was visited.
+    JsonSchemaValidationStatus status = JsonSchemaValidationStatus::Complete;
+    // Only schema violations are collected here; truncation does not change status.
+    std::vector<JsonSchemaDiagnostic> errors;
+    // The first evaluation failure, independent of the diagnostic count limit.
+    std::optional<JsonSchemaDiagnostic> evaluationError;
 
-    [[nodiscard]] explicit operator bool() const noexcept { return errors.empty(); }
+    [[nodiscard]] explicit operator bool() const noexcept
+    {
+        return status == JsonSchemaValidationStatus::Complete && errors.empty();
+    }
 };
 
 struct JsonSchemaRegexMatchLimits
@@ -115,6 +139,8 @@ struct JsonSchemaDocument
 
 struct JsonSchemaCompileOptions
 {
+    // Auto follows the root $schema declaration; a missing declaration is an error.
+    JsonSchemaDialect dialect = JsonSchemaDialect::Auto;
     // Empty means an anonymous root; otherwise an absolute, fragment-free retrieval URI.
     std::string retrievalUri;
     // Compilation owns copies of reachable documents; unused documents are not validated.
@@ -126,6 +152,8 @@ struct JsonSchemaCompileOptions
 // Compilation checks definitions and prepares static references and regular expressions.
 // Compiled schemas own their documents and expressions; copies share immutable state.
 // Instance evaluation keeps diagnostics and resource scopes local to each call.
+// Validation status reports completion or the first evaluation failure. Only Complete results
+// use errors.empty() to determine validity; boolean conversion is false for incomplete results.
 //
 // Supported keywords:
 // - All drafts: boolean schemas; $ref, $id, and JSON Pointers; type, enum, const;
@@ -178,7 +206,9 @@ struct JsonSchemaCompileOptions
 //   Other PCRE2 syntax and semantics are not fully ECMAScript-compatible.
 // - JsonSchemaValidationOptions::regex controls each match's limits. Defaults: match limit
 //   1,000,000, backtracking depth 1,000, and 8 MiB of backtracking heap. Exhaustion fails
-//   validation as a resource error, not an ordinary pattern mismatch.
+//   validation with RegexResourceLimitExceeded, not an ordinary pattern mismatch. Other matching
+//   failures report RegexEvaluationFailed. Failure diagnostics are stored in evaluationError,
+//   separately from schema violations in errors.
 // - For debugging, RAD_JSON_SCHEMA_USE_STD_REGEX=1 selects std::regex ECMAScript over UTF-8
 //   bytes instead; this backend is not fully Unicode-aware and cannot enforce matching limits.
 //   It rejects non-default regex limits when matching is attempted.
@@ -190,13 +220,10 @@ struct JsonSchemaCompileOptions
 class JsonSchema
 {
 public:
-    // Auto follows the root $schema declaration; a missing declaration is an error.
-    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
-    Compile(const JsonValue& schema, JsonSchemaDialect dialect = JsonSchemaDialect::Auto,
-            const JsonSchemaCompileOptions& options = {});
-    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError>
-    CompileFile(const FilePath& path, JsonSchemaDialect dialect = JsonSchemaDialect::Auto,
-                const JsonSchemaCompileOptions& options = {});
+    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> Compile(
+        const JsonValue& schema, const JsonSchemaCompileOptions& options = {});
+    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> CompileFile(
+        const FilePath& path, const JsonSchemaCompileOptions& options = {});
 
     // Returns the resolved standard draft, never Auto, including for a custom vocabulary dialect.
     [[nodiscard]] JsonSchemaDialect Dialect() const noexcept;
