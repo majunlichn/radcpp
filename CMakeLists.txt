@@ -19,6 +19,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Build options
 option(RAD_BUILD_TESTS "Build tests" ON)
 option(RAD_ENABLE_INSTALL "Enable installation rules" ON)
+set(JSON_SCHEMA_TEST_SUITE_ROOT "" CACHE PATH
+    "Local JSON Schema test suite root; leave empty to download automatically")
 
 include(GNUInstallDirs)
 include(cmake/radCompileOptions.cmake)
@@ -151,6 +153,13 @@ set(RAD_TEST_SOURCES
     src/rad/IO/File.test.cpp
     src/rad/IO/Image.test.cpp
     src/rad/IO/Json.test.cpp
+    src/rad/IO/JsonSchema.test.h
+    src/rad/IO/JsonSchema.test.cpp
+    src/rad/IO/JsonSchemaDialects.test.cpp
+    src/rad/IO/JsonSchemaNumbers.test.cpp
+    src/rad/IO/JsonSchemaOfficial.test.cpp
+    src/rad/IO/JsonSchemaReferences.test.cpp
+    src/rad/IO/JsonSchemaRegex.test.cpp
     src/rad/IO/Logging.test.cpp
     src/rad/Math/Matrix.test.cpp
     src/rad/Math/Vector.test.cpp
@@ -297,6 +306,31 @@ if(WIN32)
 endif()
 
 if(RAD_BUILD_TESTS)
+    if(NOT "${JSON_SCHEMA_TEST_SUITE_ROOT}" STREQUAL "")
+        get_filename_component(JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED
+            "${JSON_SCHEMA_TEST_SUITE_ROOT}" ABSOLUTE)
+    else()
+        include(FetchContent)
+        FetchContent_Declare(json_schema_test_suite
+            GIT_REPOSITORY https://github.com/json-schema-org/JSON-Schema-Test-Suite.git
+            GIT_TAG main
+            GIT_SHALLOW TRUE
+            GIT_SUBMODULES ""
+        )
+        FetchContent_MakeAvailable(json_schema_test_suite)
+        set(JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED "${json_schema_test_suite_SOURCE_DIR}")
+    endif()
+
+    if(NOT IS_DIRECTORY "${JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED}/tests"
+       OR NOT IS_DIRECTORY "${JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED}/remotes"
+       OR NOT EXISTS "${JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED}/LICENSE"
+       OR IS_DIRECTORY "${JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED}/LICENSE")
+        message(FATAL_ERROR
+            "Invalid JSON Schema test suite source directory: "
+            "${JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED}\n"
+            "Expected tests/ and remotes/ directories and a LICENSE file.")
+    endif()
+
     add_executable(rad_tests)
     target_sources(rad_tests PRIVATE ${RAD_TEST_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src/rad FILES ${RAD_TEST_SOURCES})
@@ -306,6 +340,21 @@ if(RAD_BUILD_TESTS)
     )
     set_target_properties(rad_tests PROPERTIES
         VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<CONFIG>"
+    )
+    add_custom_command(TARGET rad_tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E rm -rf
+            "$<TARGET_FILE_DIR:rad_tests>/JSON-Schema-Test-Suite"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED}/tests"
+            "$<TARGET_FILE_DIR:rad_tests>/JSON-Schema-Test-Suite/tests"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED}/remotes"
+            "$<TARGET_FILE_DIR:rad_tests>/JSON-Schema-Test-Suite/remotes"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${JSON_SCHEMA_TEST_SUITE_ROOT_RESOLVED}/LICENSE"
+            "$<TARGET_FILE_DIR:rad_tests>/JSON-Schema-Test-Suite/LICENSE"
+        COMMENT "Copying the JSON Schema test suite"
+        VERBATIM
     )
     gtest_discover_tests(rad_tests)
 endif()
@@ -326,6 +375,7 @@ if(RAD_ENABLE_INSTALL)
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/rad"
         FILES_MATCHING
             PATTERN "*.h"
+            PATTERN "*.test.h" EXCLUDE
             PATTERN "JsonSchemaRegex.h" EXCLUDE
             PATTERN "JsonSchemaReferences.h" EXCLUDE
             PATTERN "JsonSchemaMetaSchemas.h" EXCLUDE
