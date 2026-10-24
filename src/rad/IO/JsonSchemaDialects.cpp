@@ -137,7 +137,7 @@ private:
                                                std::string message) const
     {
         m_failureKind = FailureKind::Other;
-        return {code, m_fallbackDialect, std::string(path), std::move(message), std::string(uri)};
+        return {code, std::string(uri), std::string(path), std::move(message)};
     }
 
     void AddIdentifier(const std::string& uri, std::size_t node)

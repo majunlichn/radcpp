@@ -41,9 +41,10 @@ TEST(IO, JsonSchemaNonFiniteInstances)
                   -std::numeric_limits<double>::infinity()})
             {
                 const auto result = compiled.value().Validate(value);
-                EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::Complete);
-                EXPECT_FALSE(result.evaluationError);
+                EXPECT_FALSE(result);
                 ASSERT_EQ(result.errors.size(), 1);
+                EXPECT_EQ(result.errors[0].errorCode,
+                          rad::JsonSchemaValidationErrorCode::SchemaViolation);
                 EXPECT_EQ(result.errors[0].message, "number must be finite");
                 EXPECT_EQ(result.errors[0].instancePath, "");
                 EXPECT_EQ(result.errors[0].schemaPath, "");

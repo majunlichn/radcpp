@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <exception>
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -51,22 +50,32 @@ enum class JsonSchemaDialect
 
 enum class JsonSchemaCompileErrorCode
 {
-    MissingDialect,
-    UnsupportedDialect,
-    FileReadError,
+    // CompileFile could not read the supplied schema file.
+    FileReadFailed,
+    // Schema text is not valid JSON.
     InvalidJson,
-    UnsupportedFeature,
+
+    // Auto was selected and the root schema has no $schema declaration.
+    MissingDialect,
+    // The dialect option is not a valid JsonSchemaDialect enumerator.
+    InvalidDialect,
+
+    // Schema structure, keyword values, identifiers, or references are invalid.
+    // Also used when a compilation depth limit is exceeded.
     InvalidSchema,
+    // Required schema semantics are unsupported, or a referenced document is unavailable offline.
+    UnsupportedFeature,
 };
 
 struct JsonSchemaCompileError
 {
     JsonSchemaCompileErrorCode code;
-    std::optional<JsonSchemaDialect> dialect;
-    std::string schemaPath;
-    std::string message;
     // Retrieval URI of the schema document, empty for an anonymous root.
     std::string schemaUri;
+    // JSON Pointer within the schema document; empty denotes its root.
+    std::string schemaPath;
+    // Human-readable explanation, not a stable error code.
+    std::string message;
 };
 
 [[nodiscard]] inline std::exception_ptr
@@ -75,9 +84,18 @@ make_exception_ptr(const JsonSchemaCompileError& error)
     return std::make_exception_ptr(error);
 }
 
-// Source locations and explanation for a schema violation or an evaluation failure.
-struct JsonSchemaDiagnostic
+enum class JsonSchemaValidationErrorCode
 {
+    SchemaViolation,
+    DepthLimitExceeded,
+    RegexResourceLimitExceeded,
+    RegexEvaluationFailed,
+    InternalError,
+};
+
+struct JsonSchemaValidationError
+{
+    JsonSchemaValidationErrorCode errorCode;
     // JSON Pointer into the instance; empty denotes its root. Missing-property locations
     // need not exist.
     std::string instancePath;
@@ -90,28 +108,12 @@ struct JsonSchemaDiagnostic
     std::string message;
 };
 
-enum class JsonSchemaValidationStatus
-{
-    Complete,
-    DepthLimitExceeded,
-    RegexResourceLimitExceeded,
-    RegexEvaluationFailed,
-    InternalError,
-};
-
 struct JsonSchemaValidationResult
 {
-    // Complete means a conclusion was reached, not that every branch was visited.
-    JsonSchemaValidationStatus status = JsonSchemaValidationStatus::Complete;
-    // Only schema violations are collected here; truncation does not change status.
-    std::vector<JsonSchemaDiagnostic> errors;
-    // The first evaluation failure, independent of the diagnostic count limit.
-    std::optional<JsonSchemaDiagnostic> evaluationError;
+    // The first evaluation failure, if any, is the final error and stops validation.
+    std::vector<JsonSchemaValidationError> errors;
 
-    [[nodiscard]] explicit operator bool() const noexcept
-    {
-        return status == JsonSchemaValidationStatus::Complete && errors.empty();
-    }
+    [[nodiscard]] explicit operator bool() const noexcept { return errors.empty(); }
 };
 
 struct JsonSchemaRegexMatchLimits
@@ -124,7 +126,8 @@ struct JsonSchemaRegexMatchLimits
 
 struct JsonSchemaValidationOptions
 {
-    // Limits diagnostics, not evaluation. A zero value is treated as one.
+    // Stops evaluation once this many schema violations are collected. Zero is treated as one.
+    // Evaluation failures stop immediately and also fit within this effective error limit.
     std::size_t maxErrors = 64;
     std::size_t maxDepth = 128;
     JsonSchemaRegexMatchLimits regex;
@@ -152,8 +155,10 @@ struct JsonSchemaCompileOptions
 // Compilation checks definitions and prepares static references and regular expressions.
 // Compiled schemas own their documents and expressions; copies share immutable state.
 // Instance evaluation keeps diagnostics and resource scopes local to each call.
-// Validation status reports completion or the first evaluation failure. Only Complete results
-// use errors.empty() to determine validity; boolean conversion is false for incomplete results.
+// An empty error list means validation passed. Errors include a category, source locations,
+// and an explanation.
+// Validation stops at the effective error limit or the first evaluation failure. Speculative
+// branches keep their violations local, so a rejected branch does not reject a valid alternative.
 //
 // Supported keywords:
 // - All drafts: boolean schemas; $ref, $id, and JSON Pointers; type, enum, const;
@@ -207,8 +212,8 @@ struct JsonSchemaCompileOptions
 // - JsonSchemaValidationOptions::regex controls each match's limits. Defaults: match limit
 //   1,000,000, backtracking depth 1,000, and 8 MiB of backtracking heap. Exhaustion fails
 //   validation with RegexResourceLimitExceeded, not an ordinary pattern mismatch. Other matching
-//   failures report RegexEvaluationFailed. Failure diagnostics are stored in evaluationError,
-//   separately from schema violations in errors.
+//   failures report RegexEvaluationFailed. Evaluation failures are the final entry in errors,
+//   following any schema violations collected before validation stopped.
 // - For debugging, RAD_JSON_SCHEMA_USE_STD_REGEX=1 selects std::regex ECMAScript over UTF-8
 //   bytes instead; this backend is not fully Unicode-aware and cannot enforce matching limits.
 //   It rejects non-default regex limits when matching is attempted.

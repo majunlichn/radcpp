@@ -291,7 +291,7 @@ private:
     {
         if (!m_error)
         {
-            m_error = JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, m_dialect,
+            m_error = JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, {},
                                              std::string(path), std::move(message)};
         }
     }
@@ -306,7 +306,7 @@ private:
             if (reference)
             {
                 m_resolutionError =
-                    JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, m_dialect,
+                    JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, {},
                                            std::string(path), std::move(message)};
             }
             else
@@ -572,8 +572,7 @@ private:
                                                      std::string_view path,
                                                      std::string message) const
     {
-        return {code, m_dialect, m_graph.SchemaPath(path), std::move(message),
-                m_graph.SchemaUri(path)};
+        return {code, m_graph.SchemaUri(path), m_graph.SchemaPath(path), std::move(message)};
     }
 
     [[nodiscard]] Target AnchorTarget(const std::string& path, const boost::urls::url& uri,
@@ -606,7 +605,7 @@ private:
         if (!reference.is_string())
         {
             m_resolutionError =
-                JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, m_dialect,
+                JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, {},
                                        keywordPath, std::string(source.keyword) + " must be a string"};
             return std::nullopt;
         }
@@ -620,7 +619,7 @@ private:
         if (source.keyword == "$recursiveRef" && StringView(reference.as_string()) != "#")
         {
             m_resolutionError = JsonSchemaCompileError{
-                JsonSchemaCompileErrorCode::UnsupportedFeature, m_dialect, keywordPath,
+                JsonSchemaCompileErrorCode::UnsupportedFeature, {}, keywordPath,
                 "$recursiveRef supports only the value \"#\""};
             return std::nullopt;
         }
@@ -666,7 +665,7 @@ private:
                     if (!parsed)
                     {
                         m_error = JsonSchemaCompileError{
-                            JsonSchemaCompileErrorCode::InvalidJson, m_dialect, keywordPath,
+                            JsonSchemaCompileErrorCode::InvalidJson, {}, keywordPath,
                             "invalid bundled meta-schema " + identifier + ": " +
                                 parsed.error().message()};
                         return std::nullopt;
@@ -676,7 +675,7 @@ private:
                 }
             }
             m_resolutionError = JsonSchemaCompileError{
-                JsonSchemaCompileErrorCode::UnsupportedFeature, m_dialect, keywordPath,
+                JsonSchemaCompileErrorCode::UnsupportedFeature, {}, keywordPath,
                 "schema document is not registered: " + std::string(uri->buffer())};
             return std::nullopt;
         }
@@ -709,7 +708,7 @@ private:
                 return AnchorTarget(named->second, canonical, source.keyword);
             }
             m_resolutionError =
-                JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, m_dialect,
+                JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, {},
                                        keywordPath,
                                        std::string(source.keyword) + " anchor does not exist"};
             return std::nullopt;
@@ -724,7 +723,7 @@ private:
         if (FindJsonSchemaValue(m_root, targetPath) == nullptr)
         {
             m_resolutionError = JsonSchemaCompileError{
-                JsonSchemaCompileErrorCode::InvalidSchema, m_dialect, keywordPath,
+                JsonSchemaCompileErrorCode::InvalidSchema, {}, keywordPath,
                 std::string(source.keyword) +
                     " target does not exist or has an invalid JSON Pointer"};
             return std::nullopt;
@@ -842,8 +841,8 @@ Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compi
         if (!declared->is_string())
         {
             return Failure(JsonSchemaCompileError{
-                JsonSchemaCompileErrorCode::InvalidSchema, dialect, "/$schema",
-                "$schema must be a string", options.retrievalUri});
+                JsonSchemaCompileErrorCode::InvalidSchema, options.retrievalUri, "/$schema",
+                "$schema must be a string"});
         }
         auto selected = resolver.Resolve(StringView(declared->as_string()));
         if (!selected)
@@ -854,15 +853,15 @@ Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compi
         if (dialect && rootProfile.dialect != *dialect)
         {
             return Failure(JsonSchemaCompileError{
-                JsonSchemaCompileErrorCode::UnsupportedFeature, dialect, "/$schema",
-                "declared meta-schema has a mismatched base draft", options.retrievalUri});
+                JsonSchemaCompileErrorCode::UnsupportedFeature, options.retrievalUri, "/$schema",
+                "declared meta-schema has a mismatched base draft"});
         }
     }
     else if (!dialect)
     {
         return Failure(JsonSchemaCompileError{
-            JsonSchemaCompileErrorCode::MissingDialect, std::nullopt, {},
-            "schema does not declare $schema", options.retrievalUri});
+            JsonSchemaCompileErrorCode::MissingDialect, options.retrievalUri, {},
+            "schema does not declare $schema"});
     }
     JsonSchemaReferences references;
     references.m_dialect = rootProfile.dialect;

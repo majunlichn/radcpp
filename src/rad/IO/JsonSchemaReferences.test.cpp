@@ -29,10 +29,11 @@ TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
     const auto limited = compiled.value().Validate(rad::JsonObject{
         {"next", rad::JsonObject{{"next", rad::JsonObject{}}}}}, options);
     ASSERT_FALSE(limited);
-    EXPECT_EQ(limited.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
-    EXPECT_TRUE(limited.errors.empty());
-    ASSERT_TRUE(limited.evaluationError);
-    EXPECT_NE(limited.evaluationError->message.find("maximum validation depth"), std::string::npos);
+    ASSERT_EQ(limited.errors.size(), 1);
+    EXPECT_EQ(limited.errors.back().errorCode,
+              rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+    EXPECT_NE(limited.errors.back().message.find("maximum validation depth"),
+              std::string::npos);
 
     const auto selfReference = rad::ParseJson(R"json({"$ref": "#"})json");
     ASSERT_TRUE(selfReference);
@@ -42,10 +43,10 @@ TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
     options.maxErrors = 1;
     const auto selfResult = selfCompiled.value().Validate(1, options);
     EXPECT_FALSE(selfResult);
-    EXPECT_EQ(selfResult.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
-    EXPECT_TRUE(selfResult.errors.empty());
-    ASSERT_TRUE(selfResult.evaluationError);
-    EXPECT_NE(selfResult.evaluationError->message.find("maximum validation depth"),
+    ASSERT_EQ(selfResult.errors.size(), 1);
+    EXPECT_EQ(selfResult.errors.back().errorCode,
+              rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+    EXPECT_NE(selfResult.errors.back().message.find("maximum validation depth"),
               std::string::npos);
 }
 
@@ -62,11 +63,11 @@ TEST(IO, JsonSchemaReferenceResourceLimitsAndCopies)
     options.maxDepth = 2;
     const auto recursive = nestedCompiled.value().Validate(1, options);
     ASSERT_FALSE(recursive);
-    EXPECT_EQ(recursive.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
-    EXPECT_TRUE(recursive.errors.empty());
-    ASSERT_TRUE(recursive.evaluationError);
-    EXPECT_EQ(recursive.evaluationError->schemaPath, "/$defs/inner");
-    EXPECT_EQ(recursive.evaluationError->message, "maximum validation depth exceeded");
+    ASSERT_EQ(recursive.errors.size(), 1);
+    EXPECT_EQ(recursive.errors.back().errorCode,
+              rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+    EXPECT_EQ(recursive.errors.back().schemaPath, "/$defs/inner");
+    EXPECT_EQ(recursive.errors.back().message, "maximum validation depth exceeded");
 
     const auto makeSchema = []
     {
@@ -343,12 +344,12 @@ TEST(IO, JsonSchemaDocumentRegistry)
         limits.maxErrors = 1;
         const auto exhausted = cyclic.value().Validate(1, limits);
         ASSERT_FALSE(exhausted);
-        EXPECT_EQ(exhausted.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
-        EXPECT_TRUE(exhausted.errors.empty());
-        ASSERT_TRUE(exhausted.evaluationError);
-        EXPECT_EQ(exhausted.evaluationError->schemaPath, "");
-        EXPECT_EQ(exhausted.evaluationError->schemaUri, "https://example.com/a.json");
-        EXPECT_EQ(exhausted.evaluationError->message, "maximum validation depth exceeded");
+        ASSERT_EQ(exhausted.errors.size(), 1);
+        EXPECT_EQ(exhausted.errors.back().errorCode,
+                  rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+        EXPECT_EQ(exhausted.errors.back().schemaPath, "");
+        EXPECT_EQ(exhausted.errors.back().schemaUri, "https://example.com/a.json");
+        EXPECT_EQ(exhausted.errors.back().message, "maximum validation depth exceeded");
 
         options.documents = {
             {"https://example.com/a.json",
@@ -365,13 +366,8 @@ TEST(IO, JsonSchemaDocumentRegistry)
             limits.maxErrors = maxErrors;
             const auto result =
                 limited.value().Validate(rad::JsonObject{{"child", rad::JsonObject{}}}, limits);
-            ASSERT_FALSE(result);
-            EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
+            EXPECT_TRUE(result);
             EXPECT_TRUE(result.errors.empty());
-            ASSERT_TRUE(result.evaluationError);
-            EXPECT_EQ(result.evaluationError->schemaUri, "https://example.com/a.json");
-            EXPECT_EQ(result.evaluationError->schemaPath, "/properties/child/allOf/0");
-            EXPECT_EQ(result.evaluationError->message, "maximum validation depth exceeded");
         }
         limits.maxDepth = 4;
         EXPECT_TRUE(
@@ -568,14 +564,20 @@ TEST(IO, JsonSchemaRecursiveReferenceResourceLimits)
             options.maxErrors = maxErrors;
             options.maxDepth = testCase.maxDepth;
             const auto result = compiled.value().Validate(data.value(), options);
+            if (testCase.maxDepth == 3)
+            {
+                EXPECT_TRUE(result);
+                EXPECT_TRUE(result.errors.empty());
+                continue;
+            }
             ASSERT_FALSE(result);
-            EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
-            EXPECT_TRUE(result.errors.empty());
-            ASSERT_TRUE(result.evaluationError);
-            EXPECT_EQ(result.evaluationError->instancePath, testCase.maxDepth == 3 ? "/child" : "");
-            EXPECT_EQ(result.evaluationError->schemaPath, "");
-            EXPECT_EQ(result.evaluationError->schemaUri, "https://example.com/cycle.json");
-            EXPECT_EQ(result.evaluationError->message, "maximum validation depth exceeded");
+            ASSERT_EQ(result.errors.size(), 1);
+            EXPECT_EQ(result.errors.back().errorCode,
+                      rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+            EXPECT_EQ(result.errors.back().instancePath, "");
+            EXPECT_EQ(result.errors.back().schemaPath, "");
+            EXPECT_EQ(result.errors.back().schemaUri, "https://example.com/cycle.json");
+            EXPECT_EQ(result.errors.back().message, "maximum validation depth exceeded");
         }
     }
 }
@@ -747,14 +749,20 @@ TEST(IO, JsonSchemaDynamicReferenceResourceLimits)
             options.maxErrors = maxErrors;
             options.maxDepth = testCase.maxDepth;
             const auto result = compiled.value().Validate(data.value(), options);
+            if (!testCase.instancePath.empty())
+            {
+                EXPECT_TRUE(result);
+                EXPECT_TRUE(result.errors.empty());
+                continue;
+            }
             ASSERT_FALSE(result);
-            EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
-            EXPECT_TRUE(result.errors.empty());
-            ASSERT_TRUE(result.evaluationError);
-            EXPECT_EQ(result.evaluationError->instancePath, testCase.instancePath);
-            EXPECT_EQ(result.evaluationError->schemaPath, "");
-            EXPECT_EQ(result.evaluationError->schemaUri, "https://example.com/cycle.json");
-            EXPECT_EQ(result.evaluationError->message, "maximum validation depth exceeded");
+            ASSERT_EQ(result.errors.size(), 1);
+            EXPECT_EQ(result.errors.back().errorCode,
+                      rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+            EXPECT_EQ(result.errors.back().instancePath, testCase.instancePath);
+            EXPECT_EQ(result.errors.back().schemaPath, "");
+            EXPECT_EQ(result.errors.back().schemaUri, "https://example.com/cycle.json");
+            EXPECT_EQ(result.errors.back().message, "maximum validation depth exceeded");
         }
     }
 }

@@ -15,7 +15,7 @@ struct JsonSchemaRegexError
     bool unsupported;
     bool resource;
     std::string message;
-    JsonSchemaValidationStatus status = JsonSchemaValidationStatus::RegexEvaluationFailed;
+    JsonSchemaValidationErrorCode errorCode = JsonSchemaValidationErrorCode::RegexEvaluationFailed;
 };
 
 [[nodiscard]] inline std::exception_ptr make_exception_ptr(const JsonSchemaRegexError& error)

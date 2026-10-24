@@ -368,13 +368,14 @@ Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(
     }
     if (result != PCRE2_ERROR_NOMATCH)
     {
-        const auto status = result == PCRE2_ERROR_MATCHLIMIT || result == PCRE2_ERROR_DEPTHLIMIT ||
-                                    result == PCRE2_ERROR_HEAPLIMIT
-                                ? JsonSchemaValidationStatus::RegexResourceLimitExceeded
-                                : JsonSchemaValidationStatus::RegexEvaluationFailed;
+        const auto errorCode = result == PCRE2_ERROR_MATCHLIMIT ||
+                                       result == PCRE2_ERROR_DEPTHLIMIT ||
+                                       result == PCRE2_ERROR_HEAPLIMIT
+                                   ? JsonSchemaValidationErrorCode::RegexResourceLimitExceeded
+                                   : JsonSchemaValidationErrorCode::RegexEvaluationFailed;
         return Failure(JsonSchemaRegexError{
             false, true, "regular expression matching failed: " + RegexErrorMessage(result),
-            status});
+            errorCode});
     }
     return Success(false);
 #endif

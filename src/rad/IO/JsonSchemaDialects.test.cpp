@@ -58,7 +58,6 @@ TEST(IO, JsonSchemaAutomaticDialectSelection)
         const auto automatic = rad::JsonSchema::Compile(schema);
         ASSERT_FALSE(automatic);
         EXPECT_EQ(automatic.error().code, rad::JsonSchemaCompileErrorCode::MissingDialect);
-        EXPECT_FALSE(automatic.error().dialect);
         EXPECT_TRUE(
             rad::JsonSchema::Compile(schema, {.dialect = rad::JsonSchemaDialect::Draft2020_12}));
     }
@@ -70,11 +69,10 @@ TEST(IO, JsonSchemaAutomaticDialectSelection)
     const auto invalidJson = rad::JsonSchema::CompileFile(path);
     ASSERT_FALSE(invalidJson);
     EXPECT_EQ(invalidJson.error().code, rad::JsonSchemaCompileErrorCode::InvalidJson);
-    EXPECT_FALSE(invalidJson.error().dialect);
     const auto invalidDialect =
         rad::JsonSchema::Compile(true, {.dialect = static_cast<rad::JsonSchemaDialect>(999)});
     ASSERT_FALSE(invalidDialect);
-    EXPECT_EQ(invalidDialect.error().code, rad::JsonSchemaCompileErrorCode::UnsupportedDialect);
+    EXPECT_EQ(invalidDialect.error().code, rad::JsonSchemaCompileErrorCode::InvalidDialect);
 }
 
 TEST(IO, JsonSchemaStandardMetaSchemaDiagnostics)
@@ -105,7 +103,8 @@ TEST(IO, JsonSchemaStandardMetaSchemaDiagnostics)
         ASSERT_FALSE(invalid);
         ASSERT_EQ(invalid.errors.size(), 1);
         EXPECT_EQ(invalid.errors[0].instancePath, "");
-        EXPECT_EQ(invalid.errors[0].schemaPath, std::string(draft.definition) + "/minimum");
+        EXPECT_EQ(invalid.errors[0].schemaPath,
+                  std::string(draft.definition) + "/minimum");
         EXPECT_EQ(invalid.errors[0].schemaUri, draft.uri);
     }
 }
