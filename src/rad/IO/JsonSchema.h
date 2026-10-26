@@ -38,10 +38,11 @@ enum class JsonSchemaCompileErrorCode
     InvalidDialect,
 
     // Schema structure, keyword values, identifiers, or references are invalid.
-    // Also used when a compilation depth limit is exceeded.
     InvalidSchema,
     // Required schema semantics are unsupported, or a referenced document is unavailable offline.
     UnsupportedFeature,
+    // A schema or meta-schema compilation traversal exceeded maxCompilationDepth.
+    DepthLimitExceeded,
 };
 
 struct JsonSchemaCompileError
@@ -106,7 +107,12 @@ struct JsonSchemaValidationOptions
     // Stops evaluation once this many schema violations are collected. Zero is treated as one.
     // Evaluation failures stop immediately and also fit within this effective error limit.
     std::size_t maxErrors = 64;
-    std::size_t maxDepth = 128;
+    // Maximum nested schema evaluation depth, not the instance's JSON nesting depth.
+    // The root is depth zero; each subschema or reference evaluation adds one.
+    // Sibling evaluations do not accumulate depth. Zero allows only root evaluation.
+    // Exceeding the limit reports DepthLimitExceeded, not SchemaViolation.
+    // The default guards recursive evaluation; this is not a total work budget.
+    std::size_t maxEvaluationDepth = 128;
     JsonSchemaRegexMatchLimits regex;
 };
 
@@ -126,10 +132,17 @@ struct JsonSchemaCompileOptions
     // Compilation owns copies of reachable documents; unused documents are not validated.
     // Retrieval URIs and resource identifiers must not conflict.
     std::vector<JsonSchemaDocument> documents;
+    // Maximum recursive traversal depth during schema and meta-schema compilation.
+    // Each traversal starts at zero. Zero is restrictive, not unlimited.
+    // Independent of JSON parsing and instance evaluation depth; not a total work budget.
+    // Excessive values can exhaust the call stack of the recursive implementation.
+    std::size_t maxCompilationDepth = 128;
 };
 
 // Compiles and validates a practical subset of JSON Schema Draft 7, 2019-09, and 2020-12.
 // Compilation checks definitions and prepares static references and regular expressions.
+// JsonSchemaCompileOptions::maxCompilationDepth guards recursive compilation independently of
+// parsing and validation options; it is not a JSON nesting or reference-count limit.
 // Compiled schemas own their documents and expressions; copies share immutable state.
 // Instance evaluation keeps diagnostics and resource scopes local to each call.
 // An empty error list means validation passed. Errors include a category, source locations,
@@ -204,8 +217,10 @@ class JsonSchema
 public:
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> Compile(
         const JsonValue& schema, const JsonSchemaCompileOptions& options = {});
+    // Parse options apply only to the supplied file, not registered or bundled documents.
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> CompileFile(
-        const FilePath& path, const JsonSchemaCompileOptions& options = {});
+        const FilePath& path, const JsonParseOptions& parseOptions = {},
+        const JsonSchemaCompileOptions& compileOptions = {});
 
     // Returns the resolved standard draft, never Auto, including for a custom vocabulary dialect.
     [[nodiscard]] JsonSchemaDialect Dialect() const noexcept;

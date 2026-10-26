@@ -49,7 +49,8 @@ TEST(IO, JsonSchemaAutomaticDialectSelection)
         EXPECT_EQ(fromFile.value().Dialect(), draft.dialect);
         EXPECT_TRUE(fromFile.value().Validate(1));
         EXPECT_FALSE(fromFile.value().Validate("invalid"));
-        const auto explicitFile = rad::JsonSchema::CompileFile(path, {.dialect = draft.dialect});
+        const auto explicitFile =
+            rad::JsonSchema::CompileFile(path, {}, {.dialect = draft.dialect});
         ASSERT_TRUE(explicitFile) << explicitFile.error().message;
         EXPECT_EQ(explicitFile.value().Dialect(), draft.dialect);
     }
@@ -260,6 +261,75 @@ TEST(IO, JsonSchemaVocabularyDeclarations)
                                                   {.dialect = rad::JsonSchemaDialect::Draft7});
     ASSERT_TRUE(ignored) << ignored.error().message;
     EXPECT_TRUE(ignored.value().Validate(1));
+}
+
+TEST(IO, JsonSchemaMetaSchemaCompilationDepth)
+{
+    for (const auto dialect :
+         {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string standard = dialect == rad::JsonSchemaDialect::Draft2019_09
+                                         ? "https://json-schema.org/draft/2019-09/schema"
+                                         : "https://json-schema.org/draft/2020-12/schema";
+        rad::JsonSchemaCompileOptions options;
+        options.retrievalUri = "https://example.com/root.json";
+        options.documents = {
+            {"https://example.com/meta-a.json",
+             rad::JsonObject{{"$schema", "https://example.com/meta-b.json"}}},
+            {"https://example.com/meta-b.json", rad::JsonObject{{"$schema", standard}}},
+        };
+        const rad::JsonValue schema =
+            rad::JsonObject{{"$schema", "https://example.com/meta-a.json"}, {"type", "integer"}};
+        struct Limit
+        {
+            std::size_t depth;
+            std::string_view uri;
+            std::string_view path;
+        };
+        constexpr Limit limits[] = {
+            {0, "https://example.com/meta-a.json", ""},
+            {1, "https://example.com/meta-a.json", "/$schema"},
+            {2, "https://example.com/meta-b.json", ""},
+        };
+        for (const auto& limit : limits)
+        {
+            SCOPED_TRACE(limit.depth);
+            options.maxCompilationDepth = limit.depth;
+            const auto limited = rad::JsonSchema::Compile(schema, options);
+            ASSERT_FALSE(limited);
+            EXPECT_EQ(limited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
+            EXPECT_EQ(limited.error().schemaUri, limit.uri);
+            EXPECT_EQ(limited.error().schemaPath, limit.path);
+        }
+        options.maxCompilationDepth = 3;
+        const auto compiled = rad::JsonSchema::Compile(schema, options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_EQ(compiled.value().Dialect(), dialect);
+        EXPECT_TRUE(compiled.value().Validate(1));
+        EXPECT_FALSE(compiled.value().Validate("invalid"));
+
+        options.documents = {
+            {"https://example.com/container.json",
+             rad::JsonObject{
+                 {"$schema", standard},
+                 {"$defs", rad::JsonObject{
+                               {"meta", rad::JsonObject{{"$id", "https://example.com/embedded"},
+                                                       {"$schema", standard}}}}},
+             }},
+        };
+        const rad::JsonValue embedded =
+            rad::JsonObject{{"$schema", "https://example.com/embedded"}, {"type", "integer"}};
+        options.maxCompilationDepth = 0;
+        const auto resourceLimited = rad::JsonSchema::Compile(embedded, options);
+        ASSERT_FALSE(resourceLimited);
+        EXPECT_EQ(resourceLimited.error().code,
+                  rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
+        EXPECT_EQ(resourceLimited.error().schemaUri, "https://example.com/container.json");
+        EXPECT_EQ(resourceLimited.error().schemaPath, "/$defs/meta");
+        options.maxCompilationDepth = 1;
+        EXPECT_TRUE(rad::JsonSchema::Compile(embedded, options));
+    }
 }
 
 TEST(IO, JsonSchemaCustomDialectSelection)

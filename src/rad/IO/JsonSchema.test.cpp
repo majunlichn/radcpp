@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <string_view>
 #include <cstddef>
+#include <utility>
 
 using rad::test::FormatValidationErrors;
 
@@ -319,22 +320,144 @@ TEST(IO, JsonSchemaCompileFileOptions)
                 {"https://example.com/child.json", rad::JsonObject{{"type", "integer"}}},
             },
     };
-    const auto compiled = rad::JsonSchema::CompileFile(path, options);
+    const auto compiled = rad::JsonSchema::CompileFile(path, {}, options);
     ASSERT_TRUE(compiled) << compiled.error().message;
     EXPECT_EQ(compiled.value().Dialect(), options.dialect);
     EXPECT_TRUE(compiled.value().Validate(1));
     EXPECT_FALSE(compiled.value().Validate("invalid"));
 
+    ASSERT_TRUE(rad::File::WriteText(path, R"json({
+        // Schema files can opt into non-standard JSON syntax.
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "integer",
+    })json"));
+    const auto strict = rad::JsonSchema::CompileFile(path);
+    ASSERT_FALSE(strict);
+    EXPECT_EQ(strict.error().code, rad::JsonSchemaCompileErrorCode::InvalidJson);
+    rad::JsonParseOptions parseOptions;
+    parseOptions.allow_comments = true;
+    parseOptions.allow_trailing_commas = true;
+    const auto parsed = rad::JsonSchema::CompileFile(path, parseOptions);
+    ASSERT_TRUE(parsed) << parsed.error().message;
+    EXPECT_TRUE(parsed.value().Validate(1));
+    EXPECT_FALSE(parsed.value().Validate("invalid"));
+
+    rad::JsonValue nested = true;
+    for (std::size_t index = 0; index < 40; ++index)
+    {
+        nested = rad::JsonObject{{"allOf", rad::JsonArray{std::move(nested)}}};
+    }
+    ASSERT_TRUE(rad::File::WriteText(path, rad::PrettyJson(nested)));
+    const auto parseLimited = rad::JsonSchema::CompileFile(path, {}, options);
+    ASSERT_FALSE(parseLimited);
+    EXPECT_EQ(parseLimited.error().code, rad::JsonSchemaCompileErrorCode::InvalidJson);
+    parseOptions.max_depth = 128;
+    auto compileOptions = options;
+    compileOptions.maxCompilationDepth = 39;
+    const auto compileLimited =
+        rad::JsonSchema::CompileFile(path, parseOptions, compileOptions);
+    ASSERT_FALSE(compileLimited);
+    EXPECT_EQ(compileLimited.error().code,
+              rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
+    EXPECT_EQ(compileLimited.error().schemaUri, options.retrievalUri);
+    compileOptions.maxCompilationDepth = 40;
+    const auto deep = rad::JsonSchema::CompileFile(path, parseOptions, compileOptions);
+    ASSERT_TRUE(deep) << deep.error().message;
+    EXPECT_TRUE(deep.value().Validate(1));
+
     ASSERT_TRUE(rad::File::WriteText(path, "{"));
-    const auto invalidJson = rad::JsonSchema::CompileFile(path, options);
+    const auto invalidJson = rad::JsonSchema::CompileFile(path, {}, options);
     ASSERT_FALSE(invalidJson);
     EXPECT_EQ(invalidJson.error().code, rad::JsonSchemaCompileErrorCode::InvalidJson);
     EXPECT_EQ(invalidJson.error().schemaUri, options.retrievalUri);
 
-    const auto missing = rad::JsonSchema::CompileFile(path.string() + ".missing", options);
+    const auto missing = rad::JsonSchema::CompileFile(path.string() + ".missing", {}, options);
     ASSERT_FALSE(missing);
     EXPECT_EQ(missing.error().code, rad::JsonSchemaCompileErrorCode::FileReadFailed);
     EXPECT_EQ(missing.error().schemaUri, options.retrievalUri);
+}
+
+TEST(IO, JsonSchemaCompilationDepth)
+{
+    EXPECT_EQ(rad::JsonSchemaCompileOptions{}.maxCompilationDepth, 128);
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/root.json";
+        options.maxCompilationDepth = 0;
+        EXPECT_TRUE(rad::JsonSchema::Compile(true, options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(rad::JsonObject{{"type", "integer"}}, options));
+        const rad::JsonValue nested = rad::JsonObject{{"allOf", rad::JsonArray{true, true, true}}};
+        const auto limited = rad::JsonSchema::Compile(nested, options);
+        ASSERT_FALSE(limited);
+        EXPECT_EQ(limited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
+        EXPECT_EQ(limited.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(limited.error().schemaPath, "/allOf/0");
+        options.maxCompilationDepth = 1;
+        EXPECT_TRUE(rad::JsonSchema::Compile(nested, options));
+
+        options.documents = {
+            {"https://example.com/a.json", rad::JsonObject{{"$ref", "b.json"}}},
+            {"https://example.com/b.json", rad::JsonObject{{"$ref", "c.json"}}},
+            {"https://example.com/c.json", rad::JsonObject{{"type", "integer"}}},
+        };
+        const rad::JsonValue referenced = rad::JsonObject{{"$ref", "a.json"}};
+        options.maxCompilationDepth = 2;
+        const auto referenceLimited = rad::JsonSchema::Compile(referenced, options);
+        ASSERT_FALSE(referenceLimited);
+        EXPECT_EQ(referenceLimited.error().code,
+                  rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
+        EXPECT_EQ(referenceLimited.error().schemaUri, "https://example.com/c.json");
+        EXPECT_EQ(referenceLimited.error().schemaPath, "");
+        options.maxCompilationDepth = 3;
+        const auto compiled = rad::JsonSchema::Compile(referenced, options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(1));
+        rad::JsonSchemaValidationOptions validationOptions;
+        validationOptions.maxEvaluationDepth = 2;
+        const auto evaluationLimited = compiled.value().Validate(1, validationOptions);
+        ASSERT_FALSE(evaluationLimited);
+        ASSERT_EQ(evaluationLimited.errors.size(), 1);
+        EXPECT_EQ(evaluationLimited.errors[0].errorCode,
+                  rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+        validationOptions.maxEvaluationDepth = 3;
+        EXPECT_TRUE(compiled.value().Validate(1, validationOptions));
+    }
+}
+
+TEST(IO, JsonSchemaDefaultCompilationDepth)
+{
+    for (const std::string_view keyword : {"allOf", "properties", "items", "dependentSchemas"})
+    {
+        SCOPED_TRACE(keyword);
+        const auto wrap = [keyword](rad::JsonValue child) -> rad::JsonValue
+        {
+            if (keyword == "allOf")
+            {
+                return rad::JsonObject{{keyword, rad::JsonArray{std::move(child)}}};
+            }
+            if (keyword == "properties" || keyword == "dependentSchemas")
+            {
+                return rad::JsonObject{{keyword, rad::JsonObject{{"child", std::move(child)}}}};
+            }
+            return rad::JsonObject{{keyword, std::move(child)}};
+        };
+        rad::JsonValue nested = true;
+        for (std::size_t index = 0; index < 128; ++index)
+        {
+            nested = wrap(std::move(nested));
+        }
+        rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
+        EXPECT_TRUE(rad::JsonSchema::Compile(nested, options));
+        nested = wrap(std::move(nested));
+        const auto limited = rad::JsonSchema::Compile(nested, options);
+        ASSERT_FALSE(limited);
+        EXPECT_EQ(limited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
+        options.maxCompilationDepth = 129;
+        EXPECT_TRUE(rad::JsonSchema::Compile(nested, options));
+    }
 }
 
 TEST(IO, JsonSchemaErrors)
@@ -411,6 +534,57 @@ TEST(IO, JsonSchemaValidationResult)
     EXPECT_EQ(truncated.errors[0].errorCode, rad::JsonSchemaValidationErrorCode::SchemaViolation);
 }
 
+TEST(IO, JsonSchemaEvaluationDepth)
+{
+    EXPECT_EQ(rad::JsonSchemaValidationOptions{}.maxEvaluationDepth, 128);
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const auto compiled = rad::JsonSchema::Compile(
+            rad::JsonObject{{"items", rad::JsonObject{{"$ref", "#"}}}}, {.dialect = dialect});
+        ASSERT_TRUE(compiled) << compiled.error().message;
+
+        rad::JsonSchemaValidationOptions options;
+        options.maxEvaluationDepth = 0;
+        EXPECT_TRUE(compiled.value().Validate(1, options));
+        const auto rootOnly = compiled.value().Validate(rad::JsonArray{1}, options);
+        ASSERT_FALSE(rootOnly);
+        ASSERT_EQ(rootOnly.errors.size(), 1);
+        EXPECT_EQ(rootOnly.errors[0].errorCode,
+                  rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+        EXPECT_EQ(rootOnly.errors[0].instancePath, "/0");
+        EXPECT_EQ(rootOnly.errors[0].schemaPath, "/items");
+
+        options.maxEvaluationDepth = 1;
+        const auto referenceLimited = compiled.value().Validate(rad::JsonArray{1}, options);
+        ASSERT_FALSE(referenceLimited);
+        ASSERT_EQ(referenceLimited.errors.size(), 1);
+        EXPECT_EQ(referenceLimited.errors[0].errorCode,
+                  rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+        EXPECT_EQ(referenceLimited.errors[0].schemaPath, "");
+
+        options.maxEvaluationDepth = 2;
+        EXPECT_TRUE(compiled.value().Validate(rad::JsonArray{1, 2, 3}, options));
+
+        rad::JsonValue instance = 1;
+        for (std::size_t index = 0; index < 64; ++index)
+        {
+            instance = rad::JsonArray{std::move(instance)};
+        }
+        EXPECT_TRUE(compiled.value().Validate(instance));
+        instance = rad::JsonArray{std::move(instance)};
+        const auto defaultLimited = compiled.value().Validate(instance);
+        ASSERT_FALSE(defaultLimited);
+        ASSERT_EQ(defaultLimited.errors.size(), 1);
+        EXPECT_EQ(defaultLimited.errors[0].errorCode,
+                  rad::JsonSchemaValidationErrorCode::DepthLimitExceeded);
+
+        options.maxEvaluationDepth = 130;
+        EXPECT_TRUE(compiled.value().Validate(instance, options));
+    }
+}
+
 TEST(IO, JsonSchemaEvaluationFailurePropagation)
 {
     constexpr std::string_view schemas[] = {
@@ -433,7 +607,7 @@ TEST(IO, JsonSchemaEvaluationFailurePropagation)
         for (const std::size_t maxErrors : {0U, 1U, 2U})
         {
             rad::JsonSchemaValidationOptions options;
-            options.maxDepth = 1;
+            options.maxEvaluationDepth = 1;
             options.maxErrors = maxErrors;
             const auto result = compiled.value().Validate(rad::JsonArray{1}, options);
             EXPECT_FALSE(result);
@@ -457,7 +631,7 @@ TEST(IO, JsonSchemaEvaluationFailurePropagation)
     for (const std::size_t maxErrors : {0U, 1U, 2U})
     {
         rad::JsonSchemaValidationOptions options;
-        options.maxDepth = 1;
+        options.maxEvaluationDepth = 1;
         options.maxErrors = maxErrors;
         const auto result = compiled.value().Validate(1, options);
         EXPECT_FALSE(result);
@@ -486,7 +660,7 @@ TEST(IO, JsonSchemaBranchErrorLimit)
     ASSERT_TRUE(compiled) << compiled.error().message;
 
     rad::JsonSchemaValidationOptions options;
-    options.maxDepth = 2;
+    options.maxEvaluationDepth = 2;
     for (const std::size_t maxErrors : {0U, 1U, 2U})
     {
         SCOPED_TRACE(maxErrors);
@@ -496,7 +670,7 @@ TEST(IO, JsonSchemaBranchErrorLimit)
         EXPECT_TRUE(result);
         EXPECT_TRUE(result.errors.empty());
     }
-    options.maxDepth = 3;
+    options.maxEvaluationDepth = 3;
     EXPECT_TRUE(compiled.value().Validate(
         rad::JsonObject{{"child", rad::JsonObject{}}}, options));
 }
@@ -560,7 +734,7 @@ TEST(IO, JsonSchemaErrorLimitStopsEvaluation)
             SCOPED_TRACE(maxErrors);
             rad::JsonSchemaValidationOptions options;
             options.maxErrors = maxErrors;
-            options.maxDepth = 1;
+            options.maxEvaluationDepth = 1;
             const auto result = compiled.value().Validate(instance.value(), options);
             EXPECT_FALSE(result);
             const std::size_t expectedErrors = maxErrors <= 1 ? 1 : maxErrors == 2 ? 2 : 3;
@@ -609,7 +783,7 @@ TEST(IO, JsonSchemaSpeculativeBranchErrorLimits)
         {
             rad::JsonSchemaValidationOptions options;
             options.maxErrors = maxErrors;
-            options.maxDepth = 2;
+            options.maxEvaluationDepth = 2;
             const auto result = compiled.value().Validate(instance.value(), options);
             EXPECT_EQ(static_cast<bool>(result), testCase.valid) << FormatValidationErrors(result);
             EXPECT_EQ(result.errors.size(), testCase.valid ? 0 : 1);
@@ -638,7 +812,7 @@ TEST(IO, JsonSchemaUnevaluatedItemsDiagnostics)
         EXPECT_EQ(result.errors[0].schemaPath, "/unevaluatedItems/type");
 
         rad::JsonSchemaValidationOptions options;
-        options.maxDepth = 0;
+        options.maxEvaluationDepth = 0;
         options.maxErrors = 1;
         const auto limited = compiled.value().Validate(rad::JsonArray{1}, options);
         ASSERT_FALSE(limited);

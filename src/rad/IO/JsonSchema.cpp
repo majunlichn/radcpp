@@ -669,7 +669,8 @@ private:
         }
         if (depth > m_maxDepth)
         {
-            AddError(schemaPath, "maximum schema depth exceeded");
+            AddError(schemaPath, "maximum schema depth exceeded",
+                     JsonSchemaCompileErrorCode::DepthLimitExceeded);
             return;
         }
         if (schema.is_bool())
@@ -770,6 +771,15 @@ private:
         }
         ValidateVocabulary(object, schemaPath);
 
+        // Keep the recursive frame small by checking keyword groups in separate functions.
+        ValidateValueDefinitions(object, schemaPath);
+        ValidatePropertyDefinitions(object, schemaPath, depth);
+        ValidateApplicatorDefinitions(object, schemaPath, depth);
+        ValidateCompositionDefinitions(object, schemaPath, depth);
+    }
+
+    void ValidateValueDefinitions(const JsonSchemaKeywords& object, std::string_view schemaPath)
+    {
         if (const auto* type = object.if_contains("type"))
         {
             bool valid = false;
@@ -919,7 +929,11 @@ private:
         {
             AddError(ChildPath(schemaPath, "uniqueItems"), "uniqueItems must be a boolean");
         }
+    }
 
+    void ValidatePropertyDefinitions(const JsonSchemaKeywords& object, std::string_view schemaPath,
+                                     std::size_t depth)
+    {
         if (const auto* properties = object.if_contains("properties"))
         {
             const auto propertiesPath = ChildPath(schemaPath, "properties");
@@ -982,7 +996,11 @@ private:
         }
 
         ValidateDependenciesSchema(object, schemaPath, depth);
+    }
 
+    void ValidateApplicatorDefinitions(const JsonSchemaKeywords& object,
+                                       std::string_view schemaPath, std::size_t depth)
+    {
         if (const auto* contains = object.if_contains("contains"))
         {
             ValidateSchemaDefinition(*contains, ChildPath(schemaPath, "contains"),
@@ -1076,7 +1094,11 @@ private:
                                          depth + 1);
             }
         }
+    }
 
+    void ValidateCompositionDefinitions(const JsonSchemaKeywords& object,
+                                        std::string_view schemaPath, std::size_t depth)
+    {
         constexpr std::array compositionKeywords = {"allOf", "anyOf", "oneOf"};
         for (const std::string_view keyword : compositionKeywords)
         {
@@ -1412,7 +1434,7 @@ private:
             evaluation.valid = false;
             return evaluation;
         }
-        if (depth > m_options.maxDepth)
+        if (depth > m_options.maxEvaluationDepth)
         {
             AddEvaluationError(JsonSchemaValidationErrorCode::DepthLimitExceeded, instancePath,
                                schemaPath, "maximum validation depth exceeded");
@@ -2505,15 +2527,15 @@ private:
 CompileReferences(const JsonValue& schema, std::optional<JsonSchemaDialect> dialect,
                   const JsonSchemaCompileOptions& compileOptions)
 {
-    constexpr std::size_t maxDepth = JsonSchemaValidationOptions{}.maxDepth;
+    const auto maxCompileDepth = compileOptions.maxCompilationDepth;
     auto references =
-        detail::JsonSchemaReferences::Compile(schema, dialect, maxDepth, compileOptions);
+        detail::JsonSchemaReferences::Compile(schema, dialect, maxCompileDepth, compileOptions);
     if (!references)
     {
         return Failure(std::move(references.error()));
     }
     const auto& documents = references.value().Documents();
-    JsonSchemaCompiler compiler(references.value(), maxDepth);
+    JsonSchemaCompiler compiler(references.value(), maxCompileDepth);
     auto patterns = compiler.CheckSchema(documents.as_array()[0]);
     if (!patterns)
     {
@@ -2532,31 +2554,32 @@ JsonSchema::JsonSchema(JsonSchemaDialect dialect,
 }
 
 Result<JsonSchema, JsonSchemaCompileError> JsonSchema::CompileFile(
-    const FilePath& path, const JsonSchemaCompileOptions& options)
+    const FilePath& path, const JsonParseOptions& parseOptions,
+    const JsonSchemaCompileOptions& compileOptions)
 {
     const auto text = File::ReadAllText(path);
     if (!text)
     {
         return Failure(JsonSchemaCompileError{
             JsonSchemaCompileErrorCode::FileReadFailed,
-            options.retrievalUri,
+            compileOptions.retrievalUri,
             {},
             "unable to read schema file: " + path.string(),
         });
     }
 
-    const auto schema = ParseJson(*text);
+    const auto schema = ParseJson(*text, parseOptions);
     if (!schema)
     {
         return Failure(JsonSchemaCompileError{
             JsonSchemaCompileErrorCode::InvalidJson,
-            options.retrievalUri,
+            compileOptions.retrievalUri,
             {},
             "unable to parse schema file: " + schema.error().message(),
         });
     }
 
-    return Compile(schema.value(), options);
+    return Compile(schema.value(), compileOptions);
 }
 
 Result<JsonSchema, JsonSchemaCompileError> JsonSchema::Compile(

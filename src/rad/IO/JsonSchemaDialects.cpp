@@ -266,7 +266,7 @@ private:
         const auto node = m_nodes[index];
         if (depth > m_maxDepth)
         {
-            return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, node.documentUri,
+            return Failure(Error(JsonSchemaCompileErrorCode::DepthLimitExceeded, node.documentUri,
                                  node.path, "maximum meta-schema resolution depth exceeded"));
         }
         if (node.value->is_object())
@@ -343,7 +343,7 @@ private:
         }
         if (depth > m_maxDepth || node.depth > m_maxDepth)
         {
-            return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, node.documentUri,
+            return Failure(Error(JsonSchemaCompileErrorCode::DepthLimitExceeded, node.documentUri,
                                  node.path, "maximum meta-schema resource depth exceeded"));
         }
         const auto parentVisible = Visible(node.parent, depth + 1);
@@ -487,8 +487,8 @@ private:
         }
         if (depth > m_maxDepth)
         {
-            return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, sourceUri, sourcePath,
-                                 "maximum meta-schema resolution depth exceeded"));
+            return Failure(Error(JsonSchemaCompileErrorCode::DepthLimitExceeded, sourceUri,
+                                 sourcePath, "maximum meta-schema resolution depth exceeded"));
         }
         if (const auto pending = m_provisional.find(*uri); pending != m_provisional.end())
         {

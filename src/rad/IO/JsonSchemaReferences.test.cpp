@@ -25,7 +25,7 @@ TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
     EXPECT_EQ(invalid.errors[0].schemaPath, "/$defs/node/type");
 
     rad::JsonSchemaValidationOptions options;
-    options.maxDepth = 2;
+    options.maxEvaluationDepth = 2;
     const auto limited = compiled.value().Validate(rad::JsonObject{
         {"next", rad::JsonObject{{"next", rad::JsonObject{}}}}}, options);
     ASSERT_FALSE(limited);
@@ -60,7 +60,7 @@ TEST(IO, JsonSchemaReferenceResourceLimitsAndCopies)
         nestedSource.value(), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(nestedCompiled) << nestedCompiled.error().message;
     rad::JsonSchemaValidationOptions options;
-    options.maxDepth = 2;
+    options.maxEvaluationDepth = 2;
     const auto recursive = nestedCompiled.value().Validate(1, options);
     ASSERT_FALSE(recursive);
     ASSERT_EQ(recursive.errors.size(), 1);
@@ -340,7 +340,7 @@ TEST(IO, JsonSchemaDocumentRegistry)
         const auto cyclic = rad::JsonSchema::Compile(rad::JsonObject{{"$ref", "a.json"}}, options);
         ASSERT_TRUE(cyclic) << cyclic.error().message;
         rad::JsonSchemaValidationOptions limits;
-        limits.maxDepth = 2;
+        limits.maxEvaluationDepth = 2;
         limits.maxErrors = 1;
         const auto exhausted = cyclic.value().Validate(1, limits);
         ASSERT_FALSE(exhausted);
@@ -360,7 +360,7 @@ TEST(IO, JsonSchemaDocumentRegistry)
         ASSERT_TRUE(branches);
         const auto limited = rad::JsonSchema::Compile(branches.value(), options);
         ASSERT_TRUE(limited) << limited.error().message;
-        limits.maxDepth = 3;
+        limits.maxEvaluationDepth = 3;
         for (const std::size_t maxErrors : {0U, 1U, 2U})
         {
             limits.maxErrors = maxErrors;
@@ -369,7 +369,7 @@ TEST(IO, JsonSchemaDocumentRegistry)
             EXPECT_TRUE(result);
             EXPECT_TRUE(result.errors.empty());
         }
-        limits.maxDepth = 4;
+        limits.maxEvaluationDepth = 4;
         EXPECT_TRUE(
             limited.value().Validate(rad::JsonObject{{"child", rad::JsonObject{}}}, limits));
     }
@@ -536,7 +536,7 @@ TEST(IO, JsonSchemaRecursiveReferenceResourceLimits)
     {
         std::string_view schema;
         std::string_view data;
-        std::size_t maxDepth;
+        std::size_t maxEvaluationDepth;
     };
     constexpr Case cases[] = {
         {R"json({"$recursiveAnchor": true, "$recursiveRef": "#"})json", "1", 4},
@@ -562,9 +562,9 @@ TEST(IO, JsonSchemaRecursiveReferenceResourceLimits)
         {
             rad::JsonSchemaValidationOptions options;
             options.maxErrors = maxErrors;
-            options.maxDepth = testCase.maxDepth;
+            options.maxEvaluationDepth = testCase.maxEvaluationDepth;
             const auto result = compiled.value().Validate(data.value(), options);
-            if (testCase.maxDepth == 3)
+            if (testCase.maxEvaluationDepth == 3)
             {
                 EXPECT_TRUE(result);
                 EXPECT_TRUE(result.errors.empty());
@@ -720,7 +720,7 @@ TEST(IO, JsonSchemaDynamicReferenceResourceLimits)
     {
         std::string_view schema;
         std::string_view data;
-        std::size_t maxDepth;
+        std::size_t maxEvaluationDepth;
         std::string_view instancePath;
     };
     constexpr Case cases[] = {
@@ -747,7 +747,7 @@ TEST(IO, JsonSchemaDynamicReferenceResourceLimits)
         {
             rad::JsonSchemaValidationOptions options;
             options.maxErrors = maxErrors;
-            options.maxDepth = testCase.maxDepth;
+            options.maxEvaluationDepth = testCase.maxEvaluationDepth;
             const auto result = compiled.value().Validate(data.value(), options);
             if (!testCase.instancePath.empty())
             {

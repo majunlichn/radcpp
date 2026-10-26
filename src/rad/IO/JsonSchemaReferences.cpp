@@ -287,12 +287,12 @@ private:
         return true;
     }
 
-    void Error(std::string_view path, std::string message)
+    void Error(std::string_view path, std::string message,
+               JsonSchemaCompileErrorCode code = JsonSchemaCompileErrorCode::InvalidSchema)
     {
         if (!m_error)
         {
-            m_error = JsonSchemaCompileError{JsonSchemaCompileErrorCode::InvalidSchema, {},
-                                             std::string(path), std::move(message)};
+            m_error = JsonSchemaCompileError{code, {}, std::string(path), std::move(message)};
         }
     }
 
@@ -369,7 +369,8 @@ private:
         }
         if (depth > m_maxDepth)
         {
-            Error(path, "maximum schema depth exceeded");
+            Error(path, "maximum schema depth exceeded",
+                  JsonSchemaCompileErrorCode::DepthLimitExceeded);
             return;
         }
         auto profile = ParentProfile(path);

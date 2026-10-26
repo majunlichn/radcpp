@@ -60,7 +60,7 @@ TEST(IO, JsonSchemaNonFiniteInstances)
         {
             rad::JsonSchemaValidationOptions options;
             options.maxErrors = maxErrors;
-            options.maxDepth = 0;
+            options.maxEvaluationDepth = 0;
             const auto result = permissive.value().Validate(nested, options);
             ASSERT_EQ(result.errors.size(), maxErrors <= 1 ? 1 : 2);
             EXPECT_EQ(result.errors[0].instancePath, "/x~1~0/1");
@@ -78,7 +78,7 @@ TEST(IO, JsonSchemaNonFiniteInstances)
             deepPath += "/0";
         }
         rad::JsonSchemaValidationOptions options;
-        options.maxDepth = 0;
+        options.maxEvaluationDepth = 0;
         EXPECT_TRUE(permissive.value().Validate(deep, options));
         auto* leaf = &deep;
         for (std::size_t depth = 0; depth < 256; ++depth)
