@@ -101,19 +101,19 @@ set(RAD_SOURCES
     src/rad/IO/Json.cpp
     src/rad/IO/JsonSchema.h
     src/rad/IO/JsonSchema.cpp
-    src/rad/IO/JsonSchemaPaths.h
-    src/rad/IO/JsonSchemaKeywords.h
-    src/rad/IO/JsonSchemaKeywords.cpp
-    src/rad/IO/JsonSchemaVocabularies.h
-    src/rad/IO/JsonSchemaVocabularies.cpp
-    src/rad/IO/JsonSchemaDialects.h
-    src/rad/IO/JsonSchemaDialects.cpp
-    src/rad/IO/JsonSchemaMetaSchemas.h
-    src/rad/IO/JsonSchemaMetaSchemas.cpp
-    src/rad/IO/JsonSchemaReferences.h
-    src/rad/IO/JsonSchemaReferences.cpp
-    src/rad/IO/JsonSchemaRegex.h
-    src/rad/IO/JsonSchemaRegex.cpp
+    src/rad/IO/Private/JsonSchema/JsonSchemaPaths.h
+    src/rad/IO/Private/JsonSchema/JsonSchemaKeywords.h
+    src/rad/IO/Private/JsonSchema/JsonSchemaKeywords.cpp
+    src/rad/IO/Private/JsonSchema/JsonSchemaVocabularies.h
+    src/rad/IO/Private/JsonSchema/JsonSchemaVocabularies.cpp
+    src/rad/IO/Private/JsonSchema/JsonSchemaDialects.h
+    src/rad/IO/Private/JsonSchema/JsonSchemaDialects.cpp
+    src/rad/IO/Private/JsonSchema/JsonSchemaMetaSchemas.h
+    src/rad/IO/Private/JsonSchema/JsonSchemaMetaSchemas.cpp
+    src/rad/IO/Private/JsonSchema/JsonSchemaReferences.h
+    src/rad/IO/Private/JsonSchema/JsonSchemaReferences.cpp
+    src/rad/IO/Private/JsonSchema/JsonSchemaRegex.h
+    src/rad/IO/Private/JsonSchema/JsonSchemaRegex.cpp
     src/rad/IO/Logging.h
     src/rad/IO/Logging.cpp
     src/rad/System/Application.h
@@ -377,13 +377,7 @@ if(RAD_ENABLE_INSTALL)
         FILES_MATCHING
             PATTERN "*.h"
             PATTERN "*.test.h" EXCLUDE
-            PATTERN "JsonSchemaRegex.h" EXCLUDE
-            PATTERN "JsonSchemaReferences.h" EXCLUDE
-            PATTERN "JsonSchemaMetaSchemas.h" EXCLUDE
-            PATTERN "JsonSchemaDialects.h" EXCLUDE
-            PATTERN "JsonSchemaPaths.h" EXCLUDE
-            PATTERN "JsonSchemaKeywords.h" EXCLUDE
-            PATTERN "JsonSchemaVocabularies.h" EXCLUDE
+            PATTERN "Private" EXCLUDE
     )
 
     install(

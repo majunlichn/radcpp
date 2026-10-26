@@ -1,9 +1,9 @@
 #include <rad/IO/File.h>
 #include <rad/IO/JsonSchema.h>
 
-#include "JsonSchemaRegex.h"
-#include "JsonSchemaReferences.h"
-#include "JsonSchemaVocabularies.h"
+#include "Private/JsonSchema/JsonSchemaRegex.h"
+#include "Private/JsonSchema/JsonSchemaReferences.h"
+#include "Private/JsonSchema/JsonSchemaVocabularies.h"
 
 #include <algorithm>
 #include <array>
