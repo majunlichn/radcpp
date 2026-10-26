@@ -1,0 +1,224 @@
+#pragma once
+
+#include <rad/IO/Json.h>
+#include <rad/System/FileSystem.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace rad
+{
+namespace detail
+{
+class JsonSchemaReferences;
+} // namespace detail
+
+enum class JsonSchemaDialect
+{
+    Auto,
+    Draft7,
+    Draft2019_09,
+    Draft2020_12,
+};
+
+enum class JsonSchemaCompileErrorCode
+{
+    // CompileFile could not read the supplied schema file.
+    FileReadFailed,
+    // Schema text is not valid JSON.
+    InvalidJson,
+
+    // Auto was selected and the root schema has no $schema declaration.
+    MissingDialect,
+    // The dialect option is not a valid JsonSchemaDialect enumerator.
+    InvalidDialect,
+
+    // Schema structure, keyword values, identifiers, or references are invalid.
+    // Also used when a compilation depth limit is exceeded.
+    InvalidSchema,
+    // Required schema semantics are unsupported, or a referenced document is unavailable offline.
+    UnsupportedFeature,
+};
+
+struct JsonSchemaCompileError
+{
+    JsonSchemaCompileErrorCode code;
+    // Retrieval URI of the schema document, empty for an anonymous root.
+    std::string schemaUri;
+    // JSON Pointer within the schema document; empty denotes its root.
+    std::string schemaPath;
+    // Human-readable explanation, not a stable error code.
+    std::string message;
+};
+
+[[nodiscard]] inline std::exception_ptr
+make_exception_ptr(const JsonSchemaCompileError& error)
+{
+    return std::make_exception_ptr(error);
+}
+
+enum class JsonSchemaValidationErrorCode
+{
+    SchemaViolation,
+    DepthLimitExceeded,
+    RegexResourceLimitExceeded,
+    RegexEvaluationFailed,
+    InternalError,
+};
+
+struct JsonSchemaValidationError
+{
+    JsonSchemaValidationErrorCode errorCode;
+    // JSON Pointer into the instance; empty denotes its root. Missing-property locations
+    // need not exist.
+    std::string instancePath;
+    // Retrieval URI of the containing schema document, not its $id; empty for an anonymous root.
+    std::string schemaUri;
+    // JSON Pointer within that schema document, e.g. "/properties/name/type".
+    // Empty denotes the document root, not necessarily the resource root selected by $id.
+    std::string schemaPath;
+    // Human-readable explanation, not a stable error code.
+    std::string message;
+};
+
+struct JsonSchemaValidationResult
+{
+    // The first evaluation failure, if any, is the final error and stops validation.
+    std::vector<JsonSchemaValidationError> errors;
+
+    [[nodiscard]] explicit operator bool() const noexcept { return errors.empty(); }
+};
+
+struct JsonSchemaRegexMatchLimits
+{
+    // Per PCRE2 match, not per validation call. Zero is restrictive, not unlimited.
+    std::uint32_t matchLimit = 1'000'000;
+    std::uint32_t backtrackingDepthLimit = 1'000;
+    std::uint32_t heapLimitKiB = 8'192;
+};
+
+struct JsonSchemaValidationOptions
+{
+    // Stops evaluation once this many schema violations are collected. Zero is treated as one.
+    // Evaluation failures stop immediately and also fit within this effective error limit.
+    std::size_t maxErrors = 64;
+    std::size_t maxDepth = 128;
+    JsonSchemaRegexMatchLimits regex;
+};
+
+struct JsonSchemaDocument
+{
+    // Absolute, fragment-free retrieval URI. No file or network access is performed.
+    std::string uri;
+    JsonValue schema;
+};
+
+struct JsonSchemaCompileOptions
+{
+    // Auto follows the root $schema declaration; a missing declaration is an error.
+    JsonSchemaDialect dialect = JsonSchemaDialect::Auto;
+    // Empty means an anonymous root; otherwise an absolute, fragment-free retrieval URI.
+    std::string retrievalUri;
+    // Compilation owns copies of reachable documents; unused documents are not validated.
+    // Retrieval URIs and resource identifiers must not conflict.
+    std::vector<JsonSchemaDocument> documents;
+};
+
+// Compiles and validates a practical subset of JSON Schema Draft 7, 2019-09, and 2020-12.
+// Compilation checks definitions and prepares static references and regular expressions.
+// Compiled schemas own their documents and expressions; copies share immutable state.
+// Instance evaluation keeps diagnostics and resource scopes local to each call.
+// An empty error list means validation passed. Errors include a category, source locations,
+// and an explanation.
+// Validation stops at the effective error limit or the first evaluation failure. Speculative
+// branches keep their violations local, so a rejected branch does not reject a valid alternative.
+//
+// Supported keywords:
+// - All drafts: boolean schemas; $ref, $id, and JSON Pointers; type, enum, const;
+//   numeric bounds and multipleOf; min/max string, array, and object sizes; pattern;
+//   required, properties, patternProperties, propertyNames, additionalProperties;
+//   single-schema items, uniqueItems, contains; allOf, anyOf, oneOf, not, and if/then/else.
+// - Draft 7: dependencies (property-name arrays and schemas), definitions structure checking,
+//   and plain-name fragments in $id.
+// - Draft 7 and 2019-09: tuple-form items and additionalItems.
+// - Draft 2019-09 and 2020-12: dependentRequired, dependentSchemas, minContains, maxContains,
+//   unevaluatedProperties, unevaluatedItems, $anchor, $defs structure checking, and $vocabulary.
+// - Draft 2019-09: $recursiveRef (only "#") and boolean $recursiveAnchor.
+// - Draft 2020-12: prefixItems, $dynamicRef, and $dynamicAnchor.
+//
+// References:
+// - Resolution is offline, using the root schema, registered documents, and bundled standard
+//   meta-schemas and their default vocabulary meta-schemas. JSON Pointers can address definitions
+//   and $defs. Existing resources and registered documents take precedence over bundled ones;
+//   a missing fragment in a registered document is an error, not a built-in fallback.
+// - $ref targets are static. $dynamicRef can rebind named dynamic anchors through the active
+//   resource scope; JSON Pointer targets and ordinary anchors remain static.
+// - CompileFile reads only the supplied file and does not use its path as a retrieval URI.
+//
+// Dialects and vocabularies:
+// - Draft 2019-09 and 2020-12 support registered custom meta-schemas. A resource's $schema
+//   selects its vocabulary profile and underlying standard draft, reported by Dialect().
+// - Registered documents without $schema inherit the root dialect and vocabulary profile.
+//   A vocabulary-changing $schema in a subschema requires its own $id resource boundary.
+// - The selected meta-schema's $vocabulary enables the listed supported vocabularies, even
+//   when optional (false); omitted vocabularies are disabled. An absent $vocabulary uses
+//   standard defaults. Unknown optional vocabularies are ignored; unsupported required ones fail.
+// - A schema's own $vocabulary does not change its keyword enablement. Compilation checks
+//   supported keyword definitions but does not automatically validate against the meta-schema.
+//
+// Numeric semantics:
+// - Instances must contain only finite numbers, including in unconstrained objects and arrays.
+//   Non-finite values fail before schema evaluation, even for boolean schemas; diagnostics use
+//   the offending instance paths and the root schema location.
+//   This check traverses the instance once without applying the schema evaluation depth limit.
+// - Enabled enum and const assertions reject non-finite values in their literal payloads.
+// - multipleOf uses exact arithmetic on integers and shortest round-trip decimal representations
+//   of doubles, without an epsilon. Original numeric text is not retained; a computed value
+//   such as 0.1 + 0.2 need not be a multiple of 0.1.
+//
+// Regular expressions:
+// - pattern and patternProperties use PCRE2 with UTF-8 and Unicode category escape support.
+//   Expressions compile once per schema location; matching scratch state is local to each call.
+// - Matching is unanchored unless the pattern supplies anchors. \d and \w are ASCII by default;
+//   \s and \S use ECMAScript whitespace semantics, including inside character classes.
+//   Other PCRE2 syntax and semantics are not fully ECMAScript-compatible.
+// - JsonSchemaValidationOptions::regex controls each match's limits. Defaults: match limit
+//   1,000,000, backtracking depth 1,000, and 8 MiB of backtracking heap. Exhaustion fails
+//   validation with RegexResourceLimitExceeded, not an ordinary pattern mismatch. Other matching
+//   failures report RegexEvaluationFailed. Evaluation failures are the final entry in errors,
+//   following any schema violations collected before validation stopped.
+// - For debugging, RAD_JSON_SCHEMA_USE_STD_REGEX=1 selects std::regex ECMAScript over UTF-8
+//   bytes instead; this backend is not fully Unicode-aware and cannot enforce matching limits.
+//   It rejects non-default regex limits when matching is attempted.
+//
+// Limitations:
+// - No automatic file/network loading, mixed-base-draft resources, custom Draft 7 dialects,
+//   custom keyword implementations, or unsupported required vocabularies (including format
+//   assertion). format and other annotation keywords do not assert instance validity.
+class JsonSchema
+{
+public:
+    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> Compile(
+        const JsonValue& schema, const JsonSchemaCompileOptions& options = {});
+    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> CompileFile(
+        const FilePath& path, const JsonSchemaCompileOptions& options = {});
+
+    // Returns the resolved standard draft, never Auto, including for a custom vocabulary dialect.
+    [[nodiscard]] JsonSchemaDialect Dialect() const noexcept;
+    [[nodiscard]] JsonSchemaValidationResult
+    Validate(const JsonValue& instance,
+             const JsonSchemaValidationOptions& options = {}) const;
+
+private:
+    JsonSchema(JsonSchemaDialect dialect,
+               std::shared_ptr<const detail::JsonSchemaReferences> references);
+
+    JsonSchemaDialect m_dialect;
+    std::shared_ptr<const detail::JsonSchemaReferences> m_references;
+}; // class JsonSchema
+
+} // namespace rad

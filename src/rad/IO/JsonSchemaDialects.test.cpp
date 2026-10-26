@@ -1,5 +1,5 @@
 #include <rad/IO/File.h>
-#include <rad/IO/Json.h>
+#include <rad/IO/JsonSchema.h>
 
 #include <boost/filesystem/operations.hpp>
 

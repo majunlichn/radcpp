@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rad/IO/Json.h>
+#include <rad/IO/JsonSchema.h>
 
 namespace rad::detail
 {

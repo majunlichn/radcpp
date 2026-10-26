@@ -1,4 +1,4 @@
-#include <rad/IO/Json.h>
+#include <rad/IO/JsonSchema.h>
 
 #include "JsonSchema.test.h"
 

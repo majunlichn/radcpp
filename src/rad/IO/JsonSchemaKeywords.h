@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rad/IO/JsonSchema.h>
+
 #include "JsonSchemaPaths.h"
 
 #include <array>

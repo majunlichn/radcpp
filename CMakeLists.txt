@@ -99,6 +99,7 @@ set(RAD_SOURCES
     src/rad/IO/Image.cpp
     src/rad/IO/Json.h
     src/rad/IO/Json.cpp
+    src/rad/IO/JsonSchema.h
     src/rad/IO/JsonSchema.cpp
     src/rad/IO/JsonSchemaPaths.h
     src/rad/IO/JsonSchemaKeywords.h
