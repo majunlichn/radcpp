@@ -140,4 +140,201 @@ std::optional<bool> StrToBool(std::string_view value)
     return std::nullopt;
 }
 
+bool IsEmailRFC5321(std::string_view value) noexcept
+{
+    if (value.size() > 254)
+    {
+        return false;
+    }
+
+    const auto at = value.rfind('@');
+    if (at == std::string_view::npos || at == 0 || at > 64 || at + 1 == value.size())
+    {
+        return false;
+    }
+
+    const auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
+    const auto isAlnum = [isDigit](char c)
+    { return isDigit(c) || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); };
+    const auto local = value.substr(0, at);
+    if (local.front() == '"')
+    {
+        if (local.size() < 2 || local.back() != '"')
+        {
+            return false;
+        }
+        for (std::size_t i = 1; i < local.size() - 1; ++i)
+        {
+            char c = local[i];
+            if (c == '\\')
+            {
+                if (++i == local.size() - 1)
+                {
+                    return false;
+                }
+                c = local[i];
+            }
+            else if (c == '"')
+            {
+                return false;
+            }
+            if (c < ' ' || c > '~')
+            {
+                return false;
+            }
+        }
+    }
+    else
+    {
+        bool atomStart = true;
+        for (char c : local)
+        {
+            if (c == '.')
+            {
+                if (atomStart)
+                {
+                    return false;
+                }
+                atomStart = true;
+            }
+            else
+            {
+                if (!isAlnum(c) &&
+                    std::string_view{"!#$%&'*+-/=?^_`{|}~"}.find(c) == std::string_view::npos)
+                {
+                    return false;
+                }
+                atomStart = false;
+            }
+        }
+        if (atomStart)
+        {
+            return false;
+        }
+    }
+
+    auto domain = value.substr(at + 1);
+    if (domain.front() == '[' && domain.back() == ']')
+    {
+        domain.remove_prefix(1);
+        domain.remove_suffix(1);
+        const auto isIPv4 = [isDigit](std::string_view address)
+        {
+            for (int part = 0; part < 4; ++part)
+            {
+                const auto dot = address.find('.');
+                const auto octet = address.substr(0, dot);
+                if (octet.empty() || octet.size() > 3)
+                {
+                    return false;
+                }
+                unsigned number = 0;
+                for (char c : octet)
+                {
+                    if (!isDigit(c))
+                    {
+                        return false;
+                    }
+                    number = number * 10 + (c - '0');
+                }
+                if (number > 255 || (dot == std::string_view::npos) != (part == 3))
+                {
+                    return false;
+                }
+                if (dot != std::string_view::npos)
+                {
+                    address.remove_prefix(dot + 1);
+                }
+            }
+            return true;
+        };
+        if (domain.size() < 5 || (domain[0] != 'I' && domain[0] != 'i') ||
+            (domain[1] != 'P' && domain[1] != 'p') || (domain[2] != 'V' && domain[2] != 'v') ||
+            domain[3] != '6' || domain[4] != ':')
+        {
+            return isIPv4(domain);
+        }
+        domain.remove_prefix(5);
+        if (domain.empty())
+        {
+            return false;
+        }
+
+        bool compressed = domain.starts_with("::");
+        if (compressed)
+        {
+            domain.remove_prefix(2);
+        }
+        unsigned groups = 0;
+        while (!domain.empty())
+        {
+            const auto colon = domain.find(':');
+            const auto group = domain.substr(0, colon);
+            if (group.find('.') != std::string_view::npos)
+            {
+                if (colon != std::string_view::npos || !isIPv4(group))
+                {
+                    return false;
+                }
+                groups += 2;
+                break;
+            }
+            if (group.empty() || group.size() > 4)
+            {
+                return false;
+            }
+            for (char c : group)
+            {
+                if (!isDigit(c) && !(c >= 'A' && c <= 'F') && !(c >= 'a' && c <= 'f'))
+                {
+                    return false;
+                }
+            }
+            ++groups;
+            if (colon == std::string_view::npos)
+            {
+                break;
+            }
+            domain.remove_prefix(colon + 1);
+            if (domain.starts_with(':'))
+            {
+                if (compressed)
+                {
+                    return false;
+                }
+                compressed = true;
+                domain.remove_prefix(1);
+            }
+            else if (domain.empty())
+            {
+                return false;
+            }
+        }
+        return compressed ? groups < 8 : groups == 8;
+    }
+
+    while (!domain.empty())
+    {
+        const auto dot = domain.find('.');
+        const auto label = domain.substr(0, dot);
+        if (label.empty() || label.size() > 63 || !isAlnum(label.front()) || !isAlnum(label.back()))
+        {
+            return false;
+        }
+        for (char c : label)
+        {
+            if (!isAlnum(c) && c != '-')
+            {
+                return false;
+            }
+        }
+        if (dot == std::string_view::npos)
+        {
+            return true;
+        }
+        domain.remove_prefix(dot + 1);
+    }
+    return false;
+}
+
 } // namespace rad

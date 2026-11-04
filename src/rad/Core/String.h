@@ -38,6 +38,11 @@ enum class HexCase
 // Accepts "1"/"true"/"on" and "0"/"false"/"off" (case-insensitive, trimmed).
 [[nodiscard]] std::optional<bool> StrToBool(std::string_view value);
 
+// Validates an ASCII RFC 5321 Mailbox, not a display name or SMTP path; no DNS lookup.
+// Supports quoted local parts and IPv4/IPv6 literals (including single-group IPv6 compression).
+// Limits: 64 wire octets for the local part, 63 per domain label, 254 for the whole mailbox.
+[[nodiscard]] bool IsEmailRFC5321(std::string_view value) noexcept;
+
 template <std::ranges::input_range R, typename Proj = std::identity>
 [[nodiscard]] std::string RangeToString(R&& range, std::string_view sep = ", ", Proj proj = {})
 {
