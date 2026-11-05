@@ -156,6 +156,120 @@ TEST(Core, ToHexString)
     EXPECT_EQ(rad::ToHexString({}), "");
 }
 
+TEST(String, IsDomainASCII)
+{
+    static_assert(noexcept(rad::IsDomainRFC1035("example.com")));
+    static_assert(noexcept(rad::IsDomainRFC1123("example.com")));
+
+    constexpr struct
+    {
+        std::string_view domain;
+        bool rfc1035;
+        bool rfc1123;
+    } cases[] = {
+        {"example.com", true, true},
+        {"EXAMPLE.COM", true, true},
+        {"www.my-host.example", true, true},
+        {"a", true, true},
+        {"a1", true, true},
+        {"localhost", true, true},
+        {"a.", true, true},
+        {"example.com.", true, true},
+        {"a.b.", true, true},
+        {"a--b.example", true, true},
+        {"xn--bcher-kva.example", true, true},
+        {"example.xn--p1ai", true, true},
+        {"example.a1", true, true},
+        {"3com.com", false, true},
+        {"123.example", false, true},
+        {"123.456.example", false, true},
+        {"0-0.example", false, true},
+        {"example.3com", false, true},
+        {"example.1a.", false, true},
+        {"", false, false},
+        {".", false, false},
+        {"..", false, false},
+        {".example.com", false, false},
+        {"example..com", false, false},
+        {"example.com..", false, false},
+        {"-example.com", false, false},
+        {"example-.com", false, false},
+        {"example.-com", false, false},
+        {"example.com-", false, false},
+        {"example.-", false, false},
+        {"exam_ple.com", false, false},
+        {"_sip._tcp.example.com", false, false},
+        {"*.example.com", false, false},
+        {" example.com", false, false},
+        {"example.com ", false, false},
+        {"exam ple.com", false, false},
+        {"example.\tcom", false, false},
+        {"example.com\r\n", false, false},
+        {"https://example.com", false, false},
+        {"example.com/path", false, false},
+        {"example.com:443", false, false},
+        {"user@example.com", false, false},
+        {"example\\.com", false, false},
+        {"example.com?query", false, false},
+        {"123", false, false},
+        {"123.", false, false},
+        {"example.123", false, false},
+        {"example.123.", false, false},
+        {"1.2.3.4", false, false},
+        {"127.0.0.1.", false, false},
+        {"999.999.999.999", false, false},
+        {"[127.0.0.1]", false, false},
+        {"::1", false, false},
+        {"[::1]", false, false},
+        {"b\xC3\xBC" "cher.example", false, false},
+        {"example\xE3\x80\x82" "com", false, false},
+        {"example.\xFF", false, false},
+    };
+    for (const auto& test : cases)
+    {
+        EXPECT_EQ(rad::IsDomainRFC1035(test.domain), test.rfc1035) << test.domain;
+        EXPECT_EQ(rad::IsDomainRFC1123(test.domain), test.rfc1123) << test.domain;
+    }
+
+    const std::string label(63, 'a');
+    const std::string longest = label + "." + label + "." + label + "." + std::string(61, 'b');
+    ASSERT_EQ(longest.size(), 253);
+
+    std::string manyLabels = "a";
+    for (int i = 0; i < 126; ++i)
+    {
+        manyLabels += ".a";
+    }
+    ASSERT_EQ(manyLabels.size(), 253);
+
+    const std::string_view backing = "example.com.invalid";
+    for (const auto validate : {rad::IsDomainRFC1035, rad::IsDomainRFC1123})
+    {
+        SCOPED_TRACE(validate == rad::IsDomainRFC1035 ? "RFC1035" : "RFC1123");
+        EXPECT_TRUE(validate(label));
+        EXPECT_TRUE(validate(label + "."));
+        EXPECT_TRUE(validate(label + ".example"));
+        EXPECT_TRUE(validate("example." + label));
+        EXPECT_FALSE(validate(label + "a"));
+        EXPECT_FALSE(validate(label + "a."));
+        EXPECT_FALSE(validate(label + "a.example"));
+        EXPECT_FALSE(validate("example." + label + "a"));
+        EXPECT_TRUE(validate(longest));
+        EXPECT_TRUE(validate(longest + "."));
+        EXPECT_FALSE(validate(longest + "b"));
+        EXPECT_FALSE(validate(longest + "b."));
+        EXPECT_TRUE(validate(manyLabels));
+        EXPECT_TRUE(validate(manyLabels + "."));
+        EXPECT_FALSE(validate(manyLabels + ".a"));
+        EXPECT_TRUE(validate(backing.substr(0, 11)));
+        EXPECT_TRUE(validate(backing.substr(0, 12)));
+        EXPECT_FALSE(validate(std::string_view{}));
+        EXPECT_FALSE(validate(std::string_view{"exam\0ple.com", 12}));
+        EXPECT_FALSE(validate(std::string_view{"example.com\0", 12}));
+        EXPECT_FALSE(validate(std::string_view{"\0example.com", 12}));
+    }
+}
+
 TEST(String, IsEmailRFC5321)
 {
     static_assert(noexcept(rad::IsEmailRFC5321("user@example.com")));

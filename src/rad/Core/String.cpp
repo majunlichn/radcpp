@@ -14,6 +14,62 @@
 
 namespace rad
 {
+namespace
+{
+
+bool IsAsciiLetter(char c) noexcept
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+}
+
+bool IsAsciiDigit(char c) noexcept
+{
+    return c >= '0' && c <= '9';
+}
+
+bool IsAsciiAlnum(char c) noexcept
+{
+    return IsAsciiLetter(c) || IsAsciiDigit(c);
+}
+
+bool IsDomainLabel(std::string_view label, bool allowLeadingDigit) noexcept
+{
+    if (label.empty() || label.size() > 63 || !IsAsciiAlnum(label.back()) ||
+        !(allowLeadingDigit ? IsAsciiAlnum(label.front()) : IsAsciiLetter(label.front())))
+    {
+        return false;
+    }
+    return std::ranges::all_of(label, [](char c) { return IsAsciiAlnum(c) || c == '-'; });
+}
+
+bool IsDomainName(std::string_view value, bool allowLeadingDigit) noexcept
+{
+    if (!value.empty() && value.back() == '.')
+    {
+        value.remove_suffix(1);
+    }
+    if (value.empty() || value.size() > 253)
+    {
+        return false;
+    }
+
+    while (true)
+    {
+        const auto dot = value.find('.');
+        const auto label = value.substr(0, dot);
+        if (!IsDomainLabel(label, allowLeadingDigit))
+        {
+            return false;
+        }
+        if (dot == std::string_view::npos)
+        {
+            return !allowLeadingDigit || std::ranges::any_of(label, IsAsciiLetter);
+        }
+        value.remove_prefix(dot + 1);
+    }
+}
+
+} // namespace
 
 std::vector<std::string> StrSplit(std::string_view value, std::string_view delimiters,
                                   bool skipEmpty)
@@ -140,6 +196,16 @@ std::optional<bool> StrToBool(std::string_view value)
     return std::nullopt;
 }
 
+bool IsDomainRFC1035(std::string_view value) noexcept
+{
+    return IsDomainName(value, false);
+}
+
+bool IsDomainRFC1123(std::string_view value) noexcept
+{
+    return IsDomainName(value, true);
+}
+
 bool IsEmailRFC5321(std::string_view value) noexcept
 {
     if (value.size() > 254)
@@ -153,9 +219,6 @@ bool IsEmailRFC5321(std::string_view value) noexcept
         return false;
     }
 
-    const auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
-    const auto isAlnum = [isDigit](char c)
-    { return isDigit(c) || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); };
     const auto local = value.substr(0, at);
     if (local.front() == '"')
     {
@@ -199,7 +262,7 @@ bool IsEmailRFC5321(std::string_view value) noexcept
             }
             else
             {
-                if (!isAlnum(c) &&
+                if (!IsAsciiAlnum(c) &&
                     std::string_view{"!#$%&'*+-/=?^_`{|}~"}.find(c) == std::string_view::npos)
                 {
                     return false;
@@ -218,7 +281,7 @@ bool IsEmailRFC5321(std::string_view value) noexcept
     {
         domain.remove_prefix(1);
         domain.remove_suffix(1);
-        const auto isIPv4 = [isDigit](std::string_view address)
+        const auto isIPv4 = [](std::string_view address)
         {
             for (int part = 0; part < 4; ++part)
             {
@@ -231,7 +294,7 @@ bool IsEmailRFC5321(std::string_view value) noexcept
                 unsigned number = 0;
                 for (char c : octet)
                 {
-                    if (!isDigit(c))
+                    if (!IsAsciiDigit(c))
                     {
                         return false;
                     }
@@ -285,7 +348,7 @@ bool IsEmailRFC5321(std::string_view value) noexcept
             }
             for (char c : group)
             {
-                if (!isDigit(c) && !(c >= 'A' && c <= 'F') && !(c >= 'a' && c <= 'f'))
+                if (!IsAsciiDigit(c) && !(c >= 'A' && c <= 'F') && !(c >= 'a' && c <= 'f'))
                 {
                     return false;
                 }
@@ -317,16 +380,9 @@ bool IsEmailRFC5321(std::string_view value) noexcept
     {
         const auto dot = domain.find('.');
         const auto label = domain.substr(0, dot);
-        if (label.empty() || label.size() > 63 || !isAlnum(label.front()) || !isAlnum(label.back()))
+        if (!IsDomainLabel(label, true))
         {
             return false;
-        }
-        for (char c : label)
-        {
-            if (!isAlnum(c) && c != '-')
-            {
-                return false;
-            }
         }
         if (dot == std::string_view::npos)
         {

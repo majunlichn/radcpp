@@ -38,6 +38,16 @@ enum class HexCase
 // Accepts "1"/"true"/"on" and "0"/"false"/"off" (case-insensitive, trimmed).
 [[nodiscard]] std::optional<bool> StrToBool(std::string_view value);
 
+// Validates the ASCII preferred host-name syntax in RFC 1035 section 2.3.1; no DNS lookup.
+// Each label starts with a letter, ends with a letter/digit, and contains only letters/digits/'-'.
+// Both validators accept single-label names and one trailing root dot, but not the root alone.
+// Limits: 63 octets per label, 253 total excluding the root dot (255 in DNS wire format).
+// Punycode is accepted as ASCII syntax only; neither validator performs IDNA validation.
+[[nodiscard]] bool IsDomainRFC1035(std::string_view value) noexcept;
+
+// RFC 1123 section 2.1: also permits digit-leading labels; the final label must contain a letter.
+[[nodiscard]] bool IsDomainRFC1123(std::string_view value) noexcept;
+
 // Validates an ASCII RFC 5321 Mailbox, not a display name or SMTP path; no DNS lookup.
 // Supports quoted local parts and IPv4/IPv6 literals (including single-group IPv6 compression).
 // Limits: 64 wire octets for the local part, 63 per domain label, 254 for the whole mailbox.
