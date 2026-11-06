@@ -70,6 +70,8 @@ enum class JsonSchemaValidationStatus
     // The effective maxErrors limit was reached; more violations may or may not exist.
     MaxErrorsReached,
     DepthLimitExceeded,
+    // An active schema/instance evaluation recurred with equivalent scope and error policy.
+    EvaluationCycleDetected,
     RegexResourceLimitExceeded,
     RegexEvaluationFailed,
     InternalError,
@@ -159,6 +161,9 @@ struct JsonSchemaCompileOptions
 // Status describes why validation ended; errors contain source locations and explanations.
 // Validation stops at the effective error limit or the first evaluation failure. Speculative
 // branches keep their violations local, so a rejected branch does not reject a valid alternative.
+// Reentering an active schema/instance evaluation with equivalent reference scope and error policy
+// reports EvaluationCycleDetected, not a violation. Completed sibling evaluations are independent.
+// The depth limit still applies before entering an evaluation, including a cyclic one.
 //
 // Supported keywords:
 // - All drafts: boolean schemas; $ref, $id, and JSON Pointers; type, enum, const;

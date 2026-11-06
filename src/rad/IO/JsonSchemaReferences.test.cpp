@@ -8,6 +8,283 @@
 #include <cstddef>
 #include <utility>
 
+TEST(IO, JsonSchemaEvaluationCycles)
+{
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view data;
+        std::string_view instancePath;
+        std::string_view schemaPath;
+        std::string_view speculativeSchemaPath;
+    };
+    constexpr Case cases[] = {
+        {R"json({"$ref": "#"})json", "1", "", ""},
+        {R"json({"definitions": {"a": {"$ref": "#/definitions/b"},
+                                "b": {"$ref": "#/definitions/a"}},
+                 "$ref": "#/definitions/a"})json",
+         "1", "", "/definitions/a"},
+        {R"json({"allOf": [{"$ref": "#"}]})json", "1", "", ""},
+        {R"json({"anyOf": [{"$ref": "#"}, true]})json", "1", "", "", "/anyOf/0"},
+        {R"json({"oneOf": [{"$ref": "#"}, true]})json", "1", "", "", "/oneOf/0"},
+        {R"json({"not": {"$ref": "#"}})json", "1", "", "", "/not"},
+        {R"json({"if": {"$ref": "#"}, "then": true, "else": true})json", "1", "", "", "/if"},
+        {R"json({"if": true, "then": {"$ref": "#"}})json", "1", "", ""},
+        {R"json({"if": false, "else": {"$ref": "#"}})json", "1", "", ""},
+        {R"json({"propertyNames": {"$ref": "#/propertyNames"}})json",
+         R"json({"name": 1})json", "/name", "/propertyNames"},
+        {R"json({"items": {"$ref": "#/items"}})json", "[1]", "/0", "/items"},
+        {R"json({"contains": {"$ref": "#/contains"}})json", "[1]", "/0", "/contains"},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions compileOptions{.dialect = dialect};
+        compileOptions.retrievalUri = "https://example.com/root.json";
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(testCase.schema);
+            const auto schema = rad::ParseJson(testCase.schema);
+            const auto data = rad::ParseJson(testCase.data);
+            ASSERT_TRUE(schema);
+            ASSERT_TRUE(data);
+            const auto compiled = rad::JsonSchema::Compile(schema.value(), compileOptions);
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            for (const std::size_t maxErrors : {0U, 1U, 2U, 64U})
+            {
+                SCOPED_TRACE(maxErrors);
+                rad::JsonSchemaValidationOptions options;
+                options.maxErrors = maxErrors;
+                const auto result = compiled.value().Validate(data.value(), options);
+                EXPECT_FALSE(result);
+                EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
+                ASSERT_EQ(result.errors.size(), 1);
+                EXPECT_EQ(result.errors[0].instancePath, testCase.instancePath);
+                EXPECT_EQ(result.errors[0].schemaUri, compileOptions.retrievalUri);
+                EXPECT_EQ(result.errors[0].schemaPath,
+                          maxErrors > 1 && !testCase.speculativeSchemaPath.empty()
+                              ? testCase.speculativeSchemaPath
+                              : testCase.schemaPath);
+                EXPECT_EQ(result.errors[0].message,
+                          "schema evaluation cycle detected without instance progress");
+            }
+        }
+
+        const auto compiled =
+            rad::JsonSchema::Compile(rad::JsonObject{{"$ref", "#"}}, compileOptions);
+        ASSERT_TRUE(compiled);
+        rad::JsonSchemaValidationOptions options;
+        options.maxEvaluationDepth = 0;
+        const auto limited = compiled.value().Validate(1, options);
+        EXPECT_EQ(limited.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
+    }
+}
+
+TEST(IO, JsonSchemaEvaluationCycleErrorLimits)
+{
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view schemaPath;
+    };
+    constexpr Case cases[] = {
+        {R"json({"allOf": [false, {"$ref": "#"}]})json", ""},
+        {R"json({"definitions": {"cycle": {"$ref": "#/definitions/cycle"}},
+                 "allOf": [false, {"anyOf": [{"$ref": "#/definitions/cycle"}, true]}]})json",
+         "/definitions/cycle"},
+        {R"json({"definitions": {"cycle": {"$ref": "#/definitions/cycle"}},
+                 "allOf": [false, {"oneOf": [{"$ref": "#/definitions/cycle"}, true]}]})json",
+         "/definitions/cycle"},
+        {R"json({"definitions": {"cycle": {"$ref": "#/definitions/cycle"}},
+                 "allOf": [false, {"not": {"$ref": "#/definitions/cycle"}}]})json",
+         "/definitions/cycle"},
+        {R"json({"definitions": {"cycle": {"$ref": "#/definitions/cycle"}},
+                 "allOf": [false, {"if": {"$ref": "#/definitions/cycle"}, "then": true}]})json",
+         "/definitions/cycle"},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(testCase.schema);
+            const auto schema = rad::ParseJson(testCase.schema);
+            ASSERT_TRUE(schema);
+            const auto compiled =
+                rad::JsonSchema::Compile(schema.value(), {.dialect = dialect});
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            for (const std::size_t maxErrors : {0U, 1U, 2U, 64U})
+            {
+                SCOPED_TRACE(maxErrors);
+                rad::JsonSchemaValidationOptions options;
+                options.maxErrors = maxErrors;
+                const auto result = compiled.value().Validate(1, options);
+                EXPECT_FALSE(result);
+                EXPECT_EQ(result.status,
+                          maxErrors <= 1
+                              ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                              : rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
+                ASSERT_EQ(result.errors.size(), maxErrors <= 1 ? 1 : 2);
+                EXPECT_EQ(result.errors[0].schemaPath, "/allOf/0");
+                if (maxErrors > 1)
+                {
+                    EXPECT_EQ(result.errors.back().instancePath, "");
+                    EXPECT_EQ(result.errors.back().schemaPath, testCase.schemaPath);
+                    EXPECT_EQ(result.errors.back().message,
+                              "schema evaluation cycle detected without instance progress");
+                }
+            }
+        }
+    }
+}
+
+TEST(IO, JsonSchemaEvaluationCycleProgressAndSiblings)
+{
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view data;
+        bool valid = true;
+    };
+    constexpr Case cases[] = {
+        {R"json({"properties": {"left": {"$ref": "#"}, "right": {"$ref": "#"}},
+                 "items": {"$ref": "#"}})json",
+         R"json({"left": [1, 1, {"right": 2}], "right": {"left": 2}})json"},
+        {R"json({"definitions": {"value": {"type": "integer"}},
+                 "allOf": [{"$ref": "#/definitions/value"}, {"$ref": "#/definitions/value"}],
+                 "anyOf": [{"$ref": "#/definitions/value"}, {"$ref": "#/definitions/value"}],
+                 "oneOf": [{"$ref": "#/definitions/value"}, {"type": "string"}]})json",
+         "1"},
+        {R"json({"propertyNames": {"$ref": "#"}})json", R"json({"name": 1})json"},
+        {R"json({"anyOf": [{"allOf": [false, {"$ref": "#"}]}, true]})json", "1"},
+        {R"json({"not": {"allOf": [false, {"$ref": "#"}]}})json", "1"},
+        {R"json({"if": {"allOf": [false, {"$ref": "#"}]},
+                 "then": false, "else": true})json",
+         "1"},
+        {R"json({"allOf": [false, {"anyOf": [{"$ref": "#"}, true]}]})json", "1", false},
+        {R"json({"allOf": [false, {"oneOf": [{"$ref": "#"}, true]}]})json", "1", false},
+        {R"json({"allOf": [false, {"not": {"$ref": "#"}}]})json", "1", false},
+        {R"json({"allOf": [false, {"if": {"$ref": "#"}, "then": true}]})json", "1", false},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(testCase.schema);
+            const auto schema = rad::ParseJson(testCase.schema);
+            const auto data = rad::ParseJson(testCase.data);
+            ASSERT_TRUE(schema);
+            ASSERT_TRUE(data);
+            const auto compiled =
+                rad::JsonSchema::Compile(schema.value(), {.dialect = dialect});
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            for (std::size_t iteration = 0; iteration < 2; ++iteration)
+            {
+                const auto result = compiled.value().Validate(data.value());
+                EXPECT_EQ(static_cast<bool>(result), testCase.valid);
+                EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::Completed);
+                if (testCase.valid)
+                {
+                    EXPECT_TRUE(result.errors.empty());
+                }
+                else
+                {
+                    ASSERT_EQ(result.errors.size(), 1);
+                    EXPECT_EQ(result.errors[0].schemaPath, "/allOf/0");
+                }
+            }
+        }
+    }
+}
+
+TEST(IO, JsonSchemaEvaluationCycleDynamicScopes)
+{
+    rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
+    options.retrievalUri = "https://example.com/root.json";
+    options.documents = {
+        {"https://example.com/fallback.json", rad::JsonObject{{"$dynamicAnchor", "condition"}}},
+        {"https://example.com/bridge.json",
+         rad::ParseJson(R"json({"$ref": "root.json",
+             "$defs": {"condition": {"$dynamicAnchor": "condition", "not": true}}})json").value()},
+    };
+    const auto schema = rad::ParseJson(
+        R"json({"if": {"$dynamicRef": "fallback.json#condition"},
+                 "then": {"$ref": "bridge.json"}, "else": true})json");
+    ASSERT_TRUE(schema);
+    const auto compiled = rad::JsonSchema::Compile(schema.value(), options);
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    const auto result = compiled.value().Validate(1);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::Completed);
+    EXPECT_TRUE(result.errors.empty());
+
+    options.retrievalUri = "https://example.com/a.json";
+    options.documents = {
+        {"https://example.com/b.json",
+         rad::JsonObject{{"$dynamicAnchor", "b"}, {"$dynamicRef", "a.json#a"}}},
+    };
+    const auto cyclic = rad::JsonSchema::Compile(
+        rad::JsonObject{{"$dynamicAnchor", "a"}, {"$dynamicRef", "b.json#b"}}, options);
+    ASSERT_TRUE(cyclic) << cyclic.error().message;
+    rad::JsonSchemaValidationOptions limits;
+    limits.maxEvaluationDepth = 3;
+    const auto cycle = cyclic.value().Validate(1, limits);
+    EXPECT_FALSE(cycle);
+    EXPECT_EQ(cycle.status, rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
+    ASSERT_EQ(cycle.errors.size(), 1);
+    EXPECT_EQ(cycle.errors[0].instancePath, "");
+    EXPECT_EQ(cycle.errors[0].schemaUri, "https://example.com/b.json");
+    EXPECT_EQ(cycle.errors[0].schemaPath, "");
+}
+
+TEST(IO, JsonSchemaEvaluationCycleRecursiveScopes)
+{
+    rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2019_09};
+    options.retrievalUri = "https://example.com/entry.json";
+    options.documents = {
+        {"https://example.com/root.json",
+         rad::ParseJson(R"json({"$recursiveAnchor": true, "$defs": {"entry": {
+             "if": {"$ref": "probe.json"}, "then": {"$ref": "barrier.json"},
+             "else": true}}})json").value()},
+        {"https://example.com/probe.json",
+         rad::JsonObject{{"$recursiveAnchor", true}, {"$recursiveRef", "#"}}},
+        {"https://example.com/barrier.json",
+         rad::JsonObject{{"$ref", "bridge.json#/$defs/entry"}}},
+        {"https://example.com/bridge.json",
+         rad::ParseJson(R"json({"$recursiveAnchor": true, "not": true,
+             "$defs": {"entry": {"$ref": "root.json#/$defs/entry"}}})json").value()},
+    };
+    const auto compiled = rad::JsonSchema::Compile(
+        rad::JsonObject{{"$ref", "root.json#/$defs/entry"}}, options);
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    const auto result = compiled.value().Validate(1);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::Completed);
+    EXPECT_TRUE(result.errors.empty());
+
+    options.retrievalUri = "https://example.com/a.json";
+    options.documents = {
+        {"https://example.com/b.json",
+         rad::JsonObject{{"$recursiveAnchor", true}, {"$recursiveRef", "#"}}},
+    };
+    const auto cyclic = rad::JsonSchema::Compile(
+        rad::JsonObject{{"$recursiveAnchor", true}, {"$ref", "b.json"}}, options);
+    ASSERT_TRUE(cyclic) << cyclic.error().message;
+    rad::JsonSchemaValidationOptions limits;
+    limits.maxEvaluationDepth = 2;
+    const auto cycle = cyclic.value().Validate(1, limits);
+    EXPECT_FALSE(cycle);
+    EXPECT_EQ(cycle.status, rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
+    ASSERT_EQ(cycle.errors.size(), 1);
+    EXPECT_EQ(cycle.errors[0].instancePath, "");
+    EXPECT_EQ(cycle.errors[0].schemaUri, "https://example.com/a.json");
+    EXPECT_EQ(cycle.errors[0].schemaPath, "");
+}
+
 TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
 {
     const auto schema = rad::ParseJson(
@@ -43,9 +320,10 @@ TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
     const auto selfResult = selfCompiled.value().Validate(1, options);
     EXPECT_FALSE(selfResult);
     ASSERT_EQ(selfResult.errors.size(), 1);
-    EXPECT_EQ(selfResult.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
-    EXPECT_NE(selfResult.errors.back().message.find("maximum validation depth"),
-              std::string::npos);
+    EXPECT_EQ(selfResult.status, rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
+    EXPECT_EQ(selfResult.errors.back().schemaPath, "");
+    EXPECT_EQ(selfResult.errors.back().message,
+              "schema evaluation cycle detected without instance progress");
 }
 
 TEST(IO, JsonSchemaReferenceResourceLimitsAndCopies)
@@ -62,9 +340,10 @@ TEST(IO, JsonSchemaReferenceResourceLimitsAndCopies)
     const auto recursive = nestedCompiled.value().Validate(1, options);
     ASSERT_FALSE(recursive);
     ASSERT_EQ(recursive.errors.size(), 1);
-    EXPECT_EQ(recursive.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
+    EXPECT_EQ(recursive.status, rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
     EXPECT_EQ(recursive.errors.back().schemaPath, "/$defs/inner");
-    EXPECT_EQ(recursive.errors.back().message, "maximum validation depth exceeded");
+    EXPECT_EQ(recursive.errors.back().message,
+              "schema evaluation cycle detected without instance progress");
 
     const auto makeSchema = []
     {
@@ -347,6 +626,15 @@ TEST(IO, JsonSchemaDocumentRegistry)
         EXPECT_EQ(exhausted.errors.back().schemaUri, "https://example.com/a.json");
         EXPECT_EQ(exhausted.errors.back().message, "maximum validation depth exceeded");
 
+        const auto cycle = cyclic.value().Validate(1);
+        ASSERT_FALSE(cycle);
+        ASSERT_EQ(cycle.errors.size(), 1);
+        EXPECT_EQ(cycle.status, rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
+        EXPECT_EQ(cycle.errors.back().schemaPath, "");
+        EXPECT_EQ(cycle.errors.back().schemaUri, "https://example.com/a.json");
+        EXPECT_EQ(cycle.errors.back().message,
+                  "schema evaluation cycle detected without instance progress");
+
         options.documents = {
             {"https://example.com/a.json",
              rad::ParseJson(R"json({"type": "integer",
@@ -569,11 +857,12 @@ TEST(IO, JsonSchemaRecursiveReferenceResourceLimits)
             }
             ASSERT_FALSE(result);
             ASSERT_EQ(result.errors.size(), 1);
-            EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
+            EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
             EXPECT_EQ(result.errors.back().instancePath, "");
             EXPECT_EQ(result.errors.back().schemaPath, "");
             EXPECT_EQ(result.errors.back().schemaUri, "https://example.com/cycle.json");
-            EXPECT_EQ(result.errors.back().message, "maximum validation depth exceeded");
+            EXPECT_EQ(result.errors.back().message,
+                      "schema evaluation cycle detected without instance progress");
         }
     }
 }
@@ -753,11 +1042,12 @@ TEST(IO, JsonSchemaDynamicReferenceResourceLimits)
             }
             ASSERT_FALSE(result);
             ASSERT_EQ(result.errors.size(), 1);
-            EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::DepthLimitExceeded);
+            EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
             EXPECT_EQ(result.errors.back().instancePath, testCase.instancePath);
             EXPECT_EQ(result.errors.back().schemaPath, "");
             EXPECT_EQ(result.errors.back().schemaUri, "https://example.com/cycle.json");
-            EXPECT_EQ(result.errors.back().message, "maximum validation depth exceeded");
+            EXPECT_EQ(result.errors.back().message,
+                      "schema evaluation cycle detected without instance progress");
         }
     }
 }

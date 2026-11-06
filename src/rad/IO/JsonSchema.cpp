@@ -1285,6 +1285,91 @@ private:
         }
     };
 
+    class ActiveEvaluationScope
+    {
+    public:
+        ActiveEvaluationScope(const ActiveEvaluationScope*& current, const JsonValue& schema,
+                              const JsonValue& instance, std::vector<std::string_view> resources,
+                              std::size_t maxErrors) :
+            m_current(current),
+            m_previous(current),
+            m_schema(&schema),
+            m_instance(&instance),
+            m_resources(std::move(resources)),
+            m_maxErrors(std::max<std::size_t>(maxErrors, 1))
+        {
+            m_current = this;
+        }
+
+        ActiveEvaluationScope(const ActiveEvaluationScope&) = delete;
+        ActiveEvaluationScope& operator=(const ActiveEvaluationScope&) = delete;
+        ActiveEvaluationScope(ActiveEvaluationScope&&) = delete;
+        ActiveEvaluationScope& operator=(ActiveEvaluationScope&&) = delete;
+
+        ~ActiveEvaluationScope()
+        {
+            m_current = m_previous;
+        }
+
+        [[nodiscard]] bool IsCycle() const
+        {
+            for (auto* active = m_previous; active != nullptr; active = active->m_previous)
+            {
+                if (active->m_schema == m_schema && active->m_instance == m_instance &&
+                    active->m_resources == m_resources && active->m_maxErrors == m_maxErrors)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    private:
+        const ActiveEvaluationScope*& m_current;
+        const ActiveEvaluationScope* m_previous;
+        const JsonValue* m_schema;
+        const JsonValue* m_instance;
+        std::vector<std::string_view> m_resources;
+        // A speculative branch may terminate earlier under its one-error policy.
+        std::size_t m_maxErrors;
+    }; // class ActiveEvaluationScope
+
+    [[nodiscard]] std::vector<std::string_view> EvaluationResources() const
+    {
+        std::vector<std::string_view> resources;
+        if (m_dialect == JsonSchemaDialect::Draft2020_12)
+        {
+            // Only the first occurrence of an anchor-bearing resource can affect rebinding.
+            for (const auto* resource : m_dynamicScope)
+            {
+                const auto* anchors = m_references.DynamicAnchors(*resource);
+                if (anchors != nullptr && !anchors->empty() &&
+                    std::find(resources.begin(), resources.end(), *resource) == resources.end())
+                {
+                    resources.push_back(*resource);
+                }
+            }
+        }
+        else if (m_dialect == JsonSchemaDialect::Draft2019_09)
+        {
+            // An unanchored resource cuts off the outer recursive scope.
+            const std::string* recursiveResource = nullptr;
+            for (auto scope = m_dynamicScope.rbegin(); scope != m_dynamicScope.rend(); ++scope)
+            {
+                if (!m_references.HasRecursiveAnchor(**scope))
+                {
+                    break;
+                }
+                recursiveResource = *scope;
+            }
+            if (recursiveResource != nullptr)
+            {
+                resources.push_back(*recursiveResource);
+            }
+        }
+        return resources;
+    }
+
     [[nodiscard]] bool HasEvaluationError() const noexcept
     {
         return m_result.status != JsonSchemaValidationStatus::Completed &&
@@ -1415,6 +1500,7 @@ private:
         options.maxErrors = 1;
         JsonSchemaEvaluator evaluator(m_dialect, options, m_rootSchema, m_references);
         evaluator.m_dynamicScope = m_dynamicScope;
+        evaluator.m_activeEvaluation = m_activeEvaluation;
         auto evaluation = evaluator.Validate(schema, instance, instancePath, schemaPath, depth);
         if (evaluator.HasEvaluationError())
         {
@@ -1471,6 +1557,16 @@ private:
             return evaluation;
         }
         ResourceScope resourceScope(m_dynamicScope, resource);
+        ActiveEvaluationScope active(m_activeEvaluation, schema, instance, EvaluationResources(),
+                                     m_options.maxErrors);
+        if (active.IsCycle())
+        {
+            AddEvaluationError(JsonSchemaValidationStatus::EvaluationCycleDetected, instancePath,
+                               schemaPath,
+                               "schema evaluation cycle detected without instance progress");
+            evaluation.valid = false;
+            return evaluation;
+        }
         const auto* profile = m_references.Profile(schemaPath);
         if (profile == nullptr)
         {
@@ -2523,6 +2619,7 @@ private:
     JsonSchemaValidationResult m_result;
     std::size_t m_errorCount = 0;
     std::vector<const std::string*> m_dynamicScope;
+    const ActiveEvaluationScope* m_activeEvaluation = nullptr;
 }; // class JsonSchemaEvaluator
 
 [[nodiscard]] Result<detail::JsonSchemaReferences, JsonSchemaCompileError>
