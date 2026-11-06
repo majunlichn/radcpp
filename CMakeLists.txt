@@ -55,6 +55,9 @@ set(RAD_SOURCES
     src/rad/Container/SmallVector.h
     src/rad/Math/Vector.h
     src/rad/Math/Matrix.h
+    src/rad/Math/Geometry3D.h
+    src/rad/Math/Transform3D.h
+    src/rad/Math/Transform3D.cpp
     src/rad/Core/Base64.h
     src/rad/Core/Base64.cpp
     src/rad/Core/BFloat16.h
@@ -163,6 +166,8 @@ set(RAD_TEST_SOURCES
     src/rad/IO/JsonSchemaRegex.test.cpp
     src/rad/IO/Logging.test.cpp
     src/rad/Math/Matrix.test.cpp
+    src/rad/Math/Geometry3D.test.cpp
+    src/rad/Math/Transform3D.test.cpp
     src/rad/Math/Vector.test.cpp
     src/rad/System/Application.test.cpp
     src/rad/System/CpuInfo.test.cpp

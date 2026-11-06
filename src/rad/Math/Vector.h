@@ -53,37 +53,36 @@ using Vector4i = Vector4<std::int32_t>;
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename Derived>
-concept VectorExpression = (Derived::IsVectorAtCompileTime != 0);
+concept ColVectorType = (Derived::ColsAtCompileTime == 1);
 
 template <typename Derived>
 concept ArithmeticVector =
-    VectorExpression<Derived> && std::is_arithmetic_v<typename Derived::Scalar> &&
+    ColVectorType<Derived> && std::is_arithmetic_v<typename Derived::Scalar> &&
     (!std::same_as<typename Derived::Scalar, bool>);
 
 template <typename Derived>
-concept FloatingPointVector = VectorExpression<Derived> && FloatingPoint<typename Derived::Scalar>;
+concept FloatingPointVector = ColVectorType<Derived> && FloatingPoint<typename Derived::Scalar>;
 
 template <typename Derived>
 concept Sint32Vector =
-    VectorExpression<Derived> && std::same_as<typename Derived::Scalar, std::int32_t>;
+    ColVectorType<Derived> && std::same_as<typename Derived::Scalar, std::int32_t>;
 
 template <typename Derived>
 concept Uint32Vector =
-    VectorExpression<Derived> && std::same_as<typename Derived::Scalar, std::uint32_t>;
+    ColVectorType<Derived> && std::same_as<typename Derived::Scalar, std::uint32_t>;
 
 template <typename Derived>
-concept BoolVector = VectorExpression<Derived> && std::same_as<typename Derived::Scalar, bool>;
+concept BoolVector = ColVectorType<Derived> && std::same_as<typename Derived::Scalar, bool>;
 
 template <typename Derived>
 concept EqualityComparableVector =
-    VectorExpression<Derived> && std::equality_comparable<typename Derived::Scalar>;
+    ColVectorType<Derived> && std::equality_comparable<typename Derived::Scalar>;
 
 template <typename Derived>
 using BoolMask = Eigen::Matrix<bool, Derived::RowsAtCompileTime, Derived::ColsAtCompileTime>;
 
 template <typename Derived, int Size>
-concept VectorOfSize =
-    VectorExpression<Derived> && (Derived::SizeAtCompileTime == Size);
+concept VectorOfSize = ColVectorType<Derived> && (Derived::SizeAtCompileTime == Size);
 
 template <FloatingPointVector Derived>
 [[nodiscard]] typename Derived::PlainObject Radians(const Eigen::MatrixBase<Derived>& degrees)

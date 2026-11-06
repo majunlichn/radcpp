@@ -131,8 +131,7 @@ HadamardProduct(const Eigen::MatrixBase<LhsDerived>& lhs,
 }
 
 template <ArithmeticVector LhsDerived, ArithmeticVector RhsDerived>
-    requires std::same_as<typename LhsDerived::Scalar, typename RhsDerived::Scalar> &&
-             (LhsDerived::ColsAtCompileTime == 1) && (RhsDerived::ColsAtCompileTime == 1)
+    requires std::same_as<typename LhsDerived::Scalar, typename RhsDerived::Scalar>
 [[nodiscard]] Eigen::Matrix<typename LhsDerived::Scalar, LhsDerived::SizeAtCompileTime,
                             RhsDerived::SizeAtCompileTime>
 OuterProduct(const Eigen::MatrixBase<LhsDerived>& lhs, const Eigen::MatrixBase<RhsDerived>& rhs)

@@ -21,6 +21,32 @@ static_assert(sizeof(rad::Vector4<float>) == 4 * sizeof(float));
 static_assert(ValidVector3Scalar<float>);
 static_assert(!ValidVector3Scalar<NonTrivialScalar>);
 
+static_assert(rad::ColVectorType<rad::Vector3f>);
+static_assert(rad::ColVectorType<rad::Vector3d>);
+static_assert(rad::ColVectorType<rad::VectorX<float>>);
+static_assert(rad::ColVectorType<decltype(rad::Vector3f::Zero())>);
+static_assert(rad::ColVectorType<decltype(rad::Vector3f::UnitX())>);
+static_assert(!rad::ColVectorType<Eigen::RowVector3f>);
+static_assert(!rad::ColVectorType<Eigen::RowVectorXf>);
+static_assert(!rad::ColVectorType<decltype(rad::Vector3f::Zero().transpose())>);
+static_assert(!rad::ColVectorType<Eigen::Matrix3f>);
+static_assert(!rad::ColVectorType<Eigen::MatrixXf>);
+static_assert(!rad::ColVectorType<float>);
+static_assert(rad::FloatingPointVector<rad::VectorX<double>>);
+static_assert(rad::FloatingPointVector<rad::Vector3<long double>>);
+static_assert(!rad::FloatingPointVector<Eigen::RowVector3d>);
+static_assert(rad::VectorOfSize<rad::Vector3f, 3>);
+static_assert(!rad::VectorOfSize<rad::Vector3f, 2>);
+static_assert(!rad::VectorOfSize<Eigen::RowVector3f, 3>);
+static_assert(!rad::ArithmeticVector<Eigen::RowVector3f>);
+static_assert(!rad::EqualityComparableVector<Eigen::RowVector3f>);
+static_assert(rad::Sint32Vector<rad::Vector3i>);
+static_assert(!rad::Sint32Vector<Eigen::Matrix<std::int32_t, 1, 3>>);
+static_assert(rad::Uint32Vector<rad::Vector3<std::uint32_t>>);
+static_assert(!rad::Uint32Vector<Eigen::Matrix<std::uint32_t, 1, 3>>);
+static_assert(rad::BoolVector<rad::Vector3<bool>>);
+static_assert(!rad::BoolVector<Eigen::Matrix<bool, 1, 3>>);
+
 TEST(Math, VectorAngleConversions)
 {
     const rad::Vector3<double> degrees{0.0, 90.0, 180.0};
