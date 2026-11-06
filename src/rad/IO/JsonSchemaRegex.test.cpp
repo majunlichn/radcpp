@@ -169,12 +169,12 @@ TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
 }
 
 #if !defined(RAD_JSON_SCHEMA_USE_STD_REGEX) || !RAD_JSON_SCHEMA_USE_STD_REGEX
-TEST(IO, JsonSchemaRegexMatchLimits)
+TEST(IO, JsonSchemaRegexLimits)
 {
     constexpr std::string_view pattern = "^((((((((((a+))))))))))$";
     struct LimitCase
     {
-        rad::JsonSchemaRegexMatchLimits limits;
+        rad::JsonSchemaRegexLimits limits;
         std::string_view message;
     };
     constexpr LimitCase limits[] = {
@@ -208,10 +208,8 @@ TEST(IO, JsonSchemaRegexMatchLimits)
     {
         const auto compiled = rad::JsonSchema::Compile(schema.schema, compileOptions);
         ASSERT_TRUE(compiled) << compiled.error().message;
-        for (const auto& error : compiled.value().Validate(schema.instance).errors)
-        {
-            EXPECT_EQ(error.errorCode, rad::JsonSchemaValidationErrorCode::SchemaViolation);
-        }
+        EXPECT_EQ(compiled.value().Validate(schema.instance).status,
+                  rad::JsonSchemaValidationStatus::Completed);
         for (const auto& limit : limits)
         {
             SCOPED_TRACE(limit.message);
@@ -224,17 +222,14 @@ TEST(IO, JsonSchemaRegexMatchLimits)
             const auto result = compiled.value().Validate(schema.instance, options);
             EXPECT_FALSE(result);
             ASSERT_EQ(result.errors.size(), 1);
-            EXPECT_EQ(result.errors.back().errorCode,
-                      rad::JsonSchemaValidationErrorCode::RegexResourceLimitExceeded);
+            EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::RegexResourceLimitExceeded);
             EXPECT_NE(result.errors.back().message.find(limit.message),
                       std::string::npos);
             EXPECT_EQ(result.errors.back().schemaPath, schema.path);
             EXPECT_EQ(result.errors.back().schemaUri, compileOptions.retrievalUri);
         }
-        for (const auto& error : compiled.value().Validate(schema.instance).errors)
-        {
-            EXPECT_EQ(error.errorCode, rad::JsonSchemaValidationErrorCode::SchemaViolation);
-        }
+        EXPECT_EQ(compiled.value().Validate(schema.instance).status,
+                  rad::JsonSchemaValidationStatus::Completed);
     }
 
     const auto compiled = rad::JsonSchema::Compile(
@@ -249,10 +244,15 @@ TEST(IO, JsonSchemaRegexMatchLimits)
                        {
                            rad::JsonSchemaValidationOptions options;
                            const bool expected = worker % 2 == 0;
+                           const auto expectedStatus =
+                               expected ? rad::JsonSchemaValidationStatus::Completed
+                                        : rad::JsonSchemaValidationStatus::RegexResourceLimitExceeded;
                            options.regex.matchLimit = expected ? 2'000'000 : 0;
                            for (std::size_t iteration = 0; iteration < 16; ++iteration)
                            {
-                               if (static_cast<bool>(schema.Validate("aaaa", options)) != expected)
+                               const auto result = schema.Validate("aaaa", options);
+                               if (static_cast<bool>(result) != expected ||
+                                   result.status != expectedStatus)
                                {
                                    return false;
                                }
@@ -270,14 +270,19 @@ TEST(IO, JsonSchemaRegexEvaluationFailure)
     const auto compiled = rad::JsonSchema::Compile(
         rad::JsonObject{{"pattern", "."}}, {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(compiled);
-    const auto result = compiled.value().Validate(rad::JsonValue(std::string(1, '\xff')));
-    EXPECT_FALSE(result);
-    ASSERT_EQ(result.errors.size(), 1);
-    EXPECT_EQ(result.errors.back().errorCode,
-              rad::JsonSchemaValidationErrorCode::RegexEvaluationFailed);
-    EXPECT_EQ(result.errors.back().schemaPath, "/pattern");
-    EXPECT_NE(result.errors.back().message.find("regular expression matching failed"),
-              std::string::npos);
+    for (const std::size_t maxErrors : {0U, 1U, 2U, 64U})
+    {
+        rad::JsonSchemaValidationOptions options;
+        options.maxErrors = maxErrors;
+        const auto result =
+            compiled.value().Validate(rad::JsonValue(std::string(1, '\xff')), options);
+        EXPECT_FALSE(result);
+        ASSERT_EQ(result.errors.size(), 1);
+        EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::RegexEvaluationFailed);
+        EXPECT_EQ(result.errors.back().schemaPath, "/pattern");
+        EXPECT_NE(result.errors.back().message.find("regular expression matching failed"),
+                  std::string::npos);
+    }
 }
 
 TEST(IO, JsonSchemaErrorLimitSkipsRegexEvaluation)
@@ -298,18 +303,13 @@ TEST(IO, JsonSchemaErrorLimitSkipsRegexEvaluation)
         EXPECT_FALSE(result);
         const std::size_t expectedErrors = maxErrors <= 1 ? 1 : maxErrors == 2 ? 2 : 3;
         ASSERT_EQ(result.errors.size(), expectedErrors);
-        EXPECT_EQ(result.errors.front().errorCode,
-                  rad::JsonSchemaValidationErrorCode::SchemaViolation);
+        EXPECT_EQ(result.errors.front().schemaPath, "/enum");
+        EXPECT_EQ(result.status, maxErrors <= 2
+                                     ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                     : rad::JsonSchemaValidationStatus::RegexResourceLimitExceeded);
         if (maxErrors > 2)
         {
-            EXPECT_EQ(result.errors.back().errorCode,
-                      rad::JsonSchemaValidationErrorCode::RegexResourceLimitExceeded);
             EXPECT_EQ(result.errors.back().schemaPath, "/pattern");
-        }
-        else
-        {
-            EXPECT_EQ(result.errors.back().errorCode,
-                      rad::JsonSchemaValidationErrorCode::SchemaViolation);
         }
     }
 }

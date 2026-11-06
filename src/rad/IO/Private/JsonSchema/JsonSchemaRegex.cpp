@@ -317,10 +317,10 @@ JsonSchemaRegex::Compile(std::string_view pattern)
 }
 
 Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(
-    std::string_view value, const JsonSchemaRegexMatchLimits& limits) const
+    std::string_view value, const JsonSchemaRegexLimits& limits) const
 {
 #if RAD_JSON_SCHEMA_USE_STD_REGEX
-    const JsonSchemaRegexMatchLimits defaults;
+    const JsonSchemaRegexLimits defaults;
     if (limits.matchLimit != defaults.matchLimit ||
         limits.backtrackingDepthLimit != defaults.backtrackingDepthLimit ||
         limits.heapLimitKiB != defaults.heapLimitKiB)
@@ -368,14 +368,14 @@ Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(
     }
     if (result != PCRE2_ERROR_NOMATCH)
     {
-        const auto errorCode = result == PCRE2_ERROR_MATCHLIMIT ||
-                                       result == PCRE2_ERROR_DEPTHLIMIT ||
-                                       result == PCRE2_ERROR_HEAPLIMIT
-                                   ? JsonSchemaValidationErrorCode::RegexResourceLimitExceeded
-                                   : JsonSchemaValidationErrorCode::RegexEvaluationFailed;
+        const auto status = result == PCRE2_ERROR_MATCHLIMIT ||
+                                    result == PCRE2_ERROR_DEPTHLIMIT ||
+                                    result == PCRE2_ERROR_HEAPLIMIT
+                                ? JsonSchemaValidationStatus::RegexResourceLimitExceeded
+                                : JsonSchemaValidationStatus::RegexEvaluationFailed;
         return Failure(JsonSchemaRegexError{
             false, true, "regular expression matching failed: " + RegexErrorMessage(result),
-            errorCode});
+            status});
     }
     return Success(false);
 #endif

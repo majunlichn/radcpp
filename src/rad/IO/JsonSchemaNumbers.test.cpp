@@ -43,8 +43,7 @@ TEST(IO, JsonSchemaNonFiniteInstances)
                 const auto result = compiled.value().Validate(value);
                 EXPECT_FALSE(result);
                 ASSERT_EQ(result.errors.size(), 1);
-                EXPECT_EQ(result.errors[0].errorCode,
-                          rad::JsonSchemaValidationErrorCode::SchemaViolation);
+                EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::Completed);
                 EXPECT_EQ(result.errors[0].message, "number must be finite");
                 EXPECT_EQ(result.errors[0].instancePath, "");
                 EXPECT_EQ(result.errors[0].schemaPath, "");
@@ -62,7 +61,11 @@ TEST(IO, JsonSchemaNonFiniteInstances)
             options.maxErrors = maxErrors;
             options.maxEvaluationDepth = 0;
             const auto result = permissive.value().Validate(nested, options);
+            EXPECT_FALSE(result);
             ASSERT_EQ(result.errors.size(), maxErrors <= 1 ? 1 : 2);
+            EXPECT_EQ(result.status, maxErrors <= 2
+                                         ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                         : rad::JsonSchemaValidationStatus::Completed);
             EXPECT_EQ(result.errors[0].instancePath, "/x~1~0/1");
             EXPECT_EQ(result.errors[0].schemaPath, "");
             if (result.errors.size() == 2)
@@ -87,6 +90,7 @@ TEST(IO, JsonSchemaNonFiniteInstances)
         }
         *leaf = std::numeric_limits<double>::quiet_NaN();
         const auto deepInvalid = permissive.value().Validate(deep, options);
+        EXPECT_EQ(deepInvalid.status, rad::JsonSchemaValidationStatus::Completed);
         ASSERT_EQ(deepInvalid.errors.size(), 1);
         EXPECT_EQ(deepInvalid.errors[0].instancePath, deepPath);
         EXPECT_EQ(deepInvalid.errors[0].message, "number must be finite");

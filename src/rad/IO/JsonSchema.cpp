@@ -1287,14 +1287,13 @@ private:
 
     [[nodiscard]] bool HasEvaluationError() const noexcept
     {
-        return !m_result.errors.empty() &&
-               m_result.errors.back().errorCode != JsonSchemaValidationErrorCode::SchemaViolation;
+        return m_result.status != JsonSchemaValidationStatus::Completed &&
+               m_result.status != JsonSchemaValidationStatus::MaxErrorsReached;
     }
 
     [[nodiscard]] bool ShouldStop() const noexcept
     {
-        return HasEvaluationError() ||
-               m_result.errors.size() >= std::max<std::size_t>(m_options.maxErrors, 1);
+        return m_result.status != JsonSchemaValidationStatus::Completed;
     }
 
     [[nodiscard]] std::optional<ReferenceTarget> ResolveReference(const JsonValue& reference,
@@ -1330,8 +1329,8 @@ private:
         {
             const auto& error = target.error();
             AddEvaluationError(
-                {JsonSchemaValidationErrorCode::InternalError, std::string(instancePath),
-                 error.schemaUri, error.schemaPath, error.message});
+                JsonSchemaValidationStatus::InternalError,
+                {std::string(instancePath), error.schemaUri, error.schemaPath, error.message});
             return std::nullopt;
         }
         return std::move(target.value());
@@ -1344,35 +1343,38 @@ private:
             return;
         }
         ++m_errorCount;
-        m_result.errors.push_back({JsonSchemaValidationErrorCode::SchemaViolation,
-                                   std::string(instancePath), m_references.SchemaUri(schemaPath),
+        m_result.errors.push_back({std::string(instancePath), m_references.SchemaUri(schemaPath),
                                    m_references.SchemaPath(schemaPath), std::move(message)});
+        if (m_result.errors.size() >= std::max<std::size_t>(m_options.maxErrors, 1))
+        {
+            m_result.status = JsonSchemaValidationStatus::MaxErrorsReached;
+        }
     }
 
-    void AddEvaluationError(JsonSchemaValidationError error)
+    void AddEvaluationError(JsonSchemaValidationStatus status, JsonSchemaValidationError error)
     {
         if (!ShouldStop())
         {
             m_result.errors.push_back(std::move(error));
             ++m_errorCount;
+            m_result.status = status;
         }
     }
 
-    void AddEvaluationError(JsonSchemaValidationErrorCode errorCode, std::string_view instancePath,
+    void AddEvaluationError(JsonSchemaValidationStatus status, std::string_view instancePath,
                             std::string_view schemaPath, std::string message)
     {
         if (!ShouldStop())
         {
-            AddEvaluationError({errorCode, std::string(instancePath),
-                                m_references.SchemaUri(schemaPath),
-                                m_references.SchemaPath(schemaPath), std::move(message)});
+            AddEvaluationError(status, {std::string(instancePath), m_references.SchemaUri(schemaPath),
+                                        m_references.SchemaPath(schemaPath), std::move(message)});
         }
     }
 
     void AddRegexError(const detail::JsonSchemaRegexError& error, std::string_view instancePath,
                        std::string_view schemaPath)
     {
-        AddEvaluationError(error.errorCode, instancePath, schemaPath, error.message);
+        AddEvaluationError(error.status, instancePath, schemaPath, error.message);
     }
 
     [[nodiscard]] const detail::JsonSchemaRegex* FindPattern(std::string_view instancePath,
@@ -1381,7 +1383,7 @@ private:
         const auto* expression = m_references.FindPattern(schemaPath);
         if (expression == nullptr)
         {
-            AddEvaluationError(JsonSchemaValidationErrorCode::InternalError, instancePath,
+            AddEvaluationError(JsonSchemaValidationStatus::InternalError, instancePath,
                                schemaPath, "compiled regular expression does not exist");
         }
         return expression;
@@ -1416,8 +1418,8 @@ private:
         auto evaluation = evaluator.Validate(schema, instance, instancePath, schemaPath, depth);
         if (evaluator.HasEvaluationError())
         {
-            m_result.errors.push_back(std::move(evaluator.m_result.errors.back()));
-            ++m_errorCount;
+            AddEvaluationError(evaluator.m_result.status,
+                               std::move(evaluator.m_result.errors.back()));
             return std::nullopt;
         }
         return evaluation;
@@ -1436,7 +1438,7 @@ private:
         }
         if (depth > m_options.maxEvaluationDepth)
         {
-            AddEvaluationError(JsonSchemaValidationErrorCode::DepthLimitExceeded, instancePath,
+            AddEvaluationError(JsonSchemaValidationStatus::DepthLimitExceeded, instancePath,
                                schemaPath, "maximum validation depth exceeded");
             evaluation.valid = false;
             return evaluation;
@@ -1452,7 +1454,7 @@ private:
         }
         if (!schema.is_object())
         {
-            AddEvaluationError(JsonSchemaValidationErrorCode::InternalError, instancePath,
+            AddEvaluationError(JsonSchemaValidationStatus::InternalError, instancePath,
                                schemaPath, "schema must be an object or boolean");
             evaluation.valid = false;
             return evaluation;
@@ -1463,7 +1465,7 @@ private:
                                    : nullptr;
         if (m_dialect != JsonSchemaDialect::Draft7 && resource == nullptr)
         {
-            AddEvaluationError(JsonSchemaValidationErrorCode::InternalError, instancePath,
+            AddEvaluationError(JsonSchemaValidationStatus::InternalError, instancePath,
                                schemaPath, "compiled schema resource does not exist");
             evaluation.valid = false;
             return evaluation;
@@ -1472,7 +1474,7 @@ private:
         const auto* profile = m_references.Profile(schemaPath);
         if (profile == nullptr)
         {
-            AddEvaluationError(JsonSchemaValidationErrorCode::InternalError, instancePath,
+            AddEvaluationError(JsonSchemaValidationStatus::InternalError, instancePath,
                                schemaPath, "compiled schema vocabulary profile does not exist");
             evaluation.valid = false;
             return evaluation;
@@ -1527,7 +1529,7 @@ private:
                     target->schema = detail::FindJsonSchemaValue(m_rootSchema, target->path);
                     if (target->schema == nullptr)
                     {
-                        AddEvaluationError(JsonSchemaValidationErrorCode::InternalError,
+                        AddEvaluationError(JsonSchemaValidationStatus::InternalError,
                                            instancePath, ChildPath(schemaPath, "$recursiveRef"),
                                            "compiled recursive resource does not exist");
                         evaluation.valid = false;

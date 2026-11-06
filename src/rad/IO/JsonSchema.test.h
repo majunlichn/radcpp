@@ -11,11 +11,10 @@ namespace rad::test
 [[nodiscard]] inline std::string
 FormatValidationErrors(const rad::JsonSchemaValidationResult& result)
 {
-    std::string output;
+    std::string output = std::format("status={}\n", static_cast<int>(result.status));
     for (const auto& error : result.errors)
     {
-        output += std::format("code={}, instance={}, document={}, schema={}: {}\n",
-                              static_cast<int>(error.errorCode), error.instancePath,
+        output += std::format("instance={}, document={}, schema={}: {}\n", error.instancePath,
                               error.schemaUri, error.schemaPath, error.message);
     }
     return output;

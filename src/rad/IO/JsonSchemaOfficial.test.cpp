@@ -175,10 +175,17 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                         << std::format("data: {}\n{}",
                                        rad::PrettyJson(test.at("data")),
                                        FormatValidationErrors(result));
+                    EXPECT_TRUE(result.status == rad::JsonSchemaValidationStatus::Completed ||
+                                result.status == rad::JsonSchemaValidationStatus::MaxErrorsReached)
+                        << FormatValidationErrors(result);
                     rad::JsonSchemaValidationOptions limitedOptions;
                     limitedOptions.maxErrors = 1;
                     const auto limited = compiled.value().Validate(test.at("data"), limitedOptions);
                     EXPECT_EQ(static_cast<bool>(limited), expected)
+                        << FormatValidationErrors(limited);
+                    EXPECT_EQ(limited.status,
+                              expected ? rad::JsonSchemaValidationStatus::Completed
+                                       : rad::JsonSchemaValidationStatus::MaxErrorsReached)
                         << FormatValidationErrors(limited);
                     EXPECT_LE(limited.errors.size(), 1);
                 }

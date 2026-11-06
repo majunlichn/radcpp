@@ -15,7 +15,7 @@ struct JsonSchemaRegexError
     bool unsupported;
     bool resource;
     std::string message;
-    JsonSchemaValidationErrorCode errorCode = JsonSchemaValidationErrorCode::RegexEvaluationFailed;
+    JsonSchemaValidationStatus status = JsonSchemaValidationStatus::RegexEvaluationFailed;
 };
 
 [[nodiscard]] inline std::exception_ptr make_exception_ptr(const JsonSchemaRegexError& error)
@@ -33,7 +33,7 @@ public:
     [[nodiscard]] static Result<JsonSchemaRegex, JsonSchemaRegexError>
     Compile(std::string_view pattern);
     [[nodiscard]] Result<bool, JsonSchemaRegexError> Matches(
-        std::string_view value, const JsonSchemaRegexMatchLimits& limits) const;
+        std::string_view value, const JsonSchemaRegexLimits& limits) const;
 
 private:
     struct Impl;

@@ -62,9 +62,13 @@ make_exception_ptr(const JsonSchemaCompileError& error)
     return std::make_exception_ptr(error);
 }
 
-enum class JsonSchemaValidationErrorCode
+enum class JsonSchemaValidationStatus
 {
-    SchemaViolation,
+    // Validation finished without reaching a limit or encountering an evaluation failure.
+    // Completion does not imply that the instance conforms to the schema.
+    Completed,
+    // The effective maxErrors limit was reached; more violations may or may not exist.
+    MaxErrorsReached,
     DepthLimitExceeded,
     RegexResourceLimitExceeded,
     RegexEvaluationFailed,
@@ -73,7 +77,6 @@ enum class JsonSchemaValidationErrorCode
 
 struct JsonSchemaValidationError
 {
-    JsonSchemaValidationErrorCode errorCode;
     // JSON Pointer into the instance; empty denotes its root. Missing-property locations
     // need not exist.
     std::string instancePath;
@@ -88,13 +91,18 @@ struct JsonSchemaValidationError
 
 struct JsonSchemaValidationResult
 {
-    // The first evaluation failure, if any, is the final error and stops validation.
+    JsonSchemaValidationStatus status = JsonSchemaValidationStatus::Completed;
+    // Completed and MaxErrorsReached contain only schema violations. For any other status,
+    // the final entry describes the evaluation failure; preceding entries are schema violations.
     std::vector<JsonSchemaValidationError> errors;
 
-    [[nodiscard]] explicit operator bool() const noexcept { return errors.empty(); }
+    [[nodiscard]] explicit operator bool() const noexcept
+    {
+        return status == JsonSchemaValidationStatus::Completed && errors.empty();
+    }
 };
 
-struct JsonSchemaRegexMatchLimits
+struct JsonSchemaRegexLimits
 {
     // Per PCRE2 match, not per validation call. Zero is restrictive, not unlimited.
     std::uint32_t matchLimit = 1'000'000;
@@ -105,15 +113,17 @@ struct JsonSchemaRegexMatchLimits
 struct JsonSchemaValidationOptions
 {
     // Stops evaluation once this many schema violations are collected. Zero is treated as one.
-    // Evaluation failures stop immediately and also fit within this effective error limit.
+    // Reaching the limit reports MaxErrorsReached, even if no further violations exist.
+    // Evaluation failures stop immediately and also fit within this effective error limit,
+    // but retain their specific failure status even when they fill the final error slot.
     std::size_t maxErrors = 64;
     // Maximum nested schema evaluation depth, not the instance's JSON nesting depth.
     // The root is depth zero; each subschema or reference evaluation adds one.
     // Sibling evaluations do not accumulate depth. Zero allows only root evaluation.
-    // Exceeding the limit reports DepthLimitExceeded, not SchemaViolation.
+    // Exceeding the limit reports a DepthLimitExceeded status.
     // The default guards recursive evaluation; this is not a total work budget.
     std::size_t maxEvaluationDepth = 128;
-    JsonSchemaRegexMatchLimits regex;
+    JsonSchemaRegexLimits regex;
 };
 
 struct JsonSchemaDocument
@@ -145,8 +155,8 @@ struct JsonSchemaCompileOptions
 // parsing and validation options; it is not a JSON nesting or reference-count limit.
 // Compiled schemas own their documents and expressions; copies share immutable state.
 // Instance evaluation keeps diagnostics and resource scopes local to each call.
-// An empty error list means validation passed. Errors include a category, source locations,
-// and an explanation.
+// Validation passes only with Completed status and an empty error list.
+// Status describes why validation ended; errors contain source locations and explanations.
 // Validation stops at the effective error limit or the first evaluation failure. Speculative
 // branches keep their violations local, so a rejected branch does not reject a valid alternative.
 //
