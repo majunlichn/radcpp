@@ -9,6 +9,8 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <ranges>
+#include <span>
 #include <type_traits>
 
 namespace rad
@@ -350,6 +352,59 @@ template <ArithmeticVector Derived>
     return x.cwiseMax(y);
 }
 
+template <ArithmeticVector Derived>
+[[nodiscard]] typename Derived::Scalar MinComponent(const Eigen::MatrixBase<Derived>& values)
+{
+    assert(values.size() > 0);
+    return values.minCoeff();
+}
+
+template <ArithmeticVector Derived>
+[[nodiscard]] typename Derived::Scalar MaxComponent(const Eigen::MatrixBase<Derived>& values)
+{
+    assert(values.size() > 0);
+    return values.maxCoeff();
+}
+
+template <ArithmeticVector Derived>
+[[nodiscard]] Eigen::Index MinComponentIndex(const Eigen::MatrixBase<Derived>& values)
+{
+    assert(values.size() > 0);
+    Eigen::Index index;
+    values.minCoeff(&index);
+    return index;
+}
+
+template <ArithmeticVector Derived>
+[[nodiscard]] Eigen::Index MaxComponentIndex(const Eigen::MatrixBase<Derived>& values)
+{
+    assert(values.size() > 0);
+    Eigen::Index index;
+    values.maxCoeff(&index);
+    return index;
+}
+
+template <ArithmeticVector Derived>
+[[nodiscard]] typename Derived::Scalar Product(const Eigen::MatrixBase<Derived>& values)
+{
+    return values.prod();
+}
+
+// Repeated indices are allowed. Indices must be in range and match the vector size.
+template <ColVectorType Derived, typename Indices>
+    requires std::ranges::contiguous_range<const Indices> &&
+             std::ranges::sized_range<const Indices> &&
+             std::integral<std::ranges::range_value_t<const Indices>> &&
+             (!std::same_as<std::ranges::range_value_t<const Indices>, bool>)
+[[nodiscard]] typename Derived::PlainObject Permute(const Eigen::MatrixBase<Derived>& values,
+                                                   const Indices& perm)
+{
+    assert(static_cast<std::uintmax_t>(std::ranges::size(perm)) ==
+           static_cast<std::uintmax_t>(values.size()));
+    const std::span indices(std::ranges::data(perm), std::ranges::size(perm));
+    return typename Derived::PlainObject(values(indices));
+}
+
 template <ArithmeticVector XDerived, ArithmeticVector MinDerived, ArithmeticVector MaxDerived>
     requires std::same_as<typename XDerived::Scalar, typename MinDerived::Scalar> &&
              std::same_as<typename XDerived::Scalar, typename MaxDerived::Scalar>
@@ -357,6 +412,7 @@ template <ArithmeticVector XDerived, ArithmeticVector MinDerived, ArithmeticVect
                                                    const Eigen::MatrixBase<MinDerived>& minimum,
                                                    const Eigen::MatrixBase<MaxDerived>& maximum)
 {
+    assert((minimum.array() <= maximum.array()).all());
     return x.cwiseMax(minimum).cwiseMin(maximum);
 }
 
@@ -365,26 +421,47 @@ template <ArithmeticVector Derived>
                                                   typename Derived::Scalar minimum,
                                                   typename Derived::Scalar maximum)
 {
+    assert(minimum <= maximum);
     return x.cwiseMax(minimum).cwiseMin(maximum);
 }
 
-template <FloatingPointVector XDerived, FloatingPointVector YDerived, FloatingPointVector ADerived>
+template <FloatingPointVector FromDerived, FloatingPointVector ToDerived,
+          FloatingPointVector TDerived>
+    requires std::same_as<typename FromDerived::Scalar, typename ToDerived::Scalar> &&
+             std::same_as<typename FromDerived::Scalar, typename TDerived::Scalar>
+[[nodiscard]] typename FromDerived::PlainObject Lerp(const Eigen::MatrixBase<FromDerived>& from,
+                                                    const Eigen::MatrixBase<ToDerived>& to,
+                                                    const Eigen::MatrixBase<TDerived>& t)
+{
+    return (from.array() + t.array() * (to.array() - from.array())).matrix();
+}
+
+template <FloatingPointVector FromDerived, FloatingPointVector ToDerived>
+    requires std::same_as<typename FromDerived::Scalar, typename ToDerived::Scalar>
+[[nodiscard]] typename FromDerived::PlainObject Lerp(const Eigen::MatrixBase<FromDerived>& from,
+                                                    const Eigen::MatrixBase<ToDerived>& to,
+                                                    typename FromDerived::Scalar t)
+{
+    return from + t * (to - from);
+}
+
+template <FloatingPointVector XDerived, FloatingPointVector YDerived, FloatingPointVector TDerived>
     requires std::same_as<typename XDerived::Scalar, typename YDerived::Scalar> &&
-             std::same_as<typename XDerived::Scalar, typename ADerived::Scalar>
+             std::same_as<typename XDerived::Scalar, typename TDerived::Scalar>
 [[nodiscard]] typename XDerived::PlainObject Mix(const Eigen::MatrixBase<XDerived>& x,
                                                  const Eigen::MatrixBase<YDerived>& y,
-                                                 const Eigen::MatrixBase<ADerived>& a)
+                                                 const Eigen::MatrixBase<TDerived>& t)
 {
-    return (x.array() + a.array() * (y.array() - x.array())).matrix();
+    return Lerp(x, y, t);
 }
 
 template <FloatingPointVector XDerived, FloatingPointVector YDerived>
     requires std::same_as<typename XDerived::Scalar, typename YDerived::Scalar>
 [[nodiscard]] typename XDerived::PlainObject Mix(const Eigen::MatrixBase<XDerived>& x,
                                                  const Eigen::MatrixBase<YDerived>& y,
-                                                 typename XDerived::Scalar a)
+                                                 typename XDerived::Scalar t)
 {
-    return x + a * (y - x);
+    return Lerp(x, y, t);
 }
 
 template <FloatingPointVector EdgeDerived, FloatingPointVector XDerived>
@@ -420,6 +497,7 @@ template <FloatingPointVector Edge0Derived, FloatingPointVector Edge1Derived,
     const Eigen::MatrixBase<Edge1Derived>& edge1,
     const Eigen::MatrixBase<XDerived>& x)
 {
+    assert((edge0.array() < edge1.array()).all());
     using Scalar = typename XDerived::Scalar;
     const auto t = ((x.array() - edge0.array()) / (edge1.array() - edge0.array()))
                        .max(Scalar{0})
@@ -432,6 +510,7 @@ template <FloatingPointVector Derived>
                                                         typename Derived::Scalar edge1,
                                                         const Eigen::MatrixBase<Derived>& x)
 {
+    assert(edge0 < edge1);
     using Scalar = typename Derived::Scalar;
     const auto t = ((x.array() - edge0) / (edge1 - edge0)).max(Scalar{0}).min(Scalar{1});
     return (t * t * (Scalar{3} - Scalar{2} * t)).matrix();
@@ -504,6 +583,12 @@ template <FloatingPointVector Derived>
     return value.norm();
 }
 
+template <FloatingPointVector Derived>
+[[nodiscard]] typename Derived::Scalar LengthSquared(const Eigen::MatrixBase<Derived>& value)
+{
+    return value.squaredNorm();
+}
+
 template <FloatingPointVector P0Derived, FloatingPointVector P1Derived>
     requires std::same_as<typename P0Derived::Scalar, typename P1Derived::Scalar>
 [[nodiscard]] typename P0Derived::Scalar Distance(const Eigen::MatrixBase<P0Derived>& p0,
@@ -511,6 +596,15 @@ template <FloatingPointVector P0Derived, FloatingPointVector P1Derived>
 {
     assert(p0.size() == p1.size());
     return (p0 - p1).norm();
+}
+
+template <FloatingPointVector P0Derived, FloatingPointVector P1Derived>
+    requires std::same_as<typename P0Derived::Scalar, typename P1Derived::Scalar>
+[[nodiscard]] typename P0Derived::Scalar DistanceSquared(const Eigen::MatrixBase<P0Derived>& p0,
+                                                       const Eigen::MatrixBase<P1Derived>& p1)
+{
+    assert(p0.size() == p1.size());
+    return (p0 - p1).squaredNorm();
 }
 
 template <FloatingPointVector XDerived, FloatingPointVector YDerived>
@@ -535,6 +629,7 @@ template <FloatingPointVector XDerived, FloatingPointVector YDerived>
     return result;
 }
 
+// A zero vector remains zero.
 template <FloatingPointVector Derived>
 [[nodiscard]] typename Derived::PlainObject Normalize(const Eigen::MatrixBase<Derived>& value)
 {
@@ -555,6 +650,7 @@ template <FloatingPointVector NDerived, FloatingPointVector IDerived,
                : typename NDerived::PlainObject{-normal};
 }
 
+// The normal must be a unit vector.
 template <FloatingPointVector IDerived, FloatingPointVector NDerived>
     requires std::same_as<typename IDerived::Scalar, typename NDerived::Scalar>
 [[nodiscard]] typename IDerived::PlainObject Reflect(const Eigen::MatrixBase<IDerived>& incident,
@@ -565,6 +661,7 @@ template <FloatingPointVector IDerived, FloatingPointVector NDerived>
     return incident - Scalar{2} * normal.dot(incident) * normal;
 }
 
+// Incident and normal must be unit vectors; eta is the incident/transmitted refractive index ratio.
 template <FloatingPointVector IDerived, FloatingPointVector NDerived>
     requires std::same_as<typename IDerived::Scalar, typename NDerived::Scalar>
 [[nodiscard]] typename IDerived::PlainObject Refract(const Eigen::MatrixBase<IDerived>& incident,

@@ -188,9 +188,9 @@ template <FloatingPoint T>
 }
 
 template <FloatingPoint T>
-[[nodiscard]] constexpr T Mix(T x, T y, T a) noexcept
+[[nodiscard]] constexpr T Mix(T x, T y, T t) noexcept
 {
-    return Lerp(x, y, a);
+    return Lerp(x, y, t);
 }
 
 template <FloatingPoint T>
