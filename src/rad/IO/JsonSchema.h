@@ -159,6 +159,10 @@ struct JsonSchemaCompileOptions
 // Instance evaluation keeps diagnostics and resource scopes local to each call.
 // Validation passes only with Completed status and an empty error list.
 // Status describes why validation ended; errors contain source locations and explanations.
+// uniqueItems reports a repeated element's location; selection among multiple duplicates is
+// unspecified and may depend on the input size.
+// Large-array duplicate checks may reserve O(n) auxiliary storage up front, even when a
+// duplicate is found early.
 // Validation stops at the effective error limit or the first evaluation failure. Speculative
 // branches keep their violations local, so a rejected branch does not reject a valid alternative.
 // Reentering an active schema/instance evaluation with equivalent reference scope and error policy

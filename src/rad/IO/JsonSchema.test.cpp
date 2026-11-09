@@ -13,6 +13,10 @@
 #include <utility>
 #include <cstdint>
 #include <limits>
+#include <cmath>
+#include <string>
+#include <charconv>
+#include <system_error>
 
 using rad::test::FormatValidationErrors;
 
@@ -551,26 +555,26 @@ TEST(IO, JsonSchemaDuplicateValues)
     struct Case
     {
         rad::JsonArray values;
-        const char* duplicatePath;
+        bool duplicate;
     };
     const Case cases[] = {
-        {{}, nullptr},
-        {{1}, nullptr},
-        {{nullptr, false, 0, "0"}, nullptr},
-        {{"a", "b", "b", "a"}, "/values/3"},
-        {{"a", "b", "b"}, "/values/2"},
-        {{std::int64_t{1}, std::uint64_t{1}, 1.0}, "/values/1"},
-        {{std::uint64_t{1}, 1.0}, "/values/1"},
-        {{-0.0, std::uint64_t{0}}, "/values/1"},
-        {{std::numeric_limits<std::int64_t>::min(), -9223372036854775808.0}, "/values/1"},
-        {{std::numeric_limits<std::int64_t>::max(), 9223372036854775808.0}, nullptr},
-        {{std::numeric_limits<std::uint64_t>::max(), 18446744073709551616.0}, nullptr},
-        {{std::uint64_t{9007199254740993ULL}, 9007199254740992.0}, nullptr},
-        {{rad::JsonArray{1, 2}, rad::JsonArray{1.0, 2.0}}, "/values/1"},
-        {{rad::JsonArray{1, 2}, rad::JsonArray{2, 1}}, nullptr},
+        {{}, false},
+        {{1}, false},
+        {{nullptr, false, 0, "0"}, false},
+        {{"a", "b", "b", "a"}, true},
+        {{"a", "b", "b"}, true},
+        {{std::int64_t{1}, std::uint64_t{1}, 1.0}, true},
+        {{std::uint64_t{1}, 1.0}, true},
+        {{-0.0, std::uint64_t{0}}, true},
+        {{std::numeric_limits<std::int64_t>::min(), -9223372036854775808.0}, true},
+        {{std::numeric_limits<std::int64_t>::max(), 9223372036854775808.0}, false},
+        {{std::numeric_limits<std::uint64_t>::max(), 18446744073709551616.0}, false},
+        {{std::uint64_t{9007199254740993ULL}, 9007199254740992.0}, false},
+        {{rad::JsonArray{1, 2}, rad::JsonArray{1.0, 2.0}}, true},
+        {{rad::JsonArray{1, 2}, rad::JsonArray{2, 1}}, false},
         {{rad::JsonObject{{"a", 1}, {"b", rad::JsonArray{2, 3}}},
           rad::JsonObject{{"b", rad::JsonArray{2.0, 3}}, {"a", 1.0}}},
-         "/values/1"},
+         true},
     };
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
@@ -586,41 +590,109 @@ TEST(IO, JsonSchemaDuplicateValues)
         for (const auto& testCase : cases)
         {
             SCOPED_TRACE(rad::PrettyJson(testCase.values));
-            const bool duplicate = testCase.duplicatePath != nullptr;
-            if (!testCase.values.empty())
+            for (const std::size_t minimumSize : {0U, 256U})
             {
-                const auto enumeration = rad::JsonSchema::Compile(
-                    rad::JsonObject{{"enum", testCase.values}}, options);
-                ASSERT_EQ(static_cast<bool>(enumeration), !duplicate);
-                if (duplicate)
+                SCOPED_TRACE(minimumSize);
+                auto values = testCase.values;
+                while (values.size() < minimumSize)
                 {
-                    EXPECT_EQ(enumeration.error().code,
-                              rad::JsonSchemaCompileErrorCode::InvalidSchema);
-                    EXPECT_EQ(enumeration.error().schemaUri, options.retrievalUri);
-                    EXPECT_EQ(enumeration.error().schemaPath, "/enum");
-                    EXPECT_EQ(enumeration.error().message,
-                              "enum must be a non-empty array of unique values");
+                    values.push_back(rad::JsonObject{{"padding", values.size()}});
+                }
+                if (!values.empty())
+                {
+                    const auto enumeration = rad::JsonSchema::Compile(
+                        rad::JsonObject{{"enum", values}}, options);
+                    ASSERT_EQ(static_cast<bool>(enumeration), !testCase.duplicate);
+                    if (testCase.duplicate)
+                    {
+                        EXPECT_EQ(enumeration.error().code,
+                                  rad::JsonSchemaCompileErrorCode::InvalidSchema);
+                        EXPECT_EQ(enumeration.error().schemaUri, options.retrievalUri);
+                        EXPECT_EQ(enumeration.error().schemaPath, "/enum");
+                        EXPECT_EQ(enumeration.error().message,
+                                  "enum must be a non-empty array of unique values");
+                    }
+                }
+                const auto result =
+                    compiled.value().Validate(rad::JsonObject{{"values", values}});
+                EXPECT_EQ(static_cast<bool>(result), !testCase.duplicate)
+                    << FormatValidationErrors(result);
+                EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::Completed);
+                ASSERT_EQ(result.errors.size(), testCase.duplicate ? 1U : 0U);
+                if (testCase.duplicate)
+                {
+                    constexpr std::string_view prefix = "/values/";
+                    const auto& path = result.errors[0].instancePath;
+                    ASSERT_TRUE(path.starts_with(prefix)) << path;
+                    const auto token = std::string_view(path).substr(prefix.size());
+                    std::size_t duplicateIndex = 0;
+                    const auto [end, error] = std::from_chars(
+                        token.data(), token.data() + token.size(), duplicateIndex);
+                    ASSERT_EQ(error, std::errc{}) << path;
+                    ASSERT_EQ(end, token.data() + token.size()) << path;
+                    ASSERT_LT(duplicateIndex, values.size());
+                    const auto equality = rad::JsonSchema::Compile(
+                        rad::JsonObject{{"const", values[duplicateIndex]}}, options);
+                    ASSERT_TRUE(equality) << equality.error().message;
+                    bool repeated = false;
+                    for (std::size_t index = 0; index < values.size(); ++index)
+                    {
+                        if (index == duplicateIndex)
+                        {
+                            continue;
+                        }
+                        const auto match = equality.value().Validate(values[index]);
+                        ASSERT_EQ(match.status, rad::JsonSchemaValidationStatus::Completed)
+                            << FormatValidationErrors(match);
+                        if (match)
+                        {
+                            repeated = true;
+                            break;
+                        }
+                    }
+                    EXPECT_TRUE(repeated) << path;
                 }
             }
-            for (const std::size_t maxErrors : {0U, 1U, 2U, 64U})
+        }
+    }
+}
+
+TEST(IO, JsonSchemaDuplicateDiagnostics)
+{
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/duplicates.json";
+        const auto compiled = rad::JsonSchema::Compile(
+            rad::JsonObject{
+                {"properties", rad::JsonObject{{"values", rad::JsonObject{{"uniqueItems", true}}}}}},
+            options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        for (const std::size_t minimumSize : {0U, 256U})
+        {
+            SCOPED_TRACE(minimumSize);
+            rad::JsonArray values{1, 2, 1.0};
+            while (values.size() < minimumSize)
+            {
+                values.push_back(rad::JsonObject{{"padding", values.size()}});
+            }
+            for (const std::size_t maxErrors : {0U, 1U, 2U})
             {
                 SCOPED_TRACE(maxErrors);
                 rad::JsonSchemaValidationOptions validationOptions;
                 validationOptions.maxErrors = maxErrors;
                 const auto result = compiled.value().Validate(
-                    rad::JsonObject{{"values", testCase.values}}, validationOptions);
-                EXPECT_EQ(static_cast<bool>(result), !duplicate) << FormatValidationErrors(result);
-                EXPECT_EQ(result.status, duplicate && maxErrors <= 1
+                    rad::JsonObject{{"values", values}}, validationOptions);
+                EXPECT_FALSE(result);
+                EXPECT_EQ(result.status, maxErrors <= 1
                                              ? rad::JsonSchemaValidationStatus::MaxErrorsReached
                                              : rad::JsonSchemaValidationStatus::Completed);
-                ASSERT_EQ(result.errors.size(), duplicate ? 1U : 0U);
-                if (duplicate)
-                {
-                    EXPECT_EQ(result.errors[0].instancePath, testCase.duplicatePath);
-                    EXPECT_EQ(result.errors[0].schemaUri, options.retrievalUri);
-                    EXPECT_EQ(result.errors[0].schemaPath, "/properties/values/uniqueItems");
-                    EXPECT_EQ(result.errors[0].message, "array items must be unique");
-                }
+                ASSERT_EQ(result.errors.size(), 1);
+                EXPECT_EQ(result.errors[0].instancePath, "/values/2");
+                EXPECT_EQ(result.errors[0].schemaUri, options.retrievalUri);
+                EXPECT_EQ(result.errors[0].schemaPath, "/properties/values/uniqueItems");
+                EXPECT_EQ(result.errors[0].message, "array items must be unique");
             }
         }
     }
@@ -666,6 +738,55 @@ TEST(IO, JsonSchemaDuplicateDefinitionDiagnostics)
         EXPECT_EQ(compiled.error().schemaUri, options.retrievalUri);
         EXPECT_EQ(compiled.error().schemaPath, testCase.path);
         EXPECT_EQ(compiled.error().message, testCase.message);
+    }
+}
+
+TEST(IO, JsonSchemaHashedDuplicateDefinitions)
+{
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        const auto dependency = dialect == rad::JsonSchemaDialect::Draft7 ? "dependencies"
+                                                                        : "dependentRequired";
+        for (const double value : {std::numeric_limits<double>::quiet_NaN(),
+                                   std::numeric_limits<double>::infinity()})
+        {
+            rad::JsonArray names{value, value};
+            for (std::size_t index = 0; index < 128; ++index)
+            {
+                names.push_back(rad::JsonValue("property" + std::to_string(index)));
+            }
+            const auto required =
+                rad::JsonSchema::Compile(rad::JsonObject{{"required", names}}, options);
+            ASSERT_FALSE(required);
+            EXPECT_EQ(required.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+            EXPECT_EQ(required.error().schemaPath, std::isnan(value) ? "/required/0" : "/required");
+            const auto dependent = rad::JsonSchema::Compile(
+                rad::JsonObject{{dependency, rad::JsonObject{{"trigger", names}}}}, options);
+            ASSERT_FALSE(dependent);
+            EXPECT_EQ(dependent.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+            EXPECT_EQ(dependent.error().schemaPath,
+                      "/" + std::string(dependency) + "/trigger" +
+                          (std::isnan(value) ? "/0" : ""));
+        }
+        rad::JsonArray names;
+        for (std::size_t index = 0; index < 128; ++index)
+        {
+            names.push_back(rad::JsonValue("property" + std::to_string(index)));
+        }
+        EXPECT_TRUE(rad::JsonSchema::Compile(rad::JsonObject{{"required", names}}, options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(
+            rad::JsonObject{{dependency, rad::JsonObject{{"trigger", names}}}}, options));
+        names.push_back(names[0]);
+        const auto required =
+            rad::JsonSchema::Compile(rad::JsonObject{{"required", names}}, options);
+        ASSERT_FALSE(required);
+        EXPECT_EQ(required.error().schemaPath, "/required");
+        const auto dependent = rad::JsonSchema::Compile(
+            rad::JsonObject{{dependency, rad::JsonObject{{"trigger", names}}}}, options);
+        ASSERT_FALSE(dependent);
+        EXPECT_EQ(dependent.error().schemaPath, "/" + std::string(dependency) + "/trigger");
     }
 }
 

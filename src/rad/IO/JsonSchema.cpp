@@ -4,6 +4,7 @@
 #include "Private/JsonSchema/JsonSchemaRegex.h"
 #include "Private/JsonSchema/JsonSchemaReferences.h"
 #include "Private/JsonSchema/JsonSchemaVocabularies.h"
+#include "Private/JsonSchema/JsonSchemaValues.h"
 
 #include <algorithm>
 #include <array>
@@ -30,25 +31,12 @@ namespace
     return {value.data(), value.size()};
 }
 
+using detail::AsNumber;
 using detail::ChildPath;
-
-[[nodiscard]] bool IsNumber(const JsonValue& value) noexcept
-{
-    return value.is_int64() || value.is_uint64() || value.is_double();
-}
-
-[[nodiscard]] long double AsNumber(const JsonValue& value) noexcept
-{
-    if (value.is_int64())
-    {
-        return static_cast<long double>(value.as_int64());
-    }
-    if (value.is_uint64())
-    {
-        return static_cast<long double>(value.as_uint64());
-    }
-    return static_cast<long double>(value.as_double());
-}
+using detail::CompareNumbers;
+using detail::FindDuplicateIndex;
+using detail::IsNumber;
+using detail::JsonSchemaEqual;
 
 [[nodiscard]] bool IsInteger(const JsonValue& value) noexcept
 {
@@ -58,84 +46,6 @@ using detail::ChildPath;
     }
     return value.is_double() && std::isfinite(value.as_double()) &&
            std::trunc(value.as_double()) == value.as_double();
-}
-
-[[nodiscard]] std::partial_ordering CompareNumbers(const JsonValue& left,
-                                                   const JsonValue& right) noexcept
-{
-    if ((left.is_double() && std::isnan(left.as_double())) ||
-        (right.is_double() && std::isnan(right.as_double())))
-    {
-        return std::partial_ordering::unordered;
-    }
-    if (left.is_int64() && right.is_int64())
-    {
-        return left.as_int64() <=> right.as_int64();
-    }
-    if (left.is_uint64() && right.is_uint64())
-    {
-        return left.as_uint64() <=> right.as_uint64();
-    }
-    if (left.is_int64() && right.is_uint64())
-    {
-        if (left.as_int64() < 0)
-        {
-            return std::partial_ordering::less;
-        }
-        const auto converted = static_cast<std::uint64_t>(left.as_int64());
-        return converted <=> right.as_uint64();
-    }
-    if (left.is_uint64() && right.is_int64())
-    {
-        return 0 <=> CompareNumbers(right, left);
-    }
-    if (left.is_int64() && right.is_double())
-    {
-        const double number = right.as_double();
-        constexpr double lowerBound = -9223372036854775808.0;
-        constexpr double upperBound = 9223372036854775808.0;
-        if (number < lowerBound)
-        {
-            return std::partial_ordering::greater;
-        }
-        if (number >= upperBound)
-        {
-            return std::partial_ordering::less;
-        }
-        const auto integer = static_cast<std::int64_t>(number);
-        if (left.as_int64() != integer)
-        {
-            return left.as_int64() <=> integer;
-        }
-        return static_cast<double>(integer) <=> number;
-    }
-    if (left.is_uint64() && right.is_double())
-    {
-        const double number = right.as_double();
-        constexpr double upperBound = 18446744073709551616.0;
-        if (number < 0)
-        {
-            return std::partial_ordering::greater;
-        }
-        if (number >= upperBound)
-        {
-            return std::partial_ordering::less;
-        }
-        const auto integer = static_cast<std::uint64_t>(number);
-        if (left.as_uint64() != integer)
-        {
-            return left.as_uint64() <=> integer;
-        }
-        return static_cast<double>(integer) <=> number;
-    }
-    if (left.is_double() && !right.is_double())
-    {
-        return 0 <=> CompareNumbers(right, left);
-    }
-
-    const auto leftNumber = AsNumber(left);
-    const auto rightNumber = AsNumber(right);
-    return leftNumber <=> rightNumber;
 }
 
 template <typename OnError>
@@ -414,69 +324,6 @@ struct DecimalNumber
     constexpr std::array types = {"null", "boolean", "object", "array",
                                   "number", "integer", "string"};
     return std::find(types.begin(), types.end(), type) != types.end();
-}
-
-[[nodiscard]] bool JsonSchemaEqual(const JsonValue& lhs, const JsonValue& rhs)
-{
-    if (IsNumber(lhs) && IsNumber(rhs))
-    {
-        return CompareNumbers(lhs, rhs) == 0;
-    }
-    if (lhs.kind() != rhs.kind())
-    {
-        return false;
-    }
-    if (lhs.is_array())
-    {
-        const auto& lhsArray = lhs.as_array();
-        const auto& rhsArray = rhs.as_array();
-        if (lhsArray.size() != rhsArray.size())
-        {
-            return false;
-        }
-        for (std::size_t index = 0; index < lhsArray.size(); ++index)
-        {
-            if (!JsonSchemaEqual(lhsArray[index], rhsArray[index]))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-    if (lhs.is_object())
-    {
-        const auto& lhsObject = lhs.as_object();
-        const auto& rhsObject = rhs.as_object();
-        if (lhsObject.size() != rhsObject.size())
-        {
-            return false;
-        }
-        for (const auto& member : lhsObject)
-        {
-            const auto* rhsValue = rhsObject.if_contains(member.key());
-            if (rhsValue == nullptr || !JsonSchemaEqual(member.value(), *rhsValue))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-    return lhs == rhs;
-}
-
-[[nodiscard]] std::optional<std::size_t> FindDuplicateIndex(const JsonArray& values)
-{
-    for (std::size_t first = 0; first < values.size(); ++first)
-    {
-        for (std::size_t second = first + 1; second < values.size(); ++second)
-        {
-            if (JsonSchemaEqual(values[first], values[second]))
-            {
-                return second;
-            }
-        }
-    }
-    return std::nullopt;
 }
 
 class JsonSchemaKeywords
