@@ -464,7 +464,7 @@ struct DecimalNumber
     return lhs == rhs;
 }
 
-[[nodiscard]] bool HasDuplicates(const JsonArray& values)
+[[nodiscard]] std::optional<std::size_t> FindDuplicateIndex(const JsonArray& values)
 {
     for (std::size_t first = 0; first < values.size(); ++first)
     {
@@ -472,11 +472,11 @@ struct DecimalNumber
         {
             if (JsonSchemaEqual(values[first], values[second]))
             {
-                return true;
+                return second;
             }
         }
     }
-    return false;
+    return std::nullopt;
 }
 
 class JsonSchemaKeywords
@@ -795,7 +795,7 @@ private:
                         return candidate.is_string() &&
                                IsKnownType(ToStringView(candidate.as_string()));
                     }) &&
-                        !HasDuplicates(type->as_array());
+                        !FindDuplicateIndex(type->as_array());
             }
             if (!valid)
             {
@@ -818,7 +818,7 @@ private:
                                                      "number must be finite");
                                             return false;
                                         }) &&
-                     HasDuplicates(enumeration->as_array()))
+                     FindDuplicateIndex(enumeration->as_array()))
             {
                 AddError(keywordPath, "enum must be a non-empty array of unique values");
             }
@@ -909,7 +909,7 @@ private:
             }
             else
             {
-                if (HasDuplicates(required->as_array()))
+                if (FindDuplicateIndex(required->as_array()))
                 {
                     AddError(requiredPath, "required property names must be unique");
                 }
@@ -1163,7 +1163,7 @@ private:
                                  "dependentRequired value must be an array of strings");
                         continue;
                     }
-                    if (HasDuplicates(value.as_array()))
+                    if (FindDuplicateIndex(value.as_array()))
                     {
                         AddError(dependencyPath, "dependent property names must be unique");
                     }
@@ -2279,23 +2279,10 @@ private:
             }
             else if (unique->as_bool())
             {
-                bool duplicateFound = false;
-                for (std::size_t first = 0; first < instance.size(); ++first)
+                if (const auto duplicate = FindDuplicateIndex(instance))
                 {
-                    for (std::size_t second = first + 1; second < instance.size(); ++second)
-                    {
-                        if (JsonSchemaEqual(instance[first], instance[second]))
-                        {
-                            AddError(ChildPath(instancePath, std::to_string(second)),
-                                     keywordPath, "array items must be unique");
-                            duplicateFound = true;
-                            break;
-                        }
-                    }
-                    if (duplicateFound)
-                    {
-                        break;
-                    }
+                    AddError(ChildPath(instancePath, std::to_string(*duplicate)),
+                             keywordPath, "array items must be unique");
                 }
             }
         }
