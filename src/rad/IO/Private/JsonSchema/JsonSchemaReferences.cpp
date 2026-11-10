@@ -60,13 +60,13 @@ namespace
 class ReferenceIndexBuilder
 {
 public:
-    using Targets = std::unordered_map<std::string, JsonSchemaReferences::Resolution>;
+    using Targets = JsonSchemaStringMap<JsonSchemaReferences::Resolution>;
     using Target = JsonSchemaReferences::Target;
 
     ReferenceIndexBuilder(JsonValue& root, std::vector<std::string>& uris,
-                          std::unordered_map<std::string, std::string>& schemaResources,
-                          std::unordered_map<std::string, JsonSchemaVocabularyProfile>& profiles,
-                          std::unordered_map<std::string, JsonSchemaCompileError>& profileErrors,
+                          JsonSchemaStringMap<std::string>& schemaResources,
+                          JsonSchemaStringMap<JsonSchemaVocabularyProfile>& profiles,
+                          JsonSchemaStringMap<JsonSchemaCompileError>& profileErrors,
                           const JsonSchemaReferences& references,
                           JsonSchemaDialectResolver& dialectResolver,
                           const JsonSchemaVocabularyProfile& rootProfile,
@@ -734,9 +734,9 @@ private:
 
     JsonValue& m_root;
     std::vector<std::string>& m_uris;
-    std::unordered_map<std::string, std::string>& m_schemaResources;
-    std::unordered_map<std::string, JsonSchemaVocabularyProfile>& m_profiles;
-    std::unordered_map<std::string, JsonSchemaCompileError>& m_profileErrors;
+    JsonSchemaStringMap<std::string>& m_schemaResources;
+    JsonSchemaStringMap<JsonSchemaVocabularyProfile>& m_profiles;
+    JsonSchemaStringMap<JsonSchemaCompileError>& m_profileErrors;
     const JsonSchemaReferences& m_graph;
     JsonSchemaDialectResolver& m_dialectResolver;
     JsonSchemaVocabularyProfile m_rootProfile;
@@ -926,13 +926,13 @@ std::string JsonSchemaReferences::SchemaUri(std::string_view path) const
 const JsonSchemaReferences::Resolution* JsonSchemaReferences::Find(
     std::string_view referencePath) const
 {
-    const auto found = m_targets.find(std::string(referencePath));
+    const auto found = m_targets.find(referencePath);
     return found == m_targets.end() ? nullptr : &found->second;
 }
 
 const std::string* JsonSchemaReferences::Resource(std::string_view schemaPath) const
 {
-    const auto found = m_schemaResources.find(std::string(schemaPath));
+    const auto found = m_schemaResources.find(schemaPath);
     return found == m_schemaResources.end() ? nullptr : &found->second;
 }
 
@@ -950,7 +950,7 @@ bool JsonSchemaReferences::HasRecursiveAnchor(std::string_view resourcePath) con
 const JsonSchemaReferences::Anchors* JsonSchemaReferences::DynamicAnchors(
     std::string_view resourcePath) const
 {
-    const auto found = m_dynamicAnchors.find(std::string(resourcePath));
+    const auto found = m_dynamicAnchors.find(resourcePath);
     return found == m_dynamicAnchors.end() ? nullptr : &found->second;
 }
 
@@ -961,7 +961,7 @@ JsonSchemaDialect JsonSchemaReferences::Dialect() const
 
 const JsonSchemaVocabularyProfile* JsonSchemaReferences::Profile(std::string_view schemaPath) const
 {
-    const auto found = m_profiles.find(std::string(schemaPath));
+    const auto found = m_profiles.find(schemaPath);
     return found == m_profiles.end() ? nullptr : &found->second;
 }
 
@@ -972,13 +972,13 @@ void JsonSchemaReferences::SetPatterns(Patterns patterns)
 
 const JsonSchemaRegex* JsonSchemaReferences::FindPattern(std::string_view schemaPath) const
 {
-    const auto found = m_patterns.find(std::string(schemaPath));
+    const auto found = m_patterns.find(schemaPath);
     return found == m_patterns.end() ? nullptr : &found->second;
 }
 
 const JsonSchemaCompileError* JsonSchemaReferences::ProfileError(std::string_view schemaPath) const
 {
-    std::string path(schemaPath);
+    std::string_view path = schemaPath;
     for (;;)
     {
         if (const auto found = m_profileErrors.find(path); found != m_profileErrors.end())
@@ -986,11 +986,11 @@ const JsonSchemaCompileError* JsonSchemaReferences::ProfileError(std::string_vie
             return &found->second;
         }
         const auto end = path.rfind('/');
-        if (end == std::string::npos)
+        if (end == std::string_view::npos)
         {
             return nullptr;
         }
-        path.resize(end);
+        path = path.substr(0, end);
     }
 }
 

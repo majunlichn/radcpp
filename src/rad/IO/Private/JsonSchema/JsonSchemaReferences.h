@@ -6,12 +6,28 @@
 #include "JsonSchemaRegex.h"
 #include "JsonSchemaPaths.h"
 
+#include <cstddef>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 
 namespace rad::detail
 {
+
+struct JsonSchemaStringHash
+{
+    using is_transparent = void;
+
+    [[nodiscard]] std::size_t operator()(std::string_view value) const noexcept
+    {
+        return std::hash<std::string_view>{}(value);
+    }
+};
+
+template <typename Value>
+using JsonSchemaStringMap =
+    std::unordered_map<std::string, Value, JsonSchemaStringHash, std::equal_to<>>;
 
 class JsonSchemaReferences
 {
@@ -24,7 +40,7 @@ public:
 
     using Resolution = Result<Target, JsonSchemaCompileError>;
     using Anchors = std::unordered_map<std::string, std::string>;
-    using Patterns = std::unordered_map<std::string, JsonSchemaRegex>;
+    using Patterns = JsonSchemaStringMap<JsonSchemaRegex>;
 
     [[nodiscard]] static Result<JsonSchemaReferences, JsonSchemaCompileError> Compile(
         const JsonValue& schema, std::optional<JsonSchemaDialect> dialect, std::size_t maxDepth,
@@ -44,15 +60,15 @@ public:
     [[nodiscard]] const JsonSchemaRegex* FindPattern(std::string_view schemaPath) const;
 
 private:
-    std::unordered_map<std::string, Resolution> m_targets;
+    JsonSchemaStringMap<Resolution> m_targets;
     // Internal paths begin with a document index; public diagnostics omit that prefix.
     JsonValue m_documents;
     std::vector<std::string> m_uris;
-    std::unordered_map<std::string, std::string> m_schemaResources;
-    std::unordered_map<std::string, Anchors> m_dynamicAnchors;
+    JsonSchemaStringMap<std::string> m_schemaResources;
+    JsonSchemaStringMap<Anchors> m_dynamicAnchors;
     JsonSchemaDialect m_dialect = JsonSchemaDialect::Draft2020_12;
-    std::unordered_map<std::string, JsonSchemaVocabularyProfile> m_profiles;
-    std::unordered_map<std::string, JsonSchemaCompileError> m_profileErrors;
+    JsonSchemaStringMap<JsonSchemaVocabularyProfile> m_profiles;
+    JsonSchemaStringMap<JsonSchemaCompileError> m_profileErrors;
     Patterns m_patterns;
 }; // class JsonSchemaReferences
 

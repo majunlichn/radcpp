@@ -451,7 +451,7 @@ private:
 
     void CheckPattern(std::string_view pattern, std::string_view schemaPath)
     {
-        if (m_patterns.contains(std::string(schemaPath)))
+        if (m_patterns.contains(schemaPath))
         {
             return;
         }

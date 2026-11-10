@@ -166,6 +166,7 @@ set(RAD_TEST_SOURCES
     src/rad/IO/JsonSchemaOfficial.test.cpp
     src/rad/IO/JsonSchemaReferences.test.cpp
     src/rad/IO/JsonSchemaRegex.test.cpp
+    src/rad/IO/Private/JsonSchema/JsonSchemaReferences.test.cpp
     src/rad/IO/Private/JsonSchema/JsonSchemaValues.test.cpp
     src/rad/IO/Logging.test.cpp
     src/rad/Math/Matrix.test.cpp
