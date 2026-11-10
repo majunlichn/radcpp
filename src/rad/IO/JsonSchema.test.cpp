@@ -598,20 +598,34 @@ TEST(IO, JsonSchemaDuplicateValues)
                 {
                     values.push_back(rad::JsonObject{{"padding", values.size()}});
                 }
-                if (!values.empty())
+                const auto enumeration = rad::JsonSchema::Compile(
+                    rad::JsonObject{{"enum", values}}, options);
+                const bool rejectEnumeration =
+                    dialect == rad::JsonSchemaDialect::Draft7 &&
+                    (values.empty() || testCase.duplicate);
+                ASSERT_EQ(static_cast<bool>(enumeration), !rejectEnumeration);
+                if (rejectEnumeration)
                 {
-                    const auto enumeration = rad::JsonSchema::Compile(
-                        rad::JsonObject{{"enum", values}}, options);
-                    ASSERT_EQ(static_cast<bool>(enumeration), !testCase.duplicate);
-                    if (testCase.duplicate)
+                    EXPECT_EQ(enumeration.error().code,
+                              rad::JsonSchemaCompileErrorCode::InvalidSchema);
+                    EXPECT_EQ(enumeration.error().schemaUri, options.retrievalUri);
+                    EXPECT_EQ(enumeration.error().schemaPath, "/enum");
+                    EXPECT_EQ(enumeration.error().message,
+                              "enum must be a non-empty array of unique values");
+                }
+                else
+                {
+                    if (!values.empty())
                     {
-                        EXPECT_EQ(enumeration.error().code,
-                                  rad::JsonSchemaCompileErrorCode::InvalidSchema);
-                        EXPECT_EQ(enumeration.error().schemaUri, options.retrievalUri);
-                        EXPECT_EQ(enumeration.error().schemaPath, "/enum");
-                        EXPECT_EQ(enumeration.error().message,
-                                  "enum must be a non-empty array of unique values");
+                        EXPECT_TRUE(enumeration.value().Validate(values.front()));
+                        EXPECT_TRUE(enumeration.value().Validate(values.back()));
                     }
+                    const auto outside = enumeration.value().Validate("outside-enum");
+                    EXPECT_FALSE(outside);
+                    EXPECT_EQ(outside.status, rad::JsonSchemaValidationStatus::Completed);
+                    ASSERT_EQ(outside.errors.size(), 1);
+                    EXPECT_EQ(outside.errors[0].schemaPath, "/enum");
+                    EXPECT_EQ(outside.errors[0].message, "value is not one of the allowed values");
                 }
                 const auto result =
                     compiled.value().Validate(rad::JsonObject{{"values", values}});
@@ -654,6 +668,96 @@ TEST(IO, JsonSchemaDuplicateValues)
                 }
             }
         }
+    }
+}
+
+TEST(IO, JsonSchemaEmptyEnum)
+{
+    const rad::JsonValue instances[] = {
+        nullptr, false, 1, "value", rad::JsonArray{}, rad::JsonObject{},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/enum.json";
+        const auto compiled =
+            rad::JsonSchema::Compile(rad::JsonObject{{"enum", rad::JsonArray{}}}, options);
+        if (dialect == rad::JsonSchemaDialect::Draft7)
+        {
+            ASSERT_FALSE(compiled);
+            EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+            EXPECT_EQ(compiled.error().schemaPath, "/enum");
+        }
+        else
+        {
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            for (const auto& instance : instances)
+            {
+                for (const std::size_t maxErrors : {0U, 1U, 2U, 64U})
+                {
+                    const auto result =
+                        compiled.value().Validate(instance, {.maxErrors = maxErrors});
+                    EXPECT_FALSE(result);
+                    EXPECT_EQ(result.status, maxErrors <= 1
+                                                 ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                                 : rad::JsonSchemaValidationStatus::Completed);
+                    ASSERT_EQ(result.errors.size(), 1);
+                    EXPECT_EQ(result.errors[0].instancePath, "");
+                    EXPECT_EQ(result.errors[0].schemaUri, options.retrievalUri);
+                    EXPECT_EQ(result.errors[0].schemaPath, "/enum");
+                    EXPECT_EQ(result.errors[0].message, "value is not one of the allowed values");
+                }
+            }
+            const auto alternative = rad::JsonSchema::Compile(
+                rad::JsonObject{{"anyOf", rad::JsonArray{
+                    rad::JsonObject{{"enum", rad::JsonArray{}}}, true}}}, options);
+            ASSERT_TRUE(alternative);
+            EXPECT_TRUE(alternative.value().Validate(nullptr, {.maxErrors = 1}));
+        }
+        const auto invalid =
+            rad::JsonSchema::Compile(rad::JsonObject{{"enum", false}}, options);
+        ASSERT_FALSE(invalid);
+        EXPECT_EQ(invalid.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+        EXPECT_EQ(invalid.error().schemaPath, "/enum");
+    }
+}
+
+TEST(IO, JsonSchemaPrefixItemsDefinitions)
+{
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/prefix.json";
+        const auto empty =
+            rad::JsonSchema::Compile(rad::JsonObject{{"prefixItems", rad::JsonArray{}}}, options);
+        if (dialect != rad::JsonSchemaDialect::Draft2020_12)
+        {
+            ASSERT_TRUE(empty);
+            EXPECT_TRUE(empty.value().Validate(rad::JsonArray{1}));
+            continue;
+        }
+        ASSERT_FALSE(empty);
+        EXPECT_EQ(empty.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+        EXPECT_EQ(empty.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(empty.error().schemaPath, "/prefixItems");
+        EXPECT_EQ(empty.error().message, "prefixItems must be a non-empty array");
+
+        const auto nested = rad::JsonSchema::Compile(
+            rad::JsonObject{{"properties", rad::JsonObject{
+                {"x", rad::JsonObject{{"prefixItems", rad::JsonArray{}}}}}}}, options);
+        ASSERT_FALSE(nested);
+        EXPECT_EQ(nested.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+        EXPECT_EQ(nested.error().schemaPath, "/properties/x/prefixItems");
+
+        const auto valid = rad::JsonSchema::Compile(
+            rad::JsonObject{{"prefixItems", rad::JsonArray{true, false}}}, options);
+        ASSERT_TRUE(valid);
+        EXPECT_TRUE(valid.value().Validate(rad::JsonArray{1}));
+        EXPECT_FALSE(valid.value().Validate(rad::JsonArray{1, 2}));
     }
 }
 

@@ -11,7 +11,6 @@
 #include <charconv>
 #include <cmath>
 #include <cstddef>
-#include <limits>
 #include <iterator>
 #include <optional>
 #include <numeric>
@@ -256,34 +255,9 @@ struct DecimalNumber
         [](const unsigned char character) { return (character & 0xc0U) != 0x80U; }));
 }
 
-[[nodiscard]] std::optional<std::size_t> NonNegativeSize(const JsonValue& value) noexcept
+[[nodiscard]] bool IsNonNegativeInteger(const JsonValue& value) noexcept
 {
-    std::uint64_t size = 0;
-    if (value.is_uint64())
-    {
-        size = value.as_uint64();
-    }
-    else if (value.is_int64() && value.as_int64() >= 0)
-    {
-        size = static_cast<std::uint64_t>(value.as_int64());
-    }
-    else if (value.is_double() && value.as_double() >= 0.0 &&
-             std::trunc(value.as_double()) == value.as_double() &&
-             value.as_double() <
-                 static_cast<double>(std::numeric_limits<std::size_t>::max()))
-    {
-        return static_cast<std::size_t>(value.as_double());
-    }
-    else
-    {
-        return std::nullopt;
-    }
-
-    if (size > std::numeric_limits<std::size_t>::max())
-    {
-        return std::nullopt;
-    }
-    return static_cast<std::size_t>(size);
+    return IsInteger(value) && AsNumber(value) >= 0;
 }
 
 [[nodiscard]] bool MatchesType(const JsonValue& instance, std::string_view type) noexcept
@@ -654,9 +628,11 @@ private:
         if (const auto* enumeration = object.if_contains("enum"))
         {
             const auto keywordPath = ChildPath(schemaPath, "enum");
-            if (!enumeration->is_array() || enumeration->as_array().empty())
+            const bool strict = m_dialect == JsonSchemaDialect::Draft7;
+            if (!enumeration->is_array() || (strict && enumeration->as_array().empty()))
             {
-                AddError(keywordPath, "enum must be a non-empty array of unique values");
+                AddError(keywordPath, strict ? "enum must be a non-empty array of unique values"
+                                             : "enum must be an array");
             }
             else if (CheckFiniteNumbers(*enumeration,
                                         [this, &keywordPath](std::string_view path)
@@ -665,7 +641,7 @@ private:
                                                      "number must be finite");
                                             return false;
                                         }) &&
-                     FindDuplicateIndex(enumeration->as_array()))
+                     strict && FindDuplicateIndex(enumeration->as_array()))
             {
                 AddError(keywordPath, "enum must be a non-empty array of unique values");
             }
@@ -689,7 +665,7 @@ private:
         for (const std::string_view keyword : sizeKeywords)
         {
             if (const auto* value = object.if_contains(keyword);
-                value != nullptr && !NonNegativeSize(*value))
+                value != nullptr && !IsNonNegativeInteger(*value))
             {
                 AddError(ChildPath(schemaPath, keyword),
                          std::string(keyword) + " must be a non-negative integer");
@@ -701,7 +677,7 @@ private:
             for (const std::string_view keyword : containsSizeKeywords)
             {
                 if (const auto* value = object.if_contains(keyword);
-                    value != nullptr && !NonNegativeSize(*value))
+                    value != nullptr && !IsNonNegativeInteger(*value))
                 {
                     AddError(ChildPath(schemaPath, keyword),
                              std::string(keyword) + " must be a non-negative integer");
@@ -868,9 +844,9 @@ private:
             if (const auto* prefixItems = object.if_contains("prefixItems"))
             {
                 const auto prefixPath = ChildPath(schemaPath, "prefixItems");
-                if (!prefixItems->is_array())
+                if (!prefixItems->is_array() || prefixItems->as_array().empty())
                 {
-                    AddError(prefixPath, "prefixItems must be an array");
+                    AddError(prefixPath, "prefixItems must be a non-empty array");
                 }
                 else
                 {
@@ -1597,10 +1573,13 @@ private:
         }
         if (const auto* enumValue = schema.if_contains("enum"))
         {
-            if (!enumValue->is_array() || enumValue->as_array().empty())
+            if (!enumValue->is_array() ||
+                (m_dialect == JsonSchemaDialect::Draft7 && enumValue->as_array().empty()))
             {
                 AddError(instancePath, ChildPath(schemaPath, "enum"),
-                         "enum must be a non-empty array");
+                         m_dialect == JsonSchemaDialect::Draft7
+                             ? "enum must be a non-empty array"
+                             : "enum must be an array");
             }
             else if (std::none_of(enumValue->as_array().begin(), enumValue->as_array().end(),
                                   [&instance](const JsonValue& candidate) {
@@ -2255,25 +2234,22 @@ private:
             }
         }
 
-        std::size_t minimum = 1;
-        if (const auto* minContains = schema.if_contains("minContains"))
-        {
-            minimum = *NonNegativeSize(*minContains);
-        }
-        std::size_t maximum = std::numeric_limits<std::size_t>::max();
-        if (const auto* maxContains = schema.if_contains("maxContains"))
-        {
-            maximum = *NonNegativeSize(*maxContains);
-        }
-        if (matches < minimum)
+        const auto* minContains = m_dialect != JsonSchemaDialect::Draft7
+                                      ? schema.if_contains("minContains")
+                                      : nullptr;
+        const auto* maxContains = m_dialect != JsonSchemaDialect::Draft7
+                                      ? schema.if_contains("maxContains")
+                                      : nullptr;
+        const JsonValue count(matches);
+        if (minContains != nullptr ? CompareNumbers(count, *minContains) < 0 : matches == 0)
         {
             AddError(instancePath,
-                     schema.contains("minContains")
+                     minContains != nullptr
                          ? ChildPath(schemaPath, "minContains")
                          : keywordPath,
                      "array contains fewer matching items than required");
         }
-        else if (matches > maximum)
+        else if (maxContains != nullptr && CompareNumbers(count, *maxContains) > 0)
         {
             AddError(instancePath, ChildPath(schemaPath, "maxContains"),
                      "array contains more matching items than allowed");
@@ -2397,13 +2373,14 @@ private:
             return;
         }
         const auto keywordPath = ChildPath(schemaPath, keyword);
-        const auto expected = NonNegativeSize(*constraint);
-        if (!expected)
+        if (!IsNonNegativeInteger(*constraint))
         {
             AddError(instancePath, keywordPath,
                      std::string(keyword) + " must be a non-negative integer");
+            return;
         }
-        else if ((minimum && actual < *expected) || (!minimum && actual > *expected))
+        const auto comparison = CompareNumbers(JsonValue(actual), *constraint);
+        if ((minimum && comparison < 0) || (!minimum && comparison > 0))
         {
             AddError(instancePath, keywordPath,
                      minimum ? "value has fewer elements than allowed"

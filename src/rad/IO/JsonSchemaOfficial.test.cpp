@@ -17,21 +17,6 @@
 
 using rad::test::FormatValidationErrors;
 
-namespace
-{
-
-[[nodiscard]] bool IsKnownInvalidOfficialSchema(const rad::JsonValue& schema)
-{
-    if (!schema.is_object())
-    {
-        return false;
-    }
-    const auto* enumValue = schema.as_object().if_contains("enum");
-    return enumValue != nullptr && enumValue->is_array() && enumValue->as_array().empty();
-}
-
-} // namespace
-
 TEST(IO, JsonSchemaOfficialTestSuite)
 {
     const auto suiteRoot = rad::os::executable_directory() / "JSON-Schema-Test-Suite";
@@ -85,7 +70,6 @@ TEST(IO, JsonSchemaOfficialTestSuite)
         ++availableSuites;
         std::size_t suiteExecutedCases = 0;
         std::size_t suiteReferenceCases = 0;
-        std::size_t suiteSchemaRejectionChecks = 0;
         std::size_t failedCompileGroups = 0;
 
         std::vector<std::filesystem::path> files;
@@ -132,21 +116,6 @@ TEST(IO, JsonSchemaOfficialTestSuite)
                 SCOPED_TRACE(std::string(description.data(), description.size()));
 
                 const auto compiled = rad::JsonSchema::Compile(group.at("schema"), compileOptions);
-                if (IsKnownInvalidOfficialSchema(group.at("schema")))
-                {
-                    ++suiteSchemaRejectionChecks;
-                    if (compiled)
-                    {
-                        ADD_FAILURE() << "empty enum schema must be rejected";
-                    }
-                    else
-                    {
-                        EXPECT_EQ(compiled.error().code,
-                                  rad::JsonSchemaCompileErrorCode::InvalidSchema);
-                        EXPECT_EQ(compiled.error().schemaPath, "/enum");
-                    }
-                    continue;
-                }
                 if (!compiled)
                 {
                     ++failedCompileGroups;
@@ -194,10 +163,10 @@ TEST(IO, JsonSchemaOfficialTestSuite)
         EXPECT_GT(suiteExecutedCases, 0) << testsDirectory.string();
         EXPECT_GT(suiteReferenceCases, 0) << testsDirectory.string() << "\\ref.json";
         std::cout << std::format(
-            "[ SCHEMA   ] {:<12} {:>4} cases, {:>2} reference, {:>2} rejection checks, "
+            "[ SCHEMA   ] {:<12} {:>4} cases, {:>2} reference, "
             "{} unexpected compile failures\n",
             suite.directory, suiteExecutedCases, suiteReferenceCases,
-            suiteSchemaRejectionChecks, failedCompileGroups);
+            failedCompileGroups);
     }
 
     if (availableSuites == 0)

@@ -210,6 +210,158 @@ TEST(IO, JsonSchemaNumericComparisonBoundaries)
     }
 }
 
+TEST(IO, JsonSchemaSizeConstraints)
+{
+    struct Constraint
+    {
+        const char* keyword;
+        rad::JsonValue instance;
+        bool minimum;
+        bool contains = false;
+    };
+    const Constraint constraints[] = {
+        {"minLength", "ab", true},
+        {"maxLength", "ab", false},
+        {"minItems", rad::JsonArray{1, 2}, true},
+        {"maxItems", rad::JsonArray{1, 2}, false},
+        {"minProperties", rad::JsonObject{{"a", 1}, {"b", 2}}, true},
+        {"maxProperties", rad::JsonObject{{"a", 1}, {"b", 2}}, false},
+        {"minContains", rad::JsonArray{1, "other", 2}, true, true},
+        {"maxContains", rad::JsonArray{1, "other", 2}, false, true},
+    };
+    struct Limit
+    {
+        rad::JsonValue value;
+        bool minimumValid;
+        bool maximumValid;
+    };
+    const Limit limits[] = {
+        {0, true, false},
+        {-0.0, true, false},
+        {std::uint64_t{1}, true, false},
+        {2, true, true},
+        {std::uint64_t{2}, true, true},
+        {2.0, true, true},
+        {3.0, false, true},
+        {std::uint64_t{4294967296ULL}, false, true},
+        {9007199254740992.0, false, true},
+        {std::uint64_t{9007199254740993ULL}, false, true},
+        {std::numeric_limits<std::uint64_t>::max(), false, true},
+        {std::nextafter(18446744073709551616.0, 0.0), false, true},
+        {18446744073709551616.0, false, true},
+        {1e100, false, true},
+        {std::numeric_limits<double>::max(), false, true},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/sizes.json";
+        for (const auto& constraint : constraints)
+        {
+            SCOPED_TRACE(constraint.keyword);
+            for (const auto& limit : limits)
+            {
+                SCOPED_TRACE(rad::PrettyJson(limit.value));
+                rad::JsonObject schema{{constraint.keyword, limit.value}};
+                if (constraint.contains)
+                {
+                    schema.emplace("contains", rad::JsonObject{{"type", "integer"}});
+                }
+                const auto compiled = rad::JsonSchema::Compile(schema, options);
+                ASSERT_TRUE(compiled) << compiled.error().message;
+                const bool expected =
+                    (constraint.contains && dialect == rad::JsonSchemaDialect::Draft7) ||
+                    (constraint.minimum ? limit.minimumValid : limit.maximumValid);
+                for (const std::size_t maxErrors : {1U, 64U})
+                {
+                    const auto result =
+                        compiled.value().Validate(constraint.instance, {.maxErrors = maxErrors});
+                    EXPECT_EQ(static_cast<bool>(result), expected) << FormatValidationErrors(result);
+                    EXPECT_EQ(result.status,
+                              !expected && maxErrors == 1
+                                  ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                  : rad::JsonSchemaValidationStatus::Completed);
+                    ASSERT_EQ(result.errors.size(), expected ? 0U : 1U);
+                    if (!expected)
+                    {
+                        EXPECT_EQ(result.errors[0].instancePath, "");
+                        EXPECT_EQ(result.errors[0].schemaUri, options.retrievalUri);
+                        EXPECT_EQ(result.errors[0].schemaPath,
+                                  "/" + std::string(constraint.keyword));
+                    }
+                }
+            }
+            if (constraint.contains)
+            {
+                const auto inactive = rad::JsonSchema::Compile(
+                    rad::JsonObject{{constraint.keyword, 1e100}}, options);
+                ASSERT_TRUE(inactive);
+                EXPECT_TRUE(inactive.value().Validate(constraint.instance));
+            }
+        }
+        if (dialect != rad::JsonSchemaDialect::Draft7)
+        {
+            rad::JsonObject schema{{"contains", false}, {"maxContains", 1e100}};
+            const auto defaultMinimum = rad::JsonSchema::Compile(schema, options);
+            ASSERT_TRUE(defaultMinimum);
+            const auto rejected = defaultMinimum.value().Validate(rad::JsonArray{});
+            ASSERT_EQ(rejected.errors.size(), 1);
+            EXPECT_EQ(rejected.errors[0].schemaPath, "/contains");
+            schema.emplace("minContains", -0.0);
+            const auto zeroMinimum = rad::JsonSchema::Compile(schema, options);
+            ASSERT_TRUE(zeroMinimum);
+            EXPECT_TRUE(zeroMinimum.value().Validate(rad::JsonArray{}));
+        }
+    }
+}
+
+TEST(IO, JsonSchemaInvalidSizeConstraints)
+{
+    const rad::JsonValue invalid[] = {
+        -1, -0.5, 0.5, std::numeric_limits<double>::denorm_min(),
+        std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity(), nullptr, true, "2", rad::JsonArray{},
+        rad::JsonObject{},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/invalid-sizes.json";
+        for (const std::string_view keyword :
+             {"minLength", "maxLength", "minItems", "maxItems", "minProperties", "maxProperties",
+              "minContains", "maxContains"})
+        {
+            SCOPED_TRACE(keyword);
+            for (const auto& value : invalid)
+            {
+                rad::JsonObject schema{{keyword, value}};
+                if (keyword.ends_with("Contains"))
+                {
+                    schema.emplace("contains", true);
+                }
+                const auto compiled = rad::JsonSchema::Compile(schema, options);
+                if (dialect == rad::JsonSchemaDialect::Draft7 && keyword.ends_with("Contains"))
+                {
+                    ASSERT_TRUE(compiled);
+                    EXPECT_TRUE(compiled.value().Validate(rad::JsonArray{1}));
+                    EXPECT_FALSE(compiled.value().Validate(rad::JsonArray{}));
+                    continue;
+                }
+                ASSERT_FALSE(compiled);
+                EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+                EXPECT_EQ(compiled.error().schemaUri, options.retrievalUri);
+                EXPECT_EQ(compiled.error().schemaPath, "/" + std::string(keyword));
+                EXPECT_EQ(compiled.error().message,
+                          std::string(keyword) + " must be a non-negative integer");
+            }
+        }
+    }
+}
+
 TEST(IO, JsonSchemaMultipleOfDecimalSemantics)
 {
     struct Case

@@ -201,6 +201,8 @@ struct JsonSchemaCompileOptions
 //   standard defaults. Unknown optional vocabularies are ignored; unsupported required ones fail.
 // - A schema's own $vocabulary does not change its keyword enablement. Compilation checks
 //   supported keyword definitions but does not automatically validate against the meta-schema.
+// - Draft 7 preserves its standard meta-schema's non-empty, unique enum requirement.
+//   Draft 2019-09 and 2020-12 allow empty enums and repeated values; empty enums reject all instances.
 //
 // Numeric semantics:
 // - Instances must contain only finite numbers, including in unconstrained objects and arrays.
@@ -208,6 +210,8 @@ struct JsonSchemaCompileOptions
 //   the offending instance paths and the root schema location.
 //   This check traverses the instance once without applying the schema evaluation depth limit.
 // - Enabled enum and const assertions reject non-finite values in their literal payloads.
+// - Size and count bounds accept finite non-negative integers beyond container size limits.
+//   Comparisons do not narrow these bounds to the container's size type.
 // - multipleOf uses exact arithmetic on integers and shortest round-trip decimal representations
 //   of doubles, without an epsilon. Original numeric text is not retained; a computed value
 //   such as 0.1 + 0.2 need not be a multiple of 0.1.
