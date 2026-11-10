@@ -2268,9 +2268,12 @@ private:
             return;
         }
         const auto value = ToStringView(instance);
-        const auto length = Utf8CodePointCount(value);
-        ValidateSizeKeyword(schema, "minLength", length, true, instancePath, schemaPath);
-        ValidateSizeKeyword(schema, "maxLength", length, false, instancePath, schemaPath);
+        if (schema.contains("minLength") || schema.contains("maxLength"))
+        {
+            const auto length = Utf8CodePointCount(value);
+            ValidateSizeKeyword(schema, "minLength", length, true, instancePath, schemaPath);
+            ValidateSizeKeyword(schema, "maxLength", length, false, instancePath, schemaPath);
+        }
 
         if (ShouldStop())
         {

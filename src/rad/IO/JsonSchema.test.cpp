@@ -761,6 +761,68 @@ TEST(IO, JsonSchemaPrefixItemsDefinitions)
     }
 }
 
+TEST(IO, JsonSchemaStringLength)
+{
+    const auto instance = rad::ParseJson(R"json("\u00e9\u732b\ud83d\ude00")json");
+    ASSERT_TRUE(instance);
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view firstError;
+        std::string_view secondError;
+    };
+    constexpr Case cases[] = {
+        {R"json({"type": "string"})json", {}, {}},
+        {R"json({"pattern": "^.{3}$"})json", {}, {}},
+        {R"json({"pattern": "^.{2}$"})json", "/pattern", {}},
+        {R"json({"minLength": 3})json", {}, {}},
+        {R"json({"minLength": 4})json", "/minLength", {}},
+        {R"json({"maxLength": 3})json", {}, {}},
+        {R"json({"maxLength": 2})json", "/maxLength", {}},
+        {R"json({"minLength": 3, "maxLength": 3})json", {}, {}},
+        {R"json({"minLength": 4, "maxLength": 2})json", "/minLength", "/maxLength"},
+        {R"json({"minLength": 4, "pattern": "^other$"})json", "/minLength", "/pattern"},
+        {R"json({"maxLength": 2, "pattern": "^other$"})json", "/maxLength", "/pattern"},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/string-length.json";
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(testCase.schema);
+            const auto schema = rad::ParseJson(testCase.schema);
+            ASSERT_TRUE(schema);
+            const auto compiled = rad::JsonSchema::Compile(schema.value(), options);
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            const std::string_view paths[] = {testCase.firstError, testCase.secondError};
+            const std::size_t totalErrors =
+                !testCase.secondError.empty() ? 2 : !testCase.firstError.empty() ? 1 : 0;
+            for (const std::size_t maxErrors : {0U, 1U, 2U, 64U})
+            {
+                SCOPED_TRACE(maxErrors);
+                const auto result =
+                    compiled.value().Validate(instance.value(), {.maxErrors = maxErrors});
+                const auto errorLimit = maxErrors == 0 ? 1 : maxErrors;
+                const auto expectedErrors = totalErrors > errorLimit ? errorLimit : totalErrors;
+                EXPECT_EQ(static_cast<bool>(result), totalErrors == 0);
+                EXPECT_EQ(result.status, totalErrors >= errorLimit
+                                             ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                             : rad::JsonSchemaValidationStatus::Completed);
+                ASSERT_EQ(result.errors.size(), expectedErrors) << FormatValidationErrors(result);
+                for (std::size_t index = 0; index < result.errors.size(); ++index)
+                {
+                    EXPECT_EQ(result.errors[index].instancePath, "");
+                    EXPECT_EQ(result.errors[index].schemaUri, options.retrievalUri);
+                    EXPECT_EQ(result.errors[index].schemaPath, paths[index]);
+                }
+            }
+        }
+    }
+}
+
 TEST(IO, JsonSchemaDuplicateDiagnostics)
 {
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,

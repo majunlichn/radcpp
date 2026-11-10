@@ -358,6 +358,7 @@ TEST(IO, JsonSchemaCustomDialectSelection)
         const auto loose = rad::ParseJson(R"json({
             "$schema": "https://example.com/applicator",
             "type": 42, "enum": [], "required": false, "pattern": 1,
+            "minLength": false, "maxLength": false,
             "minimum": false, "minContains": "ignored", "uniqueItems": 1,
             "dependentRequired": 4, "properties": {"value": {"minimum": false}}
         })json");
@@ -367,6 +368,8 @@ TEST(IO, JsonSchemaCustomDialectSelection)
                               << inferred.error().message;
         EXPECT_EQ(inferred.value().Dialect(), dialect);
         EXPECT_TRUE(inferred.value().Validate(rad::JsonObject{{"value", 1}}));
+        EXPECT_TRUE(inferred.value().Validate(""));
+        EXPECT_TRUE(inferred.value().Validate(rad::JsonValue(std::string(4096, 'a'))));
         options.dialect = dialect;
         EXPECT_TRUE(rad::JsonSchema::Compile(loose.value(), options));
         options.dialect = rad::JsonSchemaDialect::Auto;
