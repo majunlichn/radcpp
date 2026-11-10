@@ -432,6 +432,84 @@ TEST(IO, JsonSchemaCompilationDepth)
     }
 }
 
+TEST(IO, JsonSchemaCompilationSharedReferences)
+{
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const auto definitions = dialect == rad::JsonSchemaDialect::Draft7 ? "definitions" : "$defs";
+        const auto reference = "#/" + std::string(definitions) + "/shared";
+        rad::JsonObject properties;
+        for (std::size_t index = 0; index < 512; ++index)
+        {
+            properties.emplace("p" + std::to_string(index),
+                               rad::JsonObject{{"$ref", reference}});
+        }
+        rad::JsonValue schema = rad::JsonObject{
+            {definitions, rad::JsonObject{
+                {"shared", rad::JsonObject{{"type", "integer"}, {"minimum", 0}}}}},
+            {"properties", std::move(properties)},
+        };
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/shared.json";
+        const auto compiled = rad::JsonSchema::Compile(schema, options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(rad::JsonObject{{"p0", 1}, {"p511", 2}}));
+        const auto invalid = compiled.value().Validate(rad::JsonObject{{"p511", -1}});
+        EXPECT_FALSE(invalid);
+        ASSERT_EQ(invalid.errors.size(), 1);
+        EXPECT_EQ(invalid.errors[0].instancePath, "/p511");
+        EXPECT_EQ(invalid.errors[0].schemaPath,
+                  "/" + std::string(definitions) + "/shared/minimum");
+        EXPECT_EQ(invalid.errors[0].schemaUri, options.retrievalUri);
+
+        schema.as_object().at("properties").as_object().emplace(
+            "invalid", rad::JsonObject{{"type", 42}});
+        const auto malformed = rad::JsonSchema::Compile(schema, options);
+        ASSERT_FALSE(malformed);
+        EXPECT_EQ(malformed.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+        EXPECT_EQ(malformed.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(malformed.error().schemaPath, "/properties/invalid/type");
+    }
+}
+
+TEST(IO, JsonSchemaCompilationVisitedDepth)
+{
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.retrievalUri = "https://example.com/visited.json";
+        options.maxCompilationDepth = 1;
+        const rad::JsonValue schema = rad::JsonObject{
+            {"properties", rad::JsonObject{
+                {"shared", rad::JsonObject{{"type", "integer"}}},
+                {"again", rad::JsonObject{{"$ref", "#/properties/shared"}}}}},
+        };
+        const auto limited = rad::JsonSchema::Compile(schema, options);
+        ASSERT_FALSE(limited);
+        EXPECT_EQ(limited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
+        EXPECT_EQ(limited.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(limited.error().schemaPath, "/properties/shared");
+        options.maxCompilationDepth = 2;
+        EXPECT_TRUE(rad::JsonSchema::Compile(schema, options));
+
+        const rad::JsonValue cycle = rad::JsonObject{{"$ref", "#"}};
+        options.maxCompilationDepth = 0;
+        const auto cycleLimited = rad::JsonSchema::Compile(cycle, options);
+        ASSERT_FALSE(cycleLimited);
+        EXPECT_EQ(cycleLimited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
+        EXPECT_EQ(cycleLimited.error().schemaPath, "");
+        options.maxCompilationDepth = 1;
+        const auto compiledCycle = rad::JsonSchema::Compile(cycle, options);
+        ASSERT_TRUE(compiledCycle) << compiledCycle.error().message;
+        EXPECT_EQ(compiledCycle.value().Validate(1).status,
+                  rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
+    }
+}
+
 TEST(IO, JsonSchemaDefaultCompilationDepth)
 {
     for (const std::string_view keyword : {"allOf", "properties", "items", "dependentSchemas"})

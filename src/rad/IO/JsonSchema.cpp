@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <unordered_set>
 #include <utility>
 #include <compare>
 
@@ -503,12 +504,10 @@ private:
             AddError(schemaPath, "schema must be an object or boolean");
             return;
         }
-        if (std::find(m_checkedSchemas.begin(), m_checkedSchemas.end(), &schema) !=
-            m_checkedSchemas.end())
+        if (!m_checkedSchemas.insert(&schema).second)
         {
             return;
         }
-        m_checkedSchemas.push_back(&schema);
 
         if (m_dialect == JsonSchemaDialect::Draft2020_12)
         {
@@ -1013,7 +1012,7 @@ private:
     const JsonValue& m_rootSchema;
     const detail::JsonSchemaReferences& m_references;
     std::optional<JsonSchemaCompileError> m_compileError;
-    std::vector<const JsonValue*> m_checkedSchemas;
+    std::unordered_set<const JsonValue*> m_checkedSchemas;
     std::vector<std::string> m_checkedResources;
     detail::JsonSchemaReferences::Patterns m_patterns;
 }; // class JsonSchemaCompiler
