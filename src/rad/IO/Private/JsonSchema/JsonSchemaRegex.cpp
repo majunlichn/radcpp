@@ -73,7 +73,7 @@ namespace
     return ranges[complement ? 1 : 0];
 }
 
-[[nodiscard]] std::optional<std::string> NormalizeRegexPattern(std::string_view pattern)
+[[nodiscard]] std::string_view NormalizeRegexCategory(std::string_view property) noexcept
 {
     constexpr std::pair<std::string_view, std::string_view> categories[] = {
         {"Other", "C"},
@@ -117,6 +117,22 @@ namespace
         {"Space_Separator", "Zs"},
     };
 
+    if (property.starts_with("General_Category="))
+    {
+        property.remove_prefix(std::string_view("General_Category=").size());
+    }
+    else if (property.starts_with("gc="))
+    {
+        property.remove_prefix(3);
+    }
+    const auto category = std::find_if(
+        std::begin(categories), std::end(categories),
+        [property](const auto& candidate) { return candidate.first == property; });
+    return category == std::end(categories) ? property : category->second;
+}
+
+[[nodiscard]] std::optional<std::string> NormalizeRegexPattern(std::string_view pattern)
+{
     std::string normalized;
     normalized.reserve(pattern.size());
     bool quoted = false;
@@ -213,20 +229,8 @@ namespace
             {
                 continue;
             }
-            auto property = pattern.substr(index + 2, end - index - 2);
-            if (property.starts_with("General_Category="))
-            {
-                property.remove_prefix(std::string_view("General_Category=").size());
-            }
-            else if (property.starts_with("gc="))
-            {
-                property.remove_prefix(3);
-            }
-            const auto category = std::find_if(
-                std::begin(categories), std::end(categories),
-                [property](const auto& candidate) { return candidate.first == property; });
             normalized += '{';
-            normalized += category == std::end(categories) ? property : category->second;
+            normalized += NormalizeRegexCategory(pattern.substr(index + 2, end - index - 2));
             normalized += '}';
             index = end;
         }
@@ -314,13 +318,10 @@ Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(
                 "unable to allocate regular expression matching state"});
         }
         const auto& limits = context.m_limits;
-        if (pcre2_set_match_limit(state.get(), limits.matchLimit) != 0 ||
-            pcre2_set_depth_limit(state.get(), limits.backtrackingDepthLimit) != 0 ||
-            pcre2_set_heap_limit(state.get(), limits.heapLimitKiB) != 0)
-        {
-            return Failure(JsonSchemaRegexError{
-                "unable to set regular expression matching limits"});
-        }
+        // PCRE2 limit setters always return zero.
+        pcre2_set_match_limit(state.get(), limits.matchLimit);
+        pcre2_set_depth_limit(state.get(), limits.backtrackingDepthLimit);
+        pcre2_set_heap_limit(state.get(), limits.heapLimitKiB);
         context.m_context = std::move(state);
     }
     if (context.m_capacity < m_matchPairs)
