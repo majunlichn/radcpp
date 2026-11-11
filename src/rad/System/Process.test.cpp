@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-TEST(System, Process)
+TEST(Process, ExecuteAndCaptureOutput)
 {
     const std::string output =
         rad::Process::ExecuteAndCaptureOutput("cmake", {"-E", "echo", "Hello, World!"});

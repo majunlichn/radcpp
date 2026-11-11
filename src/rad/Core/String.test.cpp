@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-TEST(Core, StrSplit)
+TEST(String, Split)
 {
     EXPECT_EQ(rad::StrSplit("alpha,beta,gamma", ","),
               (std::vector<std::string>{"alpha", "beta", "gamma"}));
@@ -25,7 +25,7 @@ TEST(Core, StrSplit)
     EXPECT_EQ(rad::StrSplit("alpha", ""), (std::vector<std::string>{"alpha"}));
 }
 
-TEST(Core, StrReplaceAll)
+TEST(String, ReplaceAll)
 {
     EXPECT_EQ(rad::StrReplaceAll("alpha beta alpha", "alpha", "gamma"), "gamma beta gamma");
     EXPECT_EQ(rad::StrReplaceAll("alpha beta", "delta", "gamma"), "alpha beta");
@@ -33,7 +33,7 @@ TEST(Core, StrReplaceAll)
     EXPECT_EQ(rad::StrReplaceAll("alpha", "", "gamma"), "alpha");
 }
 
-TEST(Core, StrEqual)
+TEST(String, Equal)
 {
     EXPECT_TRUE(rad::StrEqual("alpha", "alpha"));
     EXPECT_FALSE(rad::StrEqual("alpha", "Alpha"));
@@ -44,7 +44,7 @@ TEST(Core, StrEqual)
                               std::string_view{"alpha\0tail", 10}));
 }
 
-TEST(Core, StrCaseEqual)
+TEST(String, CaseInsensitiveEqual)
 {
     EXPECT_TRUE(rad::StrCaseEqual("alpha", "Alpha"));
     EXPECT_TRUE(rad::StrCaseEqual("ALPHA", "alpha"));
@@ -56,7 +56,7 @@ TEST(Core, StrCaseEqual)
                                   std::string_view{"ALPHA\0TAIL", 10}));
 }
 
-TEST(Core, StrCmp)
+TEST(String, Compare)
 {
     EXPECT_EQ(rad::StrCmp("alpha", "alpha"), 0);
     EXPECT_GT(rad::StrCmp("alpha", "ALPHA"), 0);
@@ -72,7 +72,7 @@ TEST(Core, StrCmp)
     EXPECT_GT(rad::StrCmp(std::string_view{embeddedNull.data(), embeddedNull.size()}, "alpha"), 0);
 }
 
-TEST(Core, StrCaseCmp)
+TEST(String, CaseInsensitiveCompare)
 {
     EXPECT_EQ(rad::StrCaseCmp("alpha", "ALPHA"), 0);
     EXPECT_LT(rad::StrCaseCmp("alpha", "beta"), 0);
@@ -89,21 +89,21 @@ TEST(Core, StrCaseCmp)
               0);
 }
 
-TEST(Core, StrUpper)
+TEST(String, ToUpper)
 {
     EXPECT_EQ(rad::StrUpper("Alpha Beta 123!"), "ALPHA BETA 123!");
     EXPECT_EQ(rad::StrUpper("ALPHA"), "ALPHA");
     EXPECT_EQ(rad::StrUpper(""), "");
 }
 
-TEST(Core, StrLower)
+TEST(String, ToLower)
 {
     EXPECT_EQ(rad::StrLower("Alpha Beta 123!"), "alpha beta 123!");
     EXPECT_EQ(rad::StrLower("alpha"), "alpha");
     EXPECT_EQ(rad::StrLower(""), "");
 }
 
-TEST(Core, StrTrim)
+TEST(String, Trim)
 {
     EXPECT_EQ(rad::StrTrim(" \talpha beta\r\n"), "alpha beta");
     EXPECT_EQ(rad::StrTrim("alpha  beta"), "alpha  beta");
@@ -111,7 +111,7 @@ TEST(Core, StrTrim)
     EXPECT_EQ(rad::StrTrim("alpha"), "alpha");
 }
 
-TEST(Core, RangeToString)
+TEST(String, RangeToString)
 {
     EXPECT_EQ(rad::RangeToString(std::vector<int>{}), "");
     EXPECT_EQ(rad::RangeToString(std::vector<int>{7}), "7");
@@ -128,7 +128,7 @@ TEST(Core, RangeToString)
               "10, 20, 30");
 }
 
-TEST(Core, StrToValue)
+TEST(String, ToBool)
 {
     EXPECT_EQ(rad::StrToBool("1"), true);
     EXPECT_EQ(rad::StrToBool("true"), true);
@@ -148,7 +148,7 @@ TEST(Core, StrToValue)
     EXPECT_EQ(rad::StrToBool("ture"), std::nullopt);
 }
 
-TEST(Core, ToHexString)
+TEST(String, ToHexString)
 {
     const std::array bytes = {std::byte{0x00}, std::byte{0x01}, std::byte{0xab}, std::byte{0xff}};
     EXPECT_EQ(rad::ToHexString(bytes), "0001abff");
@@ -156,7 +156,7 @@ TEST(Core, ToHexString)
     EXPECT_EQ(rad::ToHexString({}), "");
 }
 
-TEST(String, IsDomainASCII)
+TEST(String, IsDomainRFC1035AndRFC1123)
 {
     static_assert(noexcept(rad::IsDomainRFC1035("example.com")));
     static_assert(noexcept(rad::IsDomainRFC1123("example.com")));
@@ -374,7 +374,7 @@ TEST(String, IsEmailRFC5321)
     EXPECT_FALSE(rad::IsEmailRFC5321(std::string_view{"a@example.com\0", 14}));
 }
 
-TEST(Core, StringLess)
+TEST(StringLess, OrderingAndHeterogeneousLookup)
 {
     const rad::StringLess less;
 
@@ -391,7 +391,7 @@ TEST(Core, StringLess)
     EXPECT_NE(values.find(std::string_view{"alpha"}), values.end());
 }
 
-TEST(Core, StringLessCaseInsensitive)
+TEST(StringLessCaseInsensitive, OrderingAndHeterogeneousLookup)
 {
     const rad::StringLessCaseInsensitive less;
 

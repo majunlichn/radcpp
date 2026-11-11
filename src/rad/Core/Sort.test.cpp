@@ -6,7 +6,7 @@
 
 using Indices = std::vector<std::size_t>;
 
-TEST(Core, SortIndices)
+TEST(Sort, Indices)
 {
     EXPECT_TRUE(rad::SortIndices(std::vector<int>{}).empty());
     EXPECT_EQ(rad::SortIndices(std::vector<int>{7}), (Indices{0}));
@@ -20,7 +20,7 @@ TEST(Core, SortIndices)
     EXPECT_EQ(values, (std::vector<int>{3, 1, 4, 5, 2}));
 }
 
-TEST(Core, StableSortIndices)
+TEST(Sort, StableIndices)
 {
     EXPECT_TRUE(rad::StableSortIndices(std::vector<int>{}).empty());
 

@@ -6,7 +6,7 @@
 #include <string>
 #include <thread>
 
-TEST(System, Thread)
+TEST(Thread, IdAndName)
 {
     constexpr std::string_view threadName = "worker";
 

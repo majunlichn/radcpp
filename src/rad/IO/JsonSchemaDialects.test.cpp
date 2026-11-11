@@ -10,7 +10,7 @@
 #include <string>
 #include <string_view>
 
-TEST(IO, JsonSchemaAutomaticDialectSelection)
+TEST(JsonSchemaDialects, AutomaticSelection)
 {
     EXPECT_EQ(rad::JsonSchemaCompileOptions{}.dialect, rad::JsonSchemaDialect::Auto);
     const auto path = std::filesystem::temp_directory_path() /
@@ -76,7 +76,7 @@ TEST(IO, JsonSchemaAutomaticDialectSelection)
     EXPECT_EQ(invalidDialect.error().code, rad::JsonSchemaCompileErrorCode::InvalidDialect);
 }
 
-TEST(IO, JsonSchemaStandardMetaSchemaDiagnostics)
+TEST(JsonSchemaDialects, StandardMetaSchemaDiagnostics)
 {
     struct Draft
     {
@@ -110,7 +110,7 @@ TEST(IO, JsonSchemaStandardMetaSchemaDiagnostics)
     }
 }
 
-TEST(IO, JsonSchemaStandardMetaSchemaPrecedence)
+TEST(JsonSchemaDialects, StandardMetaSchemaPrecedence)
 {
     struct Draft
     {
@@ -180,7 +180,7 @@ TEST(IO, JsonSchemaStandardMetaSchemaPrecedence)
     EXPECT_EQ(mismatched.error().schemaUri, "http://json-schema.org/draft-07/schema");
 }
 
-TEST(IO, JsonSchemaVocabularyDeclarations)
+TEST(JsonSchemaDialects, VocabularyDeclarations)
 {
     for (const auto dialect :
          {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
@@ -263,7 +263,7 @@ TEST(IO, JsonSchemaVocabularyDeclarations)
     EXPECT_TRUE(ignored.value().Validate(1));
 }
 
-TEST(IO, JsonSchemaMetaSchemaCompilationDepth)
+TEST(JsonSchemaDialects, MetaSchemaCompilationDepth)
 {
     for (const auto dialect :
          {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
@@ -332,7 +332,7 @@ TEST(IO, JsonSchemaMetaSchemaCompilationDepth)
     }
 }
 
-TEST(IO, JsonSchemaCustomDialectSelection)
+TEST(JsonSchemaDialects, CustomSelection)
 {
     for (const auto dialect :
          {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
@@ -414,7 +414,7 @@ TEST(IO, JsonSchemaCustomDialectSelection)
     }
 }
 
-TEST(IO, JsonSchemaCustomDialectCandidateShapes)
+TEST(JsonSchemaDialects, CustomCandidateShapes)
 {
     for (const auto dialect :
          {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
@@ -466,7 +466,7 @@ TEST(IO, JsonSchemaCustomDialectCandidateShapes)
     }
 }
 
-TEST(IO, JsonSchemaCustomDialectResourceProfiles)
+TEST(JsonSchemaDialects, CustomResourceProfiles)
 {
     for (const auto dialect :
          {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
@@ -529,7 +529,7 @@ TEST(IO, JsonSchemaCustomDialectResourceProfiles)
     }
 }
 
-TEST(IO, JsonSchemaCustomDialectUnevaluatedVocabulary)
+TEST(JsonSchemaDialects, CustomUnevaluatedVocabulary)
 {
     rad::JsonSchemaCompileOptions options;
     options.documents = {
@@ -553,7 +553,7 @@ TEST(IO, JsonSchemaCustomDialectUnevaluatedVocabulary)
     EXPECT_FALSE(compiled.value().Validate(rad::JsonArray{1}));
 }
 
-TEST(IO, JsonSchemaCustomDialectDiagnostics)
+TEST(JsonSchemaDialects, CustomDiagnostics)
 {
     constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;
     rad::JsonSchemaCompileOptions options;

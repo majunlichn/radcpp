@@ -6,7 +6,7 @@
 #include <string_view>
 #include <utility>
 
-TEST(IO, JsonSchemaIndexStringMap)
+TEST(JsonSchemaInternalReferences, IndexStringMap)
 {
     const std::string keys[] = {
         "", "short", std::string(128, 'x'), "/properties/a~1b~0c", "\xc3\xa9\xe7\x8c\xab",
@@ -37,7 +37,7 @@ TEST(IO, JsonSchemaIndexStringMap)
     EXPECT_EQ(index.find(std::string_view{}), index.find(""));
 }
 
-TEST(IO, JsonSchemaIndexLookup)
+TEST(JsonSchemaInternalReferences, IndexLookup)
 {
     const std::string name = std::string(80, 'n') + "/~\xc3\xa9" + std::string("\0tail", 5);
     const auto prefix = name.substr(0, name.find('\0'));
@@ -121,7 +121,7 @@ TEST(IO, JsonSchemaIndexLookup)
     EXPECT_EQ(references.FindPattern({}), nullptr);
 }
 
-TEST(IO, JsonSchemaBoundTargetsSurviveMoves)
+TEST(JsonSchemaInternalReferences, BoundTargetsSurviveMoves)
 {
     using References = rad::detail::JsonSchemaReferences;
     rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
@@ -189,7 +189,7 @@ TEST(IO, JsonSchemaBoundTargetsSurviveMoves)
     EXPECT_EQ(replacement.value().Find("/0/allOf/0/$ref")->value().schema, root);
 }
 
-TEST(IO, JsonSchemaIndexProfileErrors)
+TEST(JsonSchemaInternalReferences, IndexProfileErrors)
 {
     const std::string name = std::string(80, 'n') + "/~\xc3\xa9" + std::string("\0tail", 5);
     const auto path = rad::detail::ChildPath("/0/$defs", name);

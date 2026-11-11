@@ -16,7 +16,7 @@ static_assert(!rad::UnsignedInteger<bool>);
 static_assert(rad::BitCount<std::uint32_t> == 32);
 static_assert(rad::BitCount<std::uint64_t> == 64);
 
-TEST(Core, IntegerBitOperations)
+TEST(Integer, BitOperations)
 {
     EXPECT_FALSE(rad::IsPowerOfTwo(0u));
     EXPECT_TRUE(rad::IsPowerOfTwo(1u));
@@ -46,7 +46,7 @@ TEST(Core, IntegerBitOperations)
     EXPECT_EQ(rad::ReverseBits<std::uint8_t>(0b00010010), 0b01001000);
 }
 
-TEST(Core, IntegerBitRanges)
+TEST(Integer, BitRanges)
 {
     EXPECT_EQ(rad::SignExtend<std::uint8_t>(0b0111, 4), 7);
     EXPECT_EQ(rad::SignExtend<std::uint8_t>(0b1111, 4), -1);
@@ -66,7 +66,7 @@ TEST(Core, IntegerBitRanges)
     EXPECT_EQ(rad::ReplaceBits(0b11110000u, 0b10101010u, 0, rad::BitCount<unsigned>), 0b10101010u);
 }
 
-TEST(Core, IntegerCheckedArithmetic)
+TEST(Integer, CheckedArithmetic)
 {
     EXPECT_FALSE(rad::AddWouldOverflow(20, 22));
     EXPECT_TRUE(rad::AddWouldOverflow(std::numeric_limits<int>::max(), 1));
@@ -95,7 +95,7 @@ TEST(Core, IntegerCheckedArithmetic)
     EXPECT_FALSE(rad::CheckedSubtract<std::uint8_t>(40, 42).has_value());
 }
 
-TEST(Core, IntegerRoundingAndAlignment)
+TEST(Integer, RoundingAndAlignment)
 {
     EXPECT_EQ(rad::DivideRoundUp(0u, 4u), 0u);
     EXPECT_EQ(rad::DivideRoundUp(1u, 4u), 1u);
@@ -130,7 +130,7 @@ TEST(Core, IntegerRoundingAndAlignment)
     EXPECT_EQ(rad::RoundDownToPowerOfTwo(17u), 16u);
 }
 
-TEST(Core, IntegerFallback)
+TEST(Integer, FallbackMatchesPrimaryOperations)
 {
     EXPECT_EQ(rad::fallback::BitScanReverse(std::uint8_t{0x80}),
               rad::BitScanReverse(std::uint8_t{0x80}));
@@ -158,7 +158,7 @@ TEST(Core, IntegerFallback)
     EXPECT_EQ(rad::fallback::RoundDownToPowerOfTwo(17u), rad::RoundDownToPowerOfTwo(17u));
 }
 
-TEST(Core, IntegerLiterals)
+TEST(Integer, Literals)
 {
     using namespace rad::literals;
 

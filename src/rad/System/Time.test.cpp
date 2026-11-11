@@ -9,7 +9,7 @@
 #include <thread>
 #include <type_traits>
 
-TEST(System, Time)
+TEST(Time, CurrentTimeStringFormats)
 {
     const std::string utc = rad::GetTimeStringUTC();
     const std::string local = rad::GetLocalTimeStringISO8601();
@@ -24,7 +24,7 @@ TEST(System, Time)
     EXPECT_TRUE(std::regex_match(local, localPattern));
 }
 
-TEST(System, TimeFormatting)
+TEST(Time, FormattingRoundTrip)
 {
     const auto time = std::chrono::system_clock::time_point{rad::Milliseconds{123}};
 
@@ -36,7 +36,7 @@ TEST(System, TimeFormatting)
     EXPECT_EQ(std::chrono::time_point_cast<rad::Milliseconds>(*parsedLocal), time);
 }
 
-TEST(System, ParseTimeISO8601)
+TEST(Time, ParseISO8601)
 {
     const auto epoch = std::chrono::system_clock::time_point{};
     EXPECT_EQ(rad::ParseTimeISO8601("1970-01-01T00:00:00Z"), epoch);
@@ -51,7 +51,7 @@ TEST(System, ParseTimeISO8601)
     EXPECT_FALSE(rad::ParseTimeISO8601("2026-07-23T10:00:00." + std::string(100, '1') + "Z"));
 }
 
-TEST(System, UnixTimeMilliseconds)
+TEST(Time, UnixMillisecondsConversion)
 {
     const auto time = rad::FromUnixTimeMilliseconds(1234);
     ASSERT_TRUE(time.has_value());
@@ -84,7 +84,7 @@ TEST(System, UnixTimeMilliseconds)
     EXPECT_LE(current, after);
 }
 
-TEST(System, Stopwatch)
+TEST(Stopwatch, StartStopAndResume)
 {
     rad::Stopwatch stopwatch;
     static_assert(std::is_same_v<decltype(stopwatch.Elapsed()), rad::Seconds>);
@@ -111,7 +111,7 @@ TEST(System, Stopwatch)
     EXPECT_GT(stopwatch.ElapsedMilliseconds(), firstElapsed);
 }
 
-TEST(System, Deadline)
+TEST(Deadline, ExpirationAndRemainingTime)
 {
     const rad::Deadline active{rad::Seconds{1}};
     EXPECT_FALSE(active.IsExpired());

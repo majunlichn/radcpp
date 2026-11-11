@@ -15,7 +15,7 @@ static_assert(std::is_same_v<rad::JsonKind, boost::json::kind>);
 static_assert(std::is_same_v<rad::JsonErrorCode, boost::system::error_code>);
 static_assert(std::is_same_v<rad::JsonParseOptions, boost::json::parse_options>);
 
-TEST(IO, ParseJson)
+TEST(Json, ParseWithCommentsAndTrailingCommas)
 {
     // Parse Non-Standard JSON with Comments and Trailing Commas
     {

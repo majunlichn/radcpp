@@ -79,7 +79,7 @@ static_assert(readWrite.HasAnyBits(TestFlagBits::eWrite | TestFlagBits::eExecute
 static_assert(!readWrite.HasAnyBits(TestFlagBits::eExecute));
 static_assert(readWrite.HasNoBits(TestFlagBits::eExecute));
 
-TEST(Core, Flags)
+TEST(Flags, BitwiseOperationsAndQueries)
 {
     TestFlags flags;
     EXPECT_FALSE(flags);

@@ -16,7 +16,7 @@
 
 using rad::test::FormatValidationErrors;
 
-TEST(IO, JsonSchemaRegexWhitespaceCompatibility)
+TEST(JsonSchemaRegex, WhitespaceCompatibility)
 {
     struct Pattern
     {
@@ -108,7 +108,7 @@ TEST(IO, JsonSchemaRegexWhitespaceCompatibility)
         EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
     }
 }
-TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
+TEST(JsonSchemaRegex, CacheLifetimeAndConcurrency)
 {
     const auto makeSchema = []
     {
@@ -166,7 +166,7 @@ TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
     }
 }
 
-TEST(IO, JsonSchemaRegexLimits)
+TEST(JsonSchemaRegex, Limits)
 {
     constexpr std::string_view pattern = "^((((((((((a+))))))))))$";
     struct LimitCase
@@ -271,7 +271,7 @@ TEST(IO, JsonSchemaRegexLimits)
         EXPECT_TRUE(worker.get());
     }
 }
-TEST(IO, JsonSchemaRegexEvaluationFailure)
+TEST(JsonSchemaRegex, EvaluationFailure)
 {
     const auto compiled = rad::JsonSchema::Compile(
         rad::JsonObject{{"pattern", "."}}, {.dialect = rad::JsonSchemaDialect::Draft2020_12});
@@ -291,7 +291,7 @@ TEST(IO, JsonSchemaRegexEvaluationFailure)
     }
 }
 
-TEST(IO, JsonSchemaErrorLimitSkipsRegexEvaluation)
+TEST(JsonSchemaRegex, ErrorLimitSkipsEvaluation)
 {
     const auto compiled =
         rad::JsonSchema::Compile(rad::JsonObject{{"enum", rad::JsonArray{"different"}},

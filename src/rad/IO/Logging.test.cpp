@@ -7,7 +7,7 @@
 #include <sstream>
 #include <string>
 
-TEST(IO, Logging)
+TEST(LogManager, LifecycleAndSinkOutput)
 {
     auto& logManager = rad::LogManager::Instance();
     logManager.Shutdown();

@@ -4,7 +4,7 @@
 
 #include <string_view>
 
-TEST(Core, Crc)
+TEST(Crc32, KnownChecksum)
 {
     constexpr std::string_view data = "123456789";
     EXPECT_EQ(rad::Crc32::Compute(data), 0xCBF43926u);

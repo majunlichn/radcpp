@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-TEST(Math, Geometry3DCompatibility)
+TEST(Geometry3D, Compatibility)
 {
     const rad::Vector3f x = rad::Vector3f::UnitX();
     const rad::Vector3f y = rad::Vector3f::UnitY();

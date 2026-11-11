@@ -12,7 +12,7 @@ static_assert(sizeof(rad::Matrix2f) == 4 * sizeof(float));
 static_assert(sizeof(rad::Matrix2x3f) == 6 * sizeof(float));
 static_assert(sizeof(rad::Matrix3x4f) == 12 * sizeof(float));
 
-TEST(Math, StaticMatrix)
+TEST(Matrix, FixedSizeOperations)
 {
     using namespace rad;
 
@@ -55,7 +55,7 @@ TEST(Math, StaticMatrix)
     }
 }
 
-TEST(Math, MatrixTransform)
+TEST(Matrix, AffineTransforms)
 {
     using namespace rad;
 

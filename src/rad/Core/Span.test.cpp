@@ -18,7 +18,7 @@ static_assert(std::is_constructible_v<rad::Span<const int>, std::initializer_lis
 static_assert(!std::is_constructible_v<rad::Span<int>, std::vector<int>>);
 static_assert(std::is_constructible_v<rad::Span<const int>, std::vector<int>>);
 
-TEST(Core, Span)
+TEST(Span, ConstructionAndByteViews)
 {
     // Single elements can adapt to mutable, const, and fixed extent spans.
     {

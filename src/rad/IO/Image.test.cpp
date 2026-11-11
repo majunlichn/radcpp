@@ -172,7 +172,7 @@ void TestFailures()
 
 } // namespace
 
-TEST(IO, Image)
+TEST(Image, FormatRoundTripsAndFailures)
 {
     TestLdrFormats();
     TestHdr();

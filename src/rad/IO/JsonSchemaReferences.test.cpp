@@ -8,7 +8,7 @@
 #include <cstddef>
 #include <utility>
 
-TEST(IO, JsonSchemaEvaluationCycles)
+TEST(JsonSchemaReferences, EvaluationCycles)
 {
     struct Case
     {
@@ -81,7 +81,7 @@ TEST(IO, JsonSchemaEvaluationCycles)
     }
 }
 
-TEST(IO, JsonSchemaEvaluationCycleErrorLimits)
+TEST(JsonSchemaReferences, EvaluationCycleErrorLimits)
 {
     struct Case
     {
@@ -140,7 +140,7 @@ TEST(IO, JsonSchemaEvaluationCycleErrorLimits)
     }
 }
 
-TEST(IO, JsonSchemaEvaluationCycleProgressAndSiblings)
+TEST(JsonSchemaReferences, EvaluationCycleProgressAndSiblings)
 {
     struct Case
     {
@@ -201,7 +201,7 @@ TEST(IO, JsonSchemaEvaluationCycleProgressAndSiblings)
     }
 }
 
-TEST(IO, JsonSchemaEvaluationCycleDynamicScopes)
+TEST(JsonSchemaReferences, EvaluationCycleDynamicScopes)
 {
     rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
     options.retrievalUri = "https://example.com/root.json";
@@ -241,7 +241,7 @@ TEST(IO, JsonSchemaEvaluationCycleDynamicScopes)
     EXPECT_EQ(cycle.errors[0].schemaPath, "");
 }
 
-TEST(IO, JsonSchemaEvaluationCycleRecursiveScopes)
+TEST(JsonSchemaReferences, EvaluationCycleRecursiveScopes)
 {
     rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2019_09};
     options.retrievalUri = "https://example.com/entry.json";
@@ -285,7 +285,7 @@ TEST(IO, JsonSchemaEvaluationCycleRecursiveScopes)
     EXPECT_EQ(cycle.errors[0].schemaPath, "");
 }
 
-TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
+TEST(JsonSchemaReferences, DiagnosticsAndLimits)
 {
     const auto schema = rad::ParseJson(
         R"json({"$defs": {"node": {"type": "object", "properties":
@@ -326,7 +326,7 @@ TEST(IO, JsonSchemaReferenceDiagnosticsAndLimits)
               "schema evaluation cycle detected without instance progress");
 }
 
-TEST(IO, JsonSchemaReferenceResourceLimitsAndCopies)
+TEST(JsonSchemaReferences, ResourceLimitsAndCopies)
 {
     const auto nestedSource = rad::ParseJson(
         R"json({"$defs": {"inner": {"$id": "sub.json", "$ref": "#"}},
@@ -363,7 +363,7 @@ TEST(IO, JsonSchemaReferenceResourceLimitsAndCopies)
     EXPECT_EQ(invalid.errors[0].schemaPath, "/$defs/inner/type");
 }
 
-TEST(IO, JsonSchemaResourceIdentifierDiagnostics)
+TEST(JsonSchemaReferences, ResourceIdentifierDiagnostics)
 {
     struct Case
     {
@@ -424,7 +424,7 @@ TEST(IO, JsonSchemaResourceIdentifierDiagnostics)
         rad::JsonSchema::Compile(ignored.value(), {.dialect = rad::JsonSchemaDialect::Draft7}));
 }
 
-TEST(IO, JsonSchemaReferenceDiscoveryOrder)
+TEST(JsonSchemaReferences, DiscoveryOrder)
 {
     for (const auto dialect :
          {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
@@ -475,7 +475,7 @@ TEST(IO, JsonSchemaReferenceDiscoveryOrder)
     }
 }
 
-TEST(IO, JsonSchemaInvalidReferences)
+TEST(JsonSchemaReferences, RejectsInvalidReferences)
 {
     struct Case
     {
@@ -518,7 +518,7 @@ TEST(IO, JsonSchemaInvalidReferences)
     EXPECT_EQ(invalidTarget.error().schemaPath, "/list/0/type");
 }
 
-TEST(IO, JsonSchemaDocumentRegistry)
+TEST(JsonSchemaReferences, DocumentRegistry)
 {
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
@@ -660,7 +660,7 @@ TEST(IO, JsonSchemaDocumentRegistry)
     }
 }
 
-TEST(IO, JsonSchemaDocumentRegistryDiagnostics)
+TEST(JsonSchemaReferences, DocumentRegistryDiagnostics)
 {
     constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;
     rad::JsonSchemaCompileOptions options{.dialect = dialect};
@@ -732,7 +732,7 @@ TEST(IO, JsonSchemaDocumentRegistryDiagnostics)
     EXPECT_EQ(malformedId.error().schemaUri, "https://example.com/child.json");
 }
 
-TEST(IO, JsonSchemaRecursiveReferenceDiagnostics)
+TEST(JsonSchemaReferences, RecursiveDiagnostics)
 {
     constexpr auto dialect = rad::JsonSchemaDialect::Draft2019_09;
     struct Case
@@ -779,7 +779,7 @@ TEST(IO, JsonSchemaRecursiveReferenceDiagnostics)
     }
 }
 
-TEST(IO, JsonSchemaRecursiveReferenceRegistryAndCopies)
+TEST(JsonSchemaReferences, RecursiveRegistryAndCopies)
 {
     const auto makeSchema = []
     {
@@ -815,7 +815,7 @@ TEST(IO, JsonSchemaRecursiveReferenceRegistryAndCopies)
     }
 }
 
-TEST(IO, JsonSchemaRecursiveReferenceResourceLimits)
+TEST(JsonSchemaReferences, RecursiveResourceLimits)
 {
     struct Case
     {
@@ -867,7 +867,7 @@ TEST(IO, JsonSchemaRecursiveReferenceResourceLimits)
     }
 }
 
-TEST(IO, JsonSchemaDynamicReferenceDiagnostics)
+TEST(JsonSchemaReferences, DynamicDiagnostics)
 {
     constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;
     struct Case
@@ -923,7 +923,7 @@ TEST(IO, JsonSchemaDynamicReferenceDiagnostics)
     }
 }
 
-TEST(IO, JsonSchemaDynamicReferenceRegistryAndCopies)
+TEST(JsonSchemaReferences, DynamicRegistryAndCopies)
 {
     const auto makeSchema = [](std::string_view reference)
     {
@@ -964,7 +964,7 @@ TEST(IO, JsonSchemaDynamicReferenceRegistryAndCopies)
     }
 }
 
-TEST(IO, JsonSchemaDynamicAnchorTargetCompilation)
+TEST(JsonSchemaReferences, DynamicAnchorTargetCompilation)
 {
     constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;
     rad::JsonSchemaCompileOptions options{.dialect = dialect};
@@ -999,7 +999,7 @@ TEST(IO, JsonSchemaDynamicAnchorTargetCompilation)
     EXPECT_EQ(result.errors[0].schemaUri, "https://example.com/child.json");
 }
 
-TEST(IO, JsonSchemaDynamicReferenceResourceLimits)
+TEST(JsonSchemaReferences, DynamicResourceLimits)
 {
     struct Case
     {

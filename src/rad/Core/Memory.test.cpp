@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 
-TEST(Core, NewDelete)
+TEST(Memory, NewDelete)
 {
     int* number = RAD_NEW(int, 42);
     ASSERT_NE(number, nullptr);
@@ -14,7 +14,7 @@ TEST(Core, NewDelete)
     RAD_DELETE(number);
 }
 
-TEST(Core, NewDeleteArray)
+TEST(Memory, NewDeleteArray)
 {
     int* numbers = RAD_NEW_ARRAY(int, 4);
     ASSERT_NE(numbers, nullptr);
@@ -26,7 +26,7 @@ TEST(Core, NewDeleteArray)
     RAD_DELETE_ARRAY(numbers);
 }
 
-TEST(Core, MemoryTracker)
+TEST(MemoryTracker, RecordsAllocationsAndDeallocations)
 {
 #if RAD_ENABLE_MEMORY_TRACKING
     rad::MemoryTracker tracker;
@@ -59,7 +59,7 @@ TEST(Core, MemoryTracker)
 #endif
 }
 
-TEST(Core, AllocateAligned)
+TEST(Memory, AllocateAligned)
 {
     // Allocations satisfy the requested alignment, enforce pointer alignment, and remain writable.
     {

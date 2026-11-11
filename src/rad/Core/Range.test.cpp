@@ -16,7 +16,7 @@ static_assert(std::ranges::random_access_range<rad::SliceView<int*>>);
 static_assert(std::ranges::sized_range<rad::SliceView<int*>>);
 static_assert(std::ranges::borrowed_range<rad::SliceView<int*>>);
 
-TEST(Core, ToVector)
+TEST(Range, ToVector)
 {
     EXPECT_TRUE(rad::ToVector(std::vector<int>{}).empty());
     EXPECT_EQ(rad::ToVector(std::vector<int>{7}), (std::vector<int>{7}));
@@ -66,7 +66,7 @@ void TestSlice(const auto& vec, std::ptrdiff_t start, std::ptrdiff_t stop, std::
 
 } // namespace
 
-TEST(Core, Slice)
+TEST(Range, Slice)
 {
     { // Syntax and basic functionality tests:
         const std::vector<int> vec = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};

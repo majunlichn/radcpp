@@ -20,7 +20,7 @@
 
 using rad::test::FormatValidationErrors;
 
-TEST(IO, JsonSchemaExamples)
+TEST(JsonSchema, DocumentationExamples)
 {
     // From https://json-schema.org/learn/miscellaneous-examples.
     // The arrays example is omitted because it requires unsupported $ref resolution.
@@ -308,7 +308,7 @@ TEST(IO, JsonSchemaExamples)
     }
 }
 
-TEST(IO, JsonSchemaCompileFileOptions)
+TEST(JsonSchema, CompileFileOptions)
 {
     const auto path = std::filesystem::temp_directory_path() /
                       boost::filesystem::unique_path("rad-schema-%%%%-%%%%-%%%%.json").string();
@@ -383,7 +383,7 @@ TEST(IO, JsonSchemaCompileFileOptions)
     EXPECT_EQ(missing.error().schemaUri, options.retrievalUri);
 }
 
-TEST(IO, JsonSchemaCompilationDepth)
+TEST(JsonSchema, CompilationDepth)
 {
     EXPECT_EQ(rad::JsonSchemaCompileOptions{}.maxCompilationDepth, 128);
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
@@ -432,7 +432,7 @@ TEST(IO, JsonSchemaCompilationDepth)
     }
 }
 
-TEST(IO, JsonSchemaCompilationSharedReferences)
+TEST(JsonSchema, CompilationSharedReferences)
 {
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
@@ -474,7 +474,7 @@ TEST(IO, JsonSchemaCompilationSharedReferences)
     }
 }
 
-TEST(IO, JsonSchemaCompilationVisitedDepth)
+TEST(JsonSchema, CompilationVisitedDepth)
 {
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
@@ -510,7 +510,7 @@ TEST(IO, JsonSchemaCompilationVisitedDepth)
     }
 }
 
-TEST(IO, JsonSchemaDefaultCompilationDepth)
+TEST(JsonSchema, DefaultCompilationDepth)
 {
     for (const std::string_view keyword : {"allOf", "properties", "items", "dependentSchemas"})
     {
@@ -543,7 +543,7 @@ TEST(IO, JsonSchemaDefaultCompilationDepth)
     }
 }
 
-TEST(IO, JsonSchemaErrors)
+TEST(JsonSchema, ErrorDetails)
 {
     const rad::JsonSchemaCompileError compileError{
         rad::JsonSchemaCompileErrorCode::InvalidSchema, "https://example.com/schema.json",
@@ -572,7 +572,7 @@ TEST(IO, JsonSchemaErrors)
     EXPECT_EQ(result.errors[1].schemaPath, validationError.schemaPath);
 }
 
-TEST(IO, JsonSchemaValidationResult)
+TEST(JsonSchema, ValidationStatusAndErrorLimits)
 {
     rad::JsonSchemaValidationResult empty;
     EXPECT_EQ(empty.status, rad::JsonSchemaValidationStatus::Completed);
@@ -628,7 +628,7 @@ TEST(IO, JsonSchemaValidationResult)
     }
 }
 
-TEST(IO, JsonSchemaDuplicateValues)
+TEST(JsonSchema, DuplicateValues)
 {
     struct Case
     {
@@ -749,7 +749,7 @@ TEST(IO, JsonSchemaDuplicateValues)
     }
 }
 
-TEST(IO, JsonSchemaEmptyEnum)
+TEST(JsonSchema, EmptyEnum)
 {
     const rad::JsonValue instances[] = {
         nullptr, false, 1, "value", rad::JsonArray{}, rad::JsonObject{},
@@ -802,7 +802,7 @@ TEST(IO, JsonSchemaEmptyEnum)
     }
 }
 
-TEST(IO, JsonSchemaPrefixItemsDefinitions)
+TEST(JsonSchema, PrefixItemsDefinitions)
 {
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
@@ -839,7 +839,7 @@ TEST(IO, JsonSchemaPrefixItemsDefinitions)
     }
 }
 
-TEST(IO, JsonSchemaStringLength)
+TEST(JsonSchema, StringLength)
 {
     const auto instance = rad::ParseJson(R"json("\u00e9\u732b\ud83d\ude00")json");
     ASSERT_TRUE(instance);
@@ -901,7 +901,7 @@ TEST(IO, JsonSchemaStringLength)
     }
 }
 
-TEST(IO, JsonSchemaDuplicateDiagnostics)
+TEST(JsonSchema, DuplicateDiagnostics)
 {
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
@@ -942,7 +942,7 @@ TEST(IO, JsonSchemaDuplicateDiagnostics)
     }
 }
 
-TEST(IO, JsonSchemaDuplicateDefinitionDiagnostics)
+TEST(JsonSchema, DuplicateDefinitionDiagnostics)
 {
     struct Case
     {
@@ -985,7 +985,7 @@ TEST(IO, JsonSchemaDuplicateDefinitionDiagnostics)
     }
 }
 
-TEST(IO, JsonSchemaHashedDuplicateDefinitions)
+TEST(JsonSchema, HashedDuplicateDefinitions)
 {
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
@@ -1034,7 +1034,7 @@ TEST(IO, JsonSchemaHashedDuplicateDefinitions)
     }
 }
 
-TEST(IO, JsonSchemaEvaluationDepth)
+TEST(JsonSchema, EvaluationDepth)
 {
     EXPECT_EQ(rad::JsonSchemaValidationOptions{}.maxEvaluationDepth, 128);
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
@@ -1082,7 +1082,7 @@ TEST(IO, JsonSchemaEvaluationDepth)
     }
 }
 
-TEST(IO, JsonSchemaEvaluationFailurePropagation)
+TEST(JsonSchema, EvaluationFailurePropagation)
 {
     constexpr std::string_view schemas[] = {
         R"json({"allOf": [{"allOf": [true]}]})json",
@@ -1142,7 +1142,7 @@ TEST(IO, JsonSchemaEvaluationFailurePropagation)
     }
 }
 
-TEST(IO, JsonSchemaEvaluationFailureAfterViolations)
+TEST(JsonSchema, EvaluationFailureAfterViolations)
 {
     struct Case
     {
@@ -1197,7 +1197,7 @@ TEST(IO, JsonSchemaEvaluationFailureAfterViolations)
     }
 }
 
-TEST(IO, JsonSchemaBranchErrorLimit)
+TEST(JsonSchema, BranchErrorLimit)
 {
     const auto schema = rad::ParseJson(
         R"json({"anyOf": [
@@ -1226,7 +1226,7 @@ TEST(IO, JsonSchemaBranchErrorLimit)
         rad::JsonObject{{"child", rad::JsonObject{}}}, options));
 }
 
-TEST(IO, JsonSchemaErrorLimitStopsEvaluation)
+TEST(JsonSchema, ErrorLimitStopsEvaluation)
 {
     struct Case
     {
@@ -1302,7 +1302,7 @@ TEST(IO, JsonSchemaErrorLimitStopsEvaluation)
     }
 }
 
-TEST(IO, JsonSchemaSpeculativeBranchErrorLimits)
+TEST(JsonSchema, SpeculativeBranchErrorLimits)
 {
     struct Case
     {
@@ -1347,7 +1347,7 @@ TEST(IO, JsonSchemaSpeculativeBranchErrorLimits)
     }
 }
 
-TEST(IO, JsonSchemaUnevaluatedItemsDiagnostics)
+TEST(JsonSchema, UnevaluatedItemsDiagnostics)
 {
     const auto schema = rad::ParseJson(R"json({"unevaluatedItems": {"type": "integer"}})json");
     ASSERT_TRUE(schema);

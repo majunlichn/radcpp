@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-TEST(System, Application)
+TEST(Application, ArgumentsAndDefaultHandlers)
 {
     auto& app = rad::Application::Instance();
     EXPECT_FALSE(app.Arguments().empty());

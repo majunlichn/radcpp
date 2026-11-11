@@ -16,7 +16,7 @@
 
 using rad::test::FormatValidationErrors;
 
-TEST(IO, JsonSchemaNonFiniteInstances)
+TEST(JsonSchemaNumbers, NonFiniteInstances)
 {
     const rad::JsonValue schemas[] = {
         true,
@@ -97,7 +97,7 @@ TEST(IO, JsonSchemaNonFiniteInstances)
     }
 }
 
-TEST(IO, JsonSchemaNonFiniteLiterals)
+TEST(JsonSchemaNumbers, NonFiniteLiterals)
 {
     rad::JsonSchemaCompileOptions options;
     options.retrievalUri = "https://example.com/root.json";
@@ -172,7 +172,7 @@ TEST(IO, JsonSchemaNonFiniteLiterals)
     EXPECT_FALSE(disabled.value().Validate(std::numeric_limits<double>::quiet_NaN()));
 }
 
-TEST(IO, JsonSchemaNumericComparisonBoundaries)
+TEST(JsonSchemaNumbers, ComparisonBoundaries)
 {
     struct Case
     {
@@ -210,7 +210,7 @@ TEST(IO, JsonSchemaNumericComparisonBoundaries)
     }
 }
 
-TEST(IO, JsonSchemaSizeConstraints)
+TEST(JsonSchemaNumbers, SizeConstraints)
 {
     struct Constraint
     {
@@ -317,7 +317,7 @@ TEST(IO, JsonSchemaSizeConstraints)
     }
 }
 
-TEST(IO, JsonSchemaInvalidSizeConstraints)
+TEST(JsonSchemaNumbers, InvalidSizeConstraints)
 {
     const rad::JsonValue invalid[] = {
         -1, -0.5, 0.5, std::numeric_limits<double>::denorm_min(),
@@ -362,7 +362,7 @@ TEST(IO, JsonSchemaInvalidSizeConstraints)
     }
 }
 
-TEST(IO, JsonSchemaMultipleOfDecimalSemantics)
+TEST(JsonSchemaNumbers, MultipleOfDecimalSemantics)
 {
     struct Case
     {
@@ -426,7 +426,7 @@ TEST(IO, JsonSchemaMultipleOfDecimalSemantics)
     }
 }
 
-TEST(IO, JsonSchemaMultipleOfDecimalGrid)
+TEST(JsonSchemaNumbers, MultipleOfDecimalGrid)
 {
     const auto powerOfTen = [](int exponent)
     {

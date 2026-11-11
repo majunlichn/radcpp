@@ -36,7 +36,7 @@ using TestContext = boost::error_info<struct TestContextTag, std::string>;
 
 } // namespace
 
-TEST(Diagnostics, Exception)
+TEST(Exception, CapturesDiagnostics)
 {
     static_assert(std::is_copy_constructible_v<rad::Exception>);
 
@@ -65,7 +65,7 @@ TEST(Diagnostics, Exception)
     EXPECT_NE(dynamic_cast<const boost::exception*>(&error), nullptr);
 }
 
-TEST(Diagnostics, ExceptionCanDisableStackTrace)
+TEST(Exception, CanDisableStackTrace)
 {
     const rad::Exception error{"without trace", std::source_location::current(), 0};
 
@@ -73,7 +73,7 @@ TEST(Diagnostics, ExceptionCanDisableStackTrace)
     EXPECT_EQ(error.DiagnosticInformation().find("Stack trace:"), std::string::npos);
 }
 
-TEST(Diagnostics, ThrowExceptionCapturesDerivedThrowSite)
+TEST(Exception, ThrowCapturesDerivedThrowSite)
 {
     const DerivedException exception = MakeDerivedException();
     std::uint_least32_t expectedLine = 0;

@@ -23,7 +23,7 @@ static_assert(std::numeric_limits<rad::Float8E4M3>::max().Bits() == 0x7E);
 static_assert(std::numeric_limits<rad::Float8E5M2>::max().Bits() == 0x7B);
 static_assert(std::numeric_limits<rad::Float8E4M3>::max_exponent == 9);
 
-TEST(Core, Float8E4M3Conversion)
+TEST(Float8, E4M3Conversion)
 {
     EXPECT_FLOAT_EQ(rad::fp8e4m3fn_to_fp32_value(0x00), 0.0f);
     EXPECT_FLOAT_EQ(rad::fp8e4m3fn_to_fp32_value(0x80), -0.0f);
@@ -39,7 +39,7 @@ TEST(Core, Float8E4M3Conversion)
     EXPECT_EQ(rad::fp8e4m3fn_from_fp32_value(std::numeric_limits<float>::quiet_NaN()), 0x7F);
 }
 
-TEST(Core, Float8E5M2Conversion)
+TEST(Float8, E5M2Conversion)
 {
     EXPECT_FLOAT_EQ(rad::fp8e5m2_to_fp32_value(0x00), 0.0f);
     EXPECT_FLOAT_EQ(rad::fp8e5m2_to_fp32_value(0x80), -0.0f);
@@ -58,7 +58,7 @@ TEST(Core, Float8E5M2Conversion)
     EXPECT_EQ(rad::fp8e5m2_from_fp32_value(std::numeric_limits<float>::quiet_NaN()), 0x7F);
 }
 
-TEST(Core, Float8ConversionRoundTrip)
+TEST(Float8, ConversionRoundTrip)
 {
     for (std::uint32_t rawBits = 0; rawBits <= std::numeric_limits<std::uint8_t>::max(); ++rawBits)
     {
@@ -75,7 +75,7 @@ TEST(Core, Float8ConversionRoundTrip)
     }
 }
 
-TEST(Core, Float8RoundsToNearestEven)
+TEST(Float8, RoundsToNearestEven)
 {
     EXPECT_EQ(rad::fp8e4m3fn_from_fp32_value(1.0625f), 0x38);
     EXPECT_EQ(rad::fp8e4m3fn_from_fp32_value(1.1875f), 0x3A);
@@ -88,7 +88,7 @@ TEST(Core, Float8RoundsToNearestEven)
     EXPECT_EQ(rad::fp8e5m2_from_fp32_value(-1.375f), 0xBE);
 }
 
-TEST(Core, Float8ArithmeticAndClassification)
+TEST(Float8, ArithmeticAndClassification)
 {
     {
         rad::Float8E4M3 a = 2.0f;
@@ -112,7 +112,7 @@ TEST(Core, Float8ArithmeticAndClassification)
     }
 }
 
-TEST(Core, Float8Streaming)
+TEST(Float8, Streaming)
 {
     std::ostringstream stream;
     stream << rad::Float8E4M3{1.5f} << ' ' << rad::Float8E5M2{1.5f};

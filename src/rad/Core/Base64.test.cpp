@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-TEST(Core, EncodeBase64)
+TEST(Base64, Encode)
 {
     EXPECT_EQ(rad::EncodeBase64(""), "");
     EXPECT_EQ(rad::EncodeBase64("f"), "Zg==");
@@ -25,7 +25,7 @@ TEST(Core, EncodeBase64)
     EXPECT_EQ(rad::EncodeBase64(binary), "AP8QgH8=");
 }
 
-TEST(Core, DecodeBase64)
+TEST(Base64, Decode)
 {
     const std::array vectors = {
         std::pair{std::string_view{""}, std::string_view{""}},
@@ -56,7 +56,7 @@ TEST(Core, DecodeBase64)
               }));
 }
 
-TEST(Core, DecodeBase64RejectsInvalidInput)
+TEST(Base64, DecodeRejectsInvalidInput)
 {
     constexpr std::array invalid = {
         std::string_view{"A"},        std::string_view{"AAA"},      std::string_view{"===="},
@@ -71,7 +71,7 @@ TEST(Core, DecodeBase64RejectsInvalidInput)
     }
 }
 
-TEST(Core, Base64RoundTrip)
+TEST(Base64, RoundTrip)
 {
     std::vector<std::byte> bytes;
     bytes.reserve(256);

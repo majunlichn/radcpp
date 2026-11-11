@@ -550,55 +550,55 @@ void TestMixedExpressions()
 
 } // namespace
 
-TEST(Math, Transform3DQuaternions)
+TEST(Transform3D, Quaternions)
 {
     TestQuaternions<float>();
     TestQuaternions<double>();
 }
 
-TEST(Math, Transform3DTransforms)
+TEST(Transform3D, Transforms)
 {
     TestTransforms<float>();
     TestTransforms<double>();
 }
 
-TEST(Math, Transform3DCamera)
+TEST(Transform3D, CameraRH)
 {
     TestCamera<float>();
     TestCamera<double>();
 }
 
-TEST(Math, Transform3DCameraLH)
+TEST(Transform3D, CameraLH)
 {
     TestCamera<float>(true);
     TestCamera<double>(true);
 }
 
-TEST(Math, Transform3DLHConventions)
+TEST(Transform3D, LeftHandedConventions)
 {
     TestLHConventions<float>();
     TestLHConventions<double>();
 }
 
-TEST(Math, Transform3DInvalidInputs)
+TEST(Transform3D, InvalidInputs)
 {
     TestInvalidInputs<float>();
     TestInvalidInputs<double>();
 }
 
-TEST(Math, Transform3DNumericalContracts)
+TEST(Transform3D, NumericalContracts)
 {
     TestNumericalContracts<float>();
     TestNumericalContracts<double>();
 }
 
-TEST(Math, Transform3DViewport)
+TEST(Transform3D, Viewport)
 {
     TestViewport<float>();
     TestViewport<double>();
 }
 
-TEST(Math, Transform3DExpressions)
+TEST(Transform3D, Expressions)
 {
     using namespace rad;
     const auto translation = TranslationMatrix(Vector3f::Zero());
@@ -635,7 +635,7 @@ TEST(Math, Transform3DExpressions)
     ASSERT_TRUE(checkedWorld);
 }
 
-TEST(Math, Transform3DMixedExpressions)
+TEST(Transform3D, MixedExpressions)
 {
     TestMixedExpressions<float>();
     TestMixedExpressions<double>();

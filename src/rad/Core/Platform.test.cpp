@@ -79,7 +79,7 @@ constexpr const char* GetCompilerName()
 
 } // namespace
 
-TEST(Core, Platform)
+TEST(Platform, CompilerArchitectureAndOS)
 {
     std::cout << std::format("Compiled by {} target {} for {}\n", GetCompilerName(),
                              GetArchitectureName(), GetOperatingSystemName());

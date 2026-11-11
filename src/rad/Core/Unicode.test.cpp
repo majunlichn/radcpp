@@ -4,7 +4,7 @@
 
 #include <string>
 
-TEST(Core, Unicode)
+TEST(Unicode, EncodingConversions)
 {
     const std::string str = "Hello, \xCF\x80 \xF0\x9F\x98\x80";
     const std::u8string utf8 = u8"Hello, \u03C0 \U0001F600";

@@ -13,17 +13,17 @@ static_assert(rad::Lerp(10.0f, 20.0f, 0.25f) == 12.5f);
 static_assert(rad::QuantizeUnorm<std::uint8_t>(0.5f, 0.0f, 1.0f) == 128);
 static_assert(rad::QuantizeSnorm<std::int8_t>(-0.5f, -1.0f, 1.0f) == -64);
 
-TEST(Core, MathAngles)
+TEST(ScalarMath, AngleConversions)
 {
     EXPECT_TRUE(rad::AlmostEqual(rad::Degrees(rad::Radians(90.0)), 90.0));
 }
 
-TEST(Core, MathExponentialFunctions)
+TEST(ScalarMath, ExponentialFunctions)
 {
     EXPECT_DOUBLE_EQ(rad::Rsqrt(4.0), 0.5);
 }
 
-TEST(Core, MathCommonFunctions)
+TEST(ScalarMath, CommonFunctions)
 {
     EXPECT_DOUBLE_EQ(rad::Sign(-2.0), -1.0);
     EXPECT_DOUBLE_EQ(rad::RoundEven(2.5), 2.0);
@@ -41,14 +41,14 @@ TEST(Core, MathCommonFunctions)
     EXPECT_EQ(exponent, 2);
 }
 
-TEST(Core, MathInterpolation)
+TEST(ScalarMath, Interpolation)
 {
     EXPECT_FLOAT_EQ(rad::InverseLerp(2.0f, 6.0f, 3.0f), 0.25f);
     EXPECT_FLOAT_EQ(rad::Remap(0.0f, 10.0f, -1.0f, 1.0f, 7.5f), 0.5f);
     EXPECT_FLOAT_EQ(rad::SmoothStep(0.0f, 1.0f, 0.25f), 0.15625f);
 }
 
-TEST(Core, MathQuantization)
+TEST(ScalarMath, Quantization)
 {
     EXPECT_EQ(rad::QuantizeUnorm8(0.5f, 0.0f, 1.0f), 128);
     EXPECT_FLOAT_EQ(rad::DequantizeUnorm16(65535), 1.0f);

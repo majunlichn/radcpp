@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-TEST(IO, File)
+TEST(File, HashFunctions)
 {
     // Test hash functions.
     {

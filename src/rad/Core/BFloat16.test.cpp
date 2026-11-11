@@ -29,7 +29,7 @@ static_assert(std::numeric_limits<rad::BFloat16>::infinity().Bits() == 0x7F80);
 static_assert(std::numeric_limits<rad::BFloat16>::quiet_NaN().Bits() == 0x7FC0);
 static_assert(std::numeric_limits<rad::BFloat16>::denorm_min().Bits() == 0x0001);
 
-TEST(Core, BFloat16Conversion)
+TEST(BFloat16, Conversion)
 {
     EXPECT_EQ(rad::BFloat16{}.Bits(), 0x0000);
     EXPECT_EQ(rad::BFloat16{1.0f}.Bits(), 0x3F80);
@@ -45,7 +45,7 @@ TEST(Core, BFloat16Conversion)
               0x7FC0);
 }
 
-TEST(Core, BFloat16ConversionRoundTrip)
+TEST(BFloat16, ConversionRoundTrip)
 {
     for (std::uint32_t rawBits = 0; rawBits <= std::numeric_limits<std::uint16_t>::max(); ++rawBits)
     {
@@ -61,7 +61,7 @@ TEST(Core, BFloat16ConversionRoundTrip)
     }
 }
 
-TEST(Core, BFloat16RoundsToNearestEven)
+TEST(BFloat16, RoundsToNearestEven)
 {
     const float evenTie = std::bit_cast<float>(std::uint32_t{0x3F808000});
     const float oddTie = std::bit_cast<float>(std::uint32_t{0x3F818000});
@@ -81,7 +81,7 @@ TEST(Core, BFloat16RoundsToNearestEven)
     EXPECT_EQ(rad::BFloat16{std::numeric_limits<float>::max()}.Bits(), 0x7F80);
 }
 
-TEST(Core, BFloat16Arithmetic)
+TEST(BFloat16, Arithmetic)
 {
     const rad::BFloat16 two = 2.0f;
     const rad::BFloat16 four = 4.0f;
@@ -116,7 +116,7 @@ TEST(Core, BFloat16Arithmetic)
     EXPECT_TRUE(two != four);
 }
 
-TEST(Core, BFloat16SpecialValues)
+TEST(BFloat16, SpecialValues)
 {
     const rad::BFloat16 positiveZero = rad::BFloat16::FromBits(0x0000);
     const rad::BFloat16 negativeZero = rad::BFloat16::FromBits(0x8000);

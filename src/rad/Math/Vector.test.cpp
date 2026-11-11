@@ -50,7 +50,7 @@ static_assert(!rad::Uint32Vector<Eigen::Matrix<std::uint32_t, 1, 3>>);
 static_assert(rad::BoolVector<rad::Vector3<bool>>);
 static_assert(!rad::BoolVector<Eigen::Matrix<bool, 1, 3>>);
 
-TEST(Math, VectorAngleConversions)
+TEST(Vector, AngleConversions)
 {
     const rad::Vector3<double> degrees{0.0, 90.0, 180.0};
     const rad::Vector3<double> radians = rad::Radians(degrees);
@@ -59,7 +59,7 @@ TEST(Math, VectorAngleConversions)
     EXPECT_TRUE(rad::Degrees(radians).isApprox(degrees));
 }
 
-TEST(Math, DynamicVector)
+TEST(Vector, DynamicAngleConversions)
 {
     const rad::VectorX<float> degrees = rad::VectorX<float>::LinSpaced(3, 0.0f, 180.0f);
     const rad::VectorX<float> radians = rad::Radians(degrees);
@@ -68,7 +68,7 @@ TEST(Math, DynamicVector)
     EXPECT_TRUE(radians.isApprox(rad::Vector3<float>{0.0f, rad::HalfPi<float>, rad::Pi<float>}));
 }
 
-TEST(Math, VectorTrigonometry)
+TEST(Vector, Trigonometry)
 {
     const rad::Vector3<double> values{-0.5, 0.0, 0.5};
     const rad::Vector3<double> positiveValues{1.0, 1.5, 2.0};
@@ -81,7 +81,7 @@ TEST(Math, VectorTrigonometry)
     EXPECT_TRUE(rad::Acosh(positiveValues).isApprox(positiveValues.array().acosh().matrix()));
 }
 
-TEST(Math, VectorExponentialFunctions)
+TEST(Vector, ExponentialFunctions)
 {
     const rad::Vector3<double> values{1.0, 2.0, 4.0};
     const rad::Vector3<double> exponents{2.0, 3.0, 0.5};
@@ -91,7 +91,7 @@ TEST(Math, VectorExponentialFunctions)
     EXPECT_TRUE(rad::Rsqrt(values).isApprox(values.array().rsqrt().matrix()));
 }
 
-TEST(Math, VectorCommonFunctions)
+TEST(Vector, CommonFunctions)
 {
     const rad::Vector3<double> values{-1.5, -0.5, 2.5};
     const rad::Vector3<double> other{-2.0, 1.0, 2.0};
@@ -137,7 +137,7 @@ TEST(Math, VectorCommonFunctions)
                     .isApprox(rad::Vector3<double>{4.0, 0.5, 6.0}));
 }
 
-TEST(Math, VectorPermute)
+TEST(Vector, Permute)
 {
     // Cover the supported index containers and repeated indices.
     {
@@ -189,7 +189,7 @@ TEST(Math, VectorPermute)
     }
 }
 
-TEST(Math, VectorComponentExtrema)
+TEST(Vector, ComponentExtrema)
 {
     // Return scalar extrema and zero-based indices for vectors and expressions.
     {
@@ -235,7 +235,7 @@ TEST(Math, VectorComponentExtrema)
     }
 }
 
-TEST(Math, VectorProduct)
+TEST(Vector, Product)
 {
     // Preserve the scalar type and multiply every component, including expressions.
     {
@@ -259,7 +259,7 @@ TEST(Math, VectorProduct)
     }
 }
 
-TEST(Math, VectorLerp)
+TEST(Vector, Lerp)
 {
     const rad::Vector3f from{1.0f, 2.0f, 4.0f};
     const rad::Vector3f to{5.0f, 10.0f, 12.0f};
@@ -305,7 +305,7 @@ TEST(Math, VectorLerp)
     }
 }
 
-TEST(Math, VectorFrexpLdexp)
+TEST(Vector, FrexpLdexp)
 {
     const rad::Vector3<double> values{1.0, 2.0, 3.0};
     rad::Vector3<std::int32_t> exponents;
@@ -316,7 +316,7 @@ TEST(Math, VectorFrexpLdexp)
     EXPECT_TRUE(rad::Ldexp(significands, exponents).isApprox(values));
 }
 
-TEST(Math, VectorLengthSquared)
+TEST(Vector, LengthSquared)
 {
     // Squared length avoids a square root and accepts vector expressions.
     {
@@ -339,7 +339,7 @@ TEST(Math, VectorLengthSquared)
     }
 }
 
-TEST(Math, VectorDistanceSquared)
+TEST(Vector, DistanceSquared)
 {
     // Squared distance is symmetric and zero for coincident points.
     {
@@ -364,7 +364,7 @@ TEST(Math, VectorDistanceSquared)
     }
 }
 
-TEST(Math, VectorGeometryFunctions)
+TEST(Vector, GeometryFunctions)
 {
     const rad::Vector3<double> value{3.0, 4.0, 0.0};
     const rad::Vector3<double> x{1.0, 0.0, 0.0};
@@ -385,7 +385,7 @@ TEST(Math, VectorGeometryFunctions)
     EXPECT_TRUE(rad::Refract(totalInternalReflection, y, 2.0).isZero());
 }
 
-TEST(Math, VectorFloatingPointPacking)
+TEST(Vector, FloatingPointPacking)
 {
     EXPECT_EQ(rad::PackUnorm2x16(rad::Vector2<float>{0.0f, 1.0f}), 0xFFFF0000u);
     EXPECT_EQ(rad::PackSnorm2x16(rad::Vector2<float>{-1.0f, 1.0f}), 0x7FFF8001u);

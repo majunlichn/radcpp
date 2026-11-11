@@ -17,7 +17,7 @@
 
 using rad::test::FormatValidationErrors;
 
-TEST(IO, JsonSchemaOfficialTestSuite)
+TEST(JsonSchemaOfficial, ValidateSupportedDrafts)
 {
     const auto suiteRoot = rad::os::executable_directory() / "JSON-Schema-Test-Suite";
     ASSERT_TRUE(std::filesystem::is_directory(suiteRoot))

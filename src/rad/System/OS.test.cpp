@@ -8,7 +8,7 @@
 #include <string>
 #include <system_error>
 
-TEST(System, OS)
+TEST(OS, ProcessAndPathQueries)
 {
     EXPECT_GT(rad::os::getpid(), 0U);
     EXPECT_FALSE(rad::os::get_exec_path().empty());

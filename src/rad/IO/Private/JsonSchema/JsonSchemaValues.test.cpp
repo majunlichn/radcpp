@@ -183,7 +183,7 @@ struct DeepJsonArray
 
 } // namespace
 
-TEST(IO, JsonSchemaEquivalentValues)
+TEST(JsonSchemaInternalValues, EquivalentRepresentations)
 {
     struct Case
     {
@@ -223,7 +223,7 @@ TEST(IO, JsonSchemaEquivalentValues)
     }
 }
 
-TEST(IO, JsonSchemaValueHashNumbers)
+TEST(JsonSchemaInternalValues, HashNumbers)
 {
     struct Case
     {
@@ -269,7 +269,7 @@ TEST(IO, JsonSchemaValueHashNumbers)
     }
 }
 
-TEST(IO, JsonSchemaValueHashNumericRepresentations)
+TEST(JsonSchemaInternalValues, HashNumericRepresentations)
 {
     std::mt19937_64 random(0xB17B0A4D);
     rad::detail::JsonSchemaValueHasher hash;
@@ -298,7 +298,7 @@ TEST(IO, JsonSchemaValueHashNumericRepresentations)
     }
 }
 
-TEST(IO, JsonSchemaValueHashStructures)
+TEST(JsonSchemaInternalValues, HashStructures)
 {
     std::mt19937 random(0x5C4E4A);
     rad::detail::JsonSchemaValueHasher hash;
@@ -321,7 +321,7 @@ TEST(IO, JsonSchemaValueHashStructures)
                        rad::JsonObject{{"a", 2}, {"b", 1}}}));
 }
 
-TEST(IO, JsonSchemaEqualityImplementations)
+TEST(JsonSchemaInternalValues, EqualityImplementations)
 {
     struct Case
     {
@@ -377,7 +377,7 @@ TEST(IO, JsonSchemaEqualityImplementations)
     }
 }
 
-TEST(IO, JsonSchemaEqualityScalarSiblings)
+TEST(JsonSchemaInternalValues, EqualityScalarSiblings)
 {
     struct Case
     {
@@ -431,7 +431,7 @@ TEST(IO, JsonSchemaEqualityScalarSiblings)
     }
 }
 
-TEST(IO, JsonSchemaEqualityDepth)
+TEST(JsonSchemaInternalValues, EqualityDepth)
 {
     for (const std::size_t depth : {0U, 7U, 8U, 9U, 31U, 32U, 33U, 64U, 128U, 2048U, 8192U})
     {
@@ -463,7 +463,7 @@ TEST(IO, JsonSchemaEqualityDepth)
     }
 }
 
-TEST(IO, JsonSchemaDeepDuplicateValues)
+TEST(JsonSchemaInternalValues, DeepDuplicateValues)
 {
     const auto compiled = rad::JsonSchema::Compile(
         rad::JsonObject{{"uniqueItems", true}},
@@ -511,7 +511,7 @@ TEST(IO, JsonSchemaDeepDuplicateValues)
     }
 }
 
-TEST(IO, JsonSchemaValueHashDepth)
+TEST(JsonSchemaInternalValues, HashDepth)
 {
     rad::JsonValue left = 1;
     rad::JsonValue right = 1.0;
@@ -550,7 +550,7 @@ TEST(IO, JsonSchemaValueHashDepth)
     EXPECT_EQ(hash(left), hash(right));
 }
 
-TEST(IO, JsonSchemaDuplicateHashCollisions)
+TEST(JsonSchemaInternalValues, DuplicateHashCollisions)
 {
     const auto collision = [](const rad::JsonValue&) -> std::uint64_t { return 0; };
     rad::JsonArray values;
@@ -573,7 +573,7 @@ TEST(IO, JsonSchemaDuplicateHashCollisions)
     EXPECT_TRUE(rad::detail::FindDuplicateIndexHashed(values, collision));
 }
 
-TEST(IO, JsonSchemaDuplicateHashEarlyExit)
+TEST(JsonSchemaInternalValues, DuplicateHashEarlyExit)
 {
     constexpr auto threshold = rad::detail::JsonSchemaDuplicateHashThreshold;
     for (const auto size : {threshold, threshold + 1, threshold * 2 + 1, std::size_t{65536}})
@@ -611,7 +611,7 @@ TEST(IO, JsonSchemaDuplicateHashEarlyExit)
     }
 }
 
-TEST(IO, JsonSchemaDuplicateHashLargeValues)
+TEST(JsonSchemaInternalValues, DuplicateHashLargeValues)
 {
     rad::JsonArray values;
     for (std::size_t index = 0; index < 32; ++index)
@@ -652,7 +652,7 @@ TEST(IO, JsonSchemaDuplicateHashLargeValues)
     }
 }
 
-TEST(IO, JsonSchemaDuplicateAlgorithms)
+TEST(JsonSchemaInternalValues, DuplicateAlgorithms)
 {
     std::mt19937 random(0xD0911CA7);
     constexpr auto threshold = rad::detail::JsonSchemaDuplicateHashThreshold;

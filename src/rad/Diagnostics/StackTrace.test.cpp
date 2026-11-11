@@ -20,7 +20,7 @@ RAD_NOINLINE void DoSomething(std::size_t maxDepth = 32)
 
 } // namespace
 
-TEST(Diagnostics, StackTrace)
+TEST(StackTrace, CaptureHonorsMaxDepth)
 {
     DoSomething();
     DoSomething(1);
