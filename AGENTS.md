@@ -40,6 +40,9 @@ See [README.md](README.md) for project goals and features.
 - Use `TEST(Suite, Name)`: `Suite` names the tested type/unit (usually file stem, not module);
   `Name` describes behavior without repeating the suite, e.g. `Base64.Encode`. Use PascalCase
   without underscores or redundant `Test`/`Tests` suffixes.
+- Prefer extending existing suites and `TEST` cases over creating new ones for the same topic.
+- Within a `TEST`, use brace-delimited blocks to group related scenarios, with a short comment
+  explaining each group's intent.
 - Keep `Suite.Name` unique across the executable; use distinct suites for independent types
   and for private implementation tests.
 - Reuse [TestMain.cpp](src/rad/TestMain.cpp) for `main` and `rad::Application` initialization;

@@ -168,6 +168,36 @@ TEST(JsonSchemaRegex, CacheLifetimeAndConcurrency)
 
 TEST(JsonSchemaRegex, Limits)
 {
+    struct MatchCase
+    {
+        std::string_view pattern;
+        std::string value;
+        rad::JsonSchemaRegexLimits restrictedLimits;
+    };
+    const MatchCase cases[] = {
+        {"^(aa)+$", std::string(2'000, 'a'), {.backtrackingDepthLimit = 1'000}},
+        {"^(?:a?){20}a{20}$", std::string(20, 'a'), {.matchLimit = 1'000'000}},
+    };
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.pattern);
+        const auto compiled = rad::JsonSchema::Compile(
+            rad::JsonObject{{"pattern", testCase.pattern}},
+            {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+        ASSERT_TRUE(compiled) << compiled.error().message;
+
+        const rad::JsonValue instance(testCase.value);
+        const auto result = compiled.value().Validate(instance);
+        EXPECT_TRUE(result) << FormatValidationErrors(result);
+        EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::Completed);
+
+        rad::JsonSchemaValidationOptions options;
+        options.regex = testCase.restrictedLimits;
+        const auto restricted = compiled.value().Validate(instance, options);
+        EXPECT_EQ(restricted.status,
+                  rad::JsonSchemaValidationStatus::RegexResourceLimitExceeded);
+    }
+
     constexpr std::string_view pattern = "^((((((((((a+))))))))))$";
     struct LimitCase
     {

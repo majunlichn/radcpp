@@ -107,9 +107,9 @@ struct JsonSchemaValidationResult
 struct JsonSchemaRegexLimits
 {
     // Per PCRE2 match, not per validation call. Zero is restrictive, not unlimited.
-    std::uint32_t matchLimit = 1'000'000;
-    std::uint32_t backtrackingDepthLimit = 1'000;
-    std::uint32_t heapLimitKiB = 8'192;
+    std::uint32_t matchLimit = UINT32_MAX;
+    std::uint32_t backtrackingDepthLimit = UINT32_MAX;
+    std::uint32_t heapLimitKiB = 4 * 1024 * 1024;
 };
 
 struct JsonSchemaValidationOptions
@@ -226,7 +226,8 @@ struct JsonSchemaCompileOptions
 //   \s and \S use ECMAScript whitespace semantics, including inside character classes.
 //   Other PCRE2 syntax and semantics are not fully ECMAScript-compatible.
 // - JsonSchemaValidationOptions::regex controls each match's limits. Defaults: match limit
-//   1,000,000, backtracking depth 1,000, and 8 MiB of backtracking heap. Exhaustion fails
+//   UINT32_MAX, backtracking depth UINT32_MAX, and 4 GiB of backtracking heap. These are upper
+//   bounds, not preallocated resources; lower them for constrained workloads. Exhaustion fails
 //   validation with RegexResourceLimitExceeded, not an ordinary pattern mismatch. Other matching
 //   failures report RegexEvaluationFailed. Evaluation failures are the final entry in errors,
 //   following any schema violations collected before validation stopped.
