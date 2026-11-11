@@ -1551,15 +1551,15 @@ private:
             validSchema = false;
         }
 
-        const auto typePath = ChildPath(schemaPath, "type");
         if (!validSchema)
         {
-            AddError(instancePath, typePath,
+            AddError(instancePath, ChildPath(schemaPath, "type"),
                      "type must be a known type name or a non-empty array of type names");
         }
         else if (!matches)
         {
-            AddError(instancePath, typePath, "value does not match the required type");
+            AddError(instancePath, ChildPath(schemaPath, "type"),
+                     "value does not match the required type");
         }
     }
 
@@ -2374,17 +2374,16 @@ private:
         {
             return;
         }
-        const auto keywordPath = ChildPath(schemaPath, keyword);
         if (!IsNonNegativeInteger(*constraint))
         {
-            AddError(instancePath, keywordPath,
+            AddError(instancePath, ChildPath(schemaPath, keyword),
                      std::string(keyword) + " must be a non-negative integer");
             return;
         }
         const auto comparison = CompareNumbers(JsonValue(actual), *constraint);
         if ((minimum && comparison < 0) || (!minimum && comparison > 0))
         {
-            AddError(instancePath, keywordPath,
+            AddError(instancePath, ChildPath(schemaPath, keyword),
                      minimum ? "value has fewer elements than allowed"
                              : "value has more elements than allowed");
         }
@@ -2403,23 +2402,23 @@ private:
         {
             return;
         }
-        const auto keywordPath = ChildPath(schemaPath, keyword);
         if (!IsNumber(*limit))
         {
-            AddError(instancePath, keywordPath, std::string(keyword) + " must be a number");
+            AddError(instancePath, ChildPath(schemaPath, keyword),
+                     std::string(keyword) + " must be a number");
             return;
         }
         const auto comparison = CompareNumbers(instance, *limit);
         if (comparison == std::partial_ordering::unordered)
         {
-            AddError(instancePath, keywordPath, "numbers cannot be compared");
+            AddError(instancePath, ChildPath(schemaPath, keyword), "numbers cannot be compared");
             return;
         }
         const bool fails = maximum ? (exclusive ? comparison >= 0 : comparison > 0)
                                    : (exclusive ? comparison <= 0 : comparison < 0);
         if (fails)
         {
-            AddError(instancePath, keywordPath,
+            AddError(instancePath, ChildPath(schemaPath, keyword),
                      maximum ? "number is greater than the allowed maximum"
                              : "number is less than the allowed minimum");
         }
