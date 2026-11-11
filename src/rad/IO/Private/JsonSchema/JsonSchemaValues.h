@@ -17,6 +17,9 @@ namespace rad::detail
 [[nodiscard]] std::partial_ordering CompareNumbers(const JsonValue& left,
                                                   const JsonValue& right) noexcept;
 [[nodiscard]] bool JsonSchemaEqual(const JsonValue& left, const JsonValue& right);
+// Unbounded recursive baseline for differential tests and profiling.
+[[nodiscard]] bool JsonSchemaEqualRecursive(const JsonValue& left, const JsonValue& right);
+[[nodiscard]] bool JsonSchemaEqualIterative(const JsonValue& left, const JsonValue& right);
 
 class JsonSchemaValueHasher
 {

@@ -1,6 +1,7 @@
 #include "JsonSchemaValues.h"
 
 #include <rad/Core/Hash.h>
+#include <rad/Container/SmallVector.h>
 
 #include <bit>
 #include <cmath>
@@ -178,7 +179,11 @@ std::partial_ordering CompareNumbers(const JsonValue& left, const JsonValue& rig
     return leftNumber <=> rightNumber;
 }
 
-bool JsonSchemaEqual(const JsonValue& lhs, const JsonValue& rhs)
+namespace
+{
+
+template <std::size_t RecursionLimit>
+[[nodiscard]] bool EqualRecursive(const JsonValue& lhs, const JsonValue& rhs, std::size_t depth)
 {
     if (IsNumber(lhs) && IsNumber(rhs))
     {
@@ -190,6 +195,13 @@ bool JsonSchemaEqual(const JsonValue& lhs, const JsonValue& rhs)
     }
     if (lhs.is_array())
     {
+        if constexpr (RecursionLimit != 0)
+        {
+            if (depth == RecursionLimit)
+            {
+                return JsonSchemaEqualIterative(lhs, rhs);
+            }
+        }
         const auto& lhsArray = lhs.as_array();
         const auto& rhsArray = rhs.as_array();
         if (lhsArray.size() != rhsArray.size())
@@ -198,7 +210,8 @@ bool JsonSchemaEqual(const JsonValue& lhs, const JsonValue& rhs)
         }
         for (std::size_t index = 0; index < lhsArray.size(); ++index)
         {
-            if (!JsonSchemaEqual(lhsArray[index], rhsArray[index]))
+            if (!EqualRecursive<RecursionLimit>(
+                    lhsArray[index], rhsArray[index], RecursionLimit == 0 ? 0 : depth + 1))
             {
                 return false;
             }
@@ -207,6 +220,13 @@ bool JsonSchemaEqual(const JsonValue& lhs, const JsonValue& rhs)
     }
     if (lhs.is_object())
     {
+        if constexpr (RecursionLimit != 0)
+        {
+            if (depth == RecursionLimit)
+            {
+                return JsonSchemaEqualIterative(lhs, rhs);
+            }
+        }
         const auto& lhsObject = lhs.as_object();
         const auto& rhsObject = rhs.as_object();
         if (lhsObject.size() != rhsObject.size())
@@ -216,7 +236,9 @@ bool JsonSchemaEqual(const JsonValue& lhs, const JsonValue& rhs)
         for (const auto& member : lhsObject)
         {
             const auto* rhsValue = rhsObject.if_contains(member.key());
-            if (rhsValue == nullptr || !JsonSchemaEqual(member.value(), *rhsValue))
+            if (rhsValue == nullptr ||
+                !EqualRecursive<RecursionLimit>(
+                    member.value(), *rhsValue, RecursionLimit == 0 ? 0 : depth + 1))
             {
                 return false;
             }
@@ -224,6 +246,152 @@ bool JsonSchemaEqual(const JsonValue& lhs, const JsonValue& rhs)
         return true;
     }
     return lhs == rhs;
+}
+
+} // namespace
+
+bool JsonSchemaEqual(const JsonValue& lhs, const JsonValue& rhs)
+{
+    // Keep shallow comparisons allocation-free while bounding native recursion.
+    return EqualRecursive<32>(lhs, rhs, 0);
+}
+
+bool JsonSchemaEqualRecursive(const JsonValue& lhs, const JsonValue& rhs)
+{
+    return EqualRecursive<0>(lhs, rhs, 0);
+}
+
+bool JsonSchemaEqualIterative(const JsonValue& lhs, const JsonValue& rhs)
+{
+    enum class Comparison
+    {
+        Equal,
+        Different,
+        Containers,
+    };
+    const auto compare = [](const JsonValue& left, const JsonValue& right)
+    {
+        if (IsNumber(left) && IsNumber(right))
+        {
+            return CompareNumbers(left, right) == 0 ? Comparison::Equal : Comparison::Different;
+        }
+        if (left.kind() != right.kind())
+        {
+            return Comparison::Different;
+        }
+        if (left.is_array() || left.is_object())
+        {
+            return Comparison::Containers;
+        }
+        return left == right ? Comparison::Equal : Comparison::Different;
+    };
+    const auto root = compare(lhs, rhs);
+    if (root != Comparison::Containers)
+    {
+        return root == Comparison::Equal;
+    }
+
+    struct Frame
+    {
+        const JsonValue* left;
+        const JsonValue* right;
+        std::size_t next = 0;
+    };
+    SmallVector<Frame, 8> frames;
+    const JsonValue* left = &lhs;
+    const JsonValue* right = &rhs;
+    for (;;)
+    {
+        if (left->is_array())
+        {
+            if (left->as_array().size() != right->as_array().size())
+            {
+                return false;
+            }
+            if (!left->as_array().empty())
+            {
+                frames.push_back({left, right});
+            }
+        }
+        else
+        {
+            if (left->as_object().size() != right->as_object().size())
+            {
+                return false;
+            }
+            if (!left->as_object().empty())
+            {
+                frames.push_back({left, right});
+            }
+        }
+        for (;;)
+        {
+            if (frames.empty())
+            {
+                return true;
+            }
+            auto& frame = frames.back();
+            bool descend = false;
+            std::size_t count;
+            if (frame.left->is_array())
+            {
+                const auto& array = frame.left->as_array();
+                const auto& other = frame.right->as_array();
+                count = array.size();
+                while (frame.next < count)
+                {
+                    left = &array[frame.next];
+                    right = &other[frame.next++];
+                    const auto result = compare(*left, *right);
+                    if (result != Comparison::Equal)
+                    {
+                        if (result == Comparison::Different)
+                        {
+                            return false;
+                        }
+                        descend = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                const auto& object = frame.left->as_object();
+                const auto& other = frame.right->as_object();
+                count = object.size();
+                while (frame.next < count)
+                {
+                    const auto& member = *(object.begin() + frame.next++);
+                    left = &member.value();
+                    right = other.if_contains(member.key());
+                    if (right == nullptr)
+                    {
+                        return false;
+                    }
+                    const auto result = compare(*left, *right);
+                    if (result != Comparison::Equal)
+                    {
+                        if (result == Comparison::Different)
+                        {
+                            return false;
+                        }
+                        descend = true;
+                        break;
+                    }
+                }
+            }
+            if (descend)
+            {
+                if (frame.next == count)
+                {
+                    // No continuation is needed after this final child.
+                    frames.pop_back();
+                }
+                break;
+            }
+            frames.pop_back();
+        }
+    }
 }
 
 std::uint64_t JsonSchemaValueHasher::operator()(const JsonValue& root)

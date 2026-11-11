@@ -161,6 +161,8 @@ struct JsonSchemaCompileOptions
 // Status describes why validation ended; errors contain source locations and explanations.
 // uniqueItems reports a repeated element's location; selection among multiple duplicates is
 // unspecified and may depend on the input size.
+// Value equality for enum, const, and duplicate checks uses bounded recursion with an iterative
+// fallback, independently of the schema evaluation depth limit.
 // Large-array duplicate checks may reserve O(n) auxiliary storage up front, even when a
 // duplicate is found early.
 // Validation stops at the effective error limit or the first evaluation failure. Speculative

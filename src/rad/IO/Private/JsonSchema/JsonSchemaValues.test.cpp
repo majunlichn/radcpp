@@ -1,11 +1,14 @@
 #include "JsonSchemaValues.h"
 
+#include <rad/IO/JsonSchema.h>
+
 #include <gtest/gtest.h>
 
 #include <cmath>
 #include <limits>
 #include <random>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <bit>
 
@@ -97,6 +100,87 @@ void ExpectDuplicateIndex(const rad::JsonArray& values, std::optional<std::size_
     EXPECT_TRUE(duplicate) << *index;
 }
 
+void ClearNestedValue(rad::JsonValue& value)
+{
+    // Do not exercise Boost.JSON's recursive destruction when cleaning deep test data.
+    while ((value.is_array() && !value.as_array().empty()) ||
+           (value.is_object() && !value.as_object().empty()))
+    {
+        auto child = std::move(value.is_array() ? value.as_array()[0]
+                                               : value.as_object().at("child"));
+        value = std::move(child);
+    }
+}
+
+struct DeepJsonValues
+{
+    rad::JsonValue left = 1;
+    rad::JsonValue right = 1.0;
+
+    explicit DeepJsonValues(std::size_t depth, bool siblings = true)
+    {
+        for (std::size_t index = 0; index < depth; ++index)
+        {
+            const auto wrap = [index, siblings](rad::JsonValue value, bool reversed)
+                -> rad::JsonValue
+            {
+                if (index % 2 == 0)
+                {
+                    rad::JsonArray array;
+                    array.push_back(std::move(value));
+                    if (siblings)
+                    {
+                        array.push_back(false);
+                    }
+                    return array;
+                }
+                rad::JsonObject object;
+                if (siblings && reversed)
+                {
+                    object.emplace("other", false);
+                }
+                object.emplace("child", std::move(value));
+                if (siblings && !reversed)
+                {
+                    object.emplace("other", false);
+                }
+                return object;
+            };
+            left = wrap(std::move(left), false);
+            right = wrap(std::move(right), true);
+        }
+    }
+
+    ~DeepJsonValues()
+    {
+        ClearNestedValue(left);
+        ClearNestedValue(right);
+    }
+};
+
+struct DeepJsonArray
+{
+    rad::JsonValue instance = rad::JsonArray{};
+
+    ~DeepJsonArray()
+    {
+        for (auto& value : instance.as_array())
+        {
+            ClearNestedValue(value);
+        }
+    }
+};
+
+[[nodiscard]] rad::JsonValue& NestedLeaf(rad::JsonValue& value)
+{
+    auto* leaf = &value;
+    while (leaf->is_array() || leaf->is_object())
+    {
+        leaf = leaf->is_array() ? &leaf->as_array()[0] : &leaf->as_object().at("child");
+    }
+    return *leaf;
+}
+
 } // namespace
 
 TEST(IO, JsonSchemaEquivalentValues)
@@ -172,6 +256,10 @@ TEST(IO, JsonSchemaValueHashNumbers)
     for (const auto& testCase : cases)
     {
         EXPECT_EQ(rad::detail::JsonSchemaEqual(testCase.left, testCase.right), testCase.equal);
+        EXPECT_EQ(rad::detail::JsonSchemaEqualRecursive(testCase.left, testCase.right),
+                  testCase.equal);
+        EXPECT_EQ(rad::detail::JsonSchemaEqualIterative(testCase.left, testCase.right),
+                  testCase.equal);
         if (testCase.equal)
         {
             EXPECT_EQ(hash(testCase.left), hash(testCase.right));
@@ -188,6 +276,8 @@ TEST(IO, JsonSchemaValueHashNumericRepresentations)
     const auto check = [&hash](const rad::JsonValue& left, const rad::JsonValue& right)
     {
         const bool equal = rad::detail::JsonSchemaEqual(left, right);
+        EXPECT_EQ(rad::detail::JsonSchemaEqualRecursive(left, right), equal);
+        EXPECT_EQ(rad::detail::JsonSchemaEqualIterative(left, right), equal);
         if (equal)
         {
             EXPECT_EQ(hash(left), hash(right));
@@ -229,6 +319,196 @@ TEST(IO, JsonSchemaValueHashStructures)
     EXPECT_FALSE(rad::detail::FindDuplicateIndexHashed(
         rad::JsonArray{rad::JsonObject{{"a", 1}, {"b", 2}},
                        rad::JsonObject{{"a", 2}, {"b", 1}}}));
+}
+
+TEST(IO, JsonSchemaEqualityImplementations)
+{
+    struct Case
+    {
+        rad::JsonValue left;
+        rad::JsonValue right;
+        bool equal;
+    };
+    const auto nan = std::numeric_limits<double>::quiet_NaN();
+    const Case cases[] = {
+        {nullptr, nullptr, true},
+        {nullptr, false, false},
+        {true, 1, false},
+        {rad::JsonArray{}, rad::JsonObject{}, false},
+        {rad::JsonArray{}, rad::JsonArray{}, true},
+        {rad::JsonObject{}, rad::JsonObject{}, true},
+        {rad::JsonArray{1}, rad::JsonArray{1.0, 2}, false},
+        {rad::JsonArray{1, 2}, rad::JsonArray{2, 1}, false},
+        {rad::JsonObject{{"a", 1}}, rad::JsonObject{{"b", 1}}, false},
+        {rad::JsonObject{{"a", 1}}, rad::JsonObject{{"a", 1}, {"b", 2}}, false},
+        {rad::JsonObject{{"a", rad::JsonArray{1, false}}, {"b", nullptr}},
+         rad::JsonObject{{"b", nullptr}, {"a", rad::JsonArray{1.0, false}}}, true},
+        {rad::JsonValue(std::string("x\0tail", 6)), "x", false},
+        {rad::JsonObject{{std::string("x\0tail", 6), 1}}, rad::JsonObject{{"x", 1}}, false},
+        {rad::JsonArray{nan}, rad::JsonArray{nan}, false},
+    };
+    for (const auto& testCase : cases)
+    {
+        for (const auto equal : {rad::detail::JsonSchemaEqualRecursive,
+                                 rad::detail::JsonSchemaEqualIterative,
+                                 rad::detail::JsonSchemaEqual})
+        {
+            EXPECT_EQ(equal(testCase.left, testCase.right), testCase.equal);
+            EXPECT_EQ(equal(testCase.right, testCase.left), testCase.equal);
+        }
+    }
+    const rad::JsonValue self = rad::JsonObject{{"nan", nan}};
+    EXPECT_FALSE(rad::detail::JsonSchemaEqualRecursive(self, self));
+    EXPECT_FALSE(rad::detail::JsonSchemaEqualIterative(self, self));
+    EXPECT_FALSE(rad::detail::JsonSchemaEqual(self, self));
+
+    std::mt19937 random(0xE0A117);
+    for (std::size_t index = 0; index < 2048; ++index)
+    {
+        SCOPED_TRACE(index);
+        const auto left = RandomValue(random, 5);
+        const auto unrelated = RandomValue(random, 5);
+        const auto equivalent = EquivalentValue(left);
+        const bool expected = rad::detail::JsonSchemaEqualRecursive(left, unrelated);
+        EXPECT_EQ(rad::detail::JsonSchemaEqualIterative(left, unrelated), expected);
+        EXPECT_EQ(rad::detail::JsonSchemaEqualIterative(unrelated, left), expected);
+        EXPECT_TRUE(rad::detail::JsonSchemaEqualIterative(left, equivalent));
+        EXPECT_TRUE(rad::detail::JsonSchemaEqualRecursive(left, equivalent));
+    }
+}
+
+TEST(IO, JsonSchemaEqualityScalarSiblings)
+{
+    struct Case
+    {
+        std::string_view left;
+        std::string_view right;
+        bool equal;
+    };
+    constexpr Case cases[] = {
+        {R"json([null, false, true, "x\u0000y", 1, 2.0])json",
+         R"json([null, false, true, "x\u0000y", 1.0, 2])json", true},
+        {R"json([[], 0, {}, 1, [2], 3])json", R"json([[], 0.0, {}, 1.0, [2.0], 3.0])json", true},
+        {R"json([[], 0, {}, 1, [2], 3])json", R"json([[], 0, {}, 1, [2], 4])json", false},
+        {R"json([[], 0, {}, 1, [2], 3])json", R"json([[], 0, {}, 1, [4], 3])json", false},
+        {R"json([{}, 0, 1])json", R"json([[], 0, 1])json", false},
+        {R"json([0, {}, 1])json", R"json([0, [], 1])json", false},
+        {R"json([0, 1, {}])json", R"json([0, 1, []])json", false},
+        {R"json([0, 1, []])json", R"json([0, 1, null])json", false},
+        {R"json([0, 1, 2])json", R"json([0, 1, []])json", false},
+        {R"json([0, [1]])json", R"json([0, [1.0]])json", true},
+        {R"json([0, [1]])json", R"json([0, [2]])json", false},
+        {R"json([0, [1]])json", R"json([0, [1, 2]])json", false},
+        {R"json({"a": 0, "b": {"x": 1}})json",
+         R"json({"b": {"x": 1, "y": 2}, "a": 0})json", false},
+        {R"json({"a": 0, "b": [1, {}, 2], "c": false, "d": {"x": 3}, "e": "tail"})json",
+         R"json({"e": "tail", "d": {"x": 3.0}, "c": false, "b": [1.0, {}, 2.0], "a": 0})json",
+         true},
+        {R"json({"a": 0, "b": [1, {}, 2], "c": false, "d": {"x": 3}, "e": "tail"})json",
+         R"json({"e": "other", "d": {"x": 3}, "c": false, "b": [1, {}, 2], "a": 0})json",
+         false},
+        {R"json({"a": [], "b": 1, "c": {}})json", R"json({"c": {}, "b": 1.0, "a": []})json",
+         true},
+        {R"json({"a": [], "b": 1, "c": {"x": 2}})json",
+         R"json({"c": {"y": 2}, "b": 1, "a": []})json", false},
+        {R"json({"a": [], "b": 1, "c": 2})json", R"json({"a": [], "b": {}, "c": 2})json", false},
+    };
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.left);
+        SCOPED_TRACE(testCase.right);
+        const auto left = rad::ParseJson(testCase.left);
+        const auto right = rad::ParseJson(testCase.right);
+        ASSERT_TRUE(left);
+        ASSERT_TRUE(right);
+        for (const auto equal : {rad::detail::JsonSchemaEqualRecursive,
+                                 rad::detail::JsonSchemaEqualIterative,
+                                 rad::detail::JsonSchemaEqual})
+        {
+            EXPECT_EQ(equal(left.value(), right.value()), testCase.equal);
+            EXPECT_EQ(equal(right.value(), left.value()), testCase.equal);
+        }
+    }
+}
+
+TEST(IO, JsonSchemaEqualityDepth)
+{
+    for (const std::size_t depth : {0U, 7U, 8U, 9U, 31U, 32U, 33U, 64U, 128U, 2048U, 8192U})
+    {
+        SCOPED_TRACE(depth);
+        for (const bool siblings : {false, true})
+        {
+            SCOPED_TRACE(siblings);
+            DeepJsonValues values(depth, siblings);
+            EXPECT_TRUE(rad::detail::JsonSchemaEqualIterative(values.left, values.right));
+            EXPECT_TRUE(rad::detail::JsonSchemaEqualIterative(values.right, values.left));
+            EXPECT_TRUE(rad::detail::JsonSchemaEqual(values.left, values.right));
+            EXPECT_TRUE(rad::detail::JsonSchemaEqual(values.right, values.left));
+            if (depth <= 128)
+            {
+                EXPECT_TRUE(rad::detail::JsonSchemaEqualRecursive(values.left, values.right));
+            }
+            auto& leaf = NestedLeaf(values.right);
+            leaf = 2.0;
+            EXPECT_FALSE(rad::detail::JsonSchemaEqualIterative(values.left, values.right));
+            EXPECT_FALSE(rad::detail::JsonSchemaEqual(values.left, values.right));
+            if (depth <= 128)
+            {
+                EXPECT_FALSE(rad::detail::JsonSchemaEqualRecursive(values.left, values.right));
+            }
+            leaf = std::numeric_limits<double>::quiet_NaN();
+            EXPECT_FALSE(rad::detail::JsonSchemaEqualIterative(values.right, values.right));
+            EXPECT_FALSE(rad::detail::JsonSchemaEqual(values.right, values.right));
+        }
+    }
+}
+
+TEST(IO, JsonSchemaDeepDuplicateValues)
+{
+    const auto compiled = rad::JsonSchema::Compile(
+        rad::JsonObject{{"uniqueItems", true}},
+        {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+    ASSERT_TRUE(compiled);
+    for (const std::size_t depth : {64U, 2048U})
+    {
+        SCOPED_TRACE(depth);
+        DeepJsonValues values(depth);
+        DeepJsonArray array;
+        auto& instance = array.instance.as_array();
+        instance.push_back(std::move(values.left));
+        instance.push_back(std::move(values.right));
+        EXPECT_EQ(rad::detail::FindDuplicateIndexPairwise(instance), 1U);
+        EXPECT_EQ(rad::detail::FindDuplicateIndexHashed(instance), 1U);
+        rad::JsonSchemaValidationOptions options;
+        options.maxEvaluationDepth = 0;
+        const auto repeated = compiled.value().Validate(array.instance, options);
+        EXPECT_FALSE(repeated);
+        EXPECT_EQ(repeated.status, rad::JsonSchemaValidationStatus::Completed);
+        ASSERT_EQ(repeated.errors.size(), 1);
+        EXPECT_EQ(repeated.errors[0].instancePath, "/1");
+        EXPECT_EQ(repeated.errors[0].schemaPath, "/uniqueItems");
+
+        NestedLeaf(instance[1]) = 2.0;
+        while (instance.size() < rad::detail::JsonSchemaDuplicateHashThreshold)
+        {
+            instance.push_back(instance.size());
+        }
+        EXPECT_FALSE(rad::detail::FindDuplicateIndexPairwise(instance));
+        EXPECT_FALSE(rad::detail::FindDuplicateIndexHashed(instance));
+        EXPECT_TRUE(compiled.value().Validate(array.instance, options));
+
+        DeepJsonValues duplicate(depth);
+        instance.push_back(std::move(duplicate.left));
+        const auto hashed = rad::detail::FindDuplicateIndexHashed(instance);
+        ASSERT_TRUE(hashed);
+        EXPECT_EQ(*hashed, instance.size() - 1);
+        const auto hashedResult = compiled.value().Validate(array.instance, options);
+        EXPECT_FALSE(hashedResult);
+        EXPECT_EQ(hashedResult.status, rad::JsonSchemaValidationStatus::Completed);
+        ASSERT_EQ(hashedResult.errors.size(), 1);
+        EXPECT_EQ(hashedResult.errors[0].instancePath, "/" + std::to_string(instance.size() - 1));
+        EXPECT_EQ(hashedResult.errors[0].schemaPath, "/uniqueItems");
+    }
 }
 
 TEST(IO, JsonSchemaValueHashDepth)
