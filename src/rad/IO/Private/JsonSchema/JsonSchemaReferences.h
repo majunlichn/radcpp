@@ -32,10 +32,18 @@ using JsonSchemaStringMap =
 class JsonSchemaReferences
 {
 public:
+    JsonSchemaReferences() = default;
+    JsonSchemaReferences(const JsonSchemaReferences&) = delete;
+    JsonSchemaReferences& operator=(const JsonSchemaReferences&) = delete;
+    JsonSchemaReferences(JsonSchemaReferences&&) = default;
+    JsonSchemaReferences& operator=(JsonSchemaReferences&&) = default;
+
     struct Target
     {
         std::string path;
         std::string dynamicAnchor;
+        // Bound into the owned document array after document discovery finishes.
+        const JsonValue* schema = nullptr;
     };
 
     using Resolution = Result<Target, JsonSchemaCompileError>;

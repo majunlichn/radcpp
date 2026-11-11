@@ -152,7 +152,7 @@ struct JsonSchemaCompileOptions
 };
 
 // Compiles and validates a practical subset of JSON Schema Draft 7, 2019-09, and 2020-12.
-// Compilation checks definitions and prepares static references and regular expressions.
+// Compilation checks definitions, binds static reference targets, and prepares regular expressions.
 // JsonSchemaCompileOptions::maxCompilationDepth guards recursive compilation independently of
 // parsing and validation options; it is not a JSON nesting or reference-count limit.
 // Compiled schemas own their documents and expressions; copies share immutable state.

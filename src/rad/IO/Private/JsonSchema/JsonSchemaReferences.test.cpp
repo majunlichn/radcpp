@@ -103,6 +103,9 @@ TEST(IO, JsonSchemaIndexLookup)
     ASSERT_TRUE(*resolution);
     EXPECT_EQ(resolution->value().path, targetPath);
     EXPECT_EQ(resolution->value().dynamicAnchor, "");
+    ASSERT_NE(resolution->value().schema, nullptr);
+    EXPECT_EQ(resolution->value().schema,
+              rad::detail::FindJsonSchemaValue(references.Documents(), targetPath));
     EXPECT_EQ(references.Find(paddedReference), nullptr);
     EXPECT_EQ(references.Find({}), nullptr);
 
@@ -115,6 +118,74 @@ TEST(IO, JsonSchemaIndexLookup)
     EXPECT_TRUE(matches.value());
     EXPECT_EQ(references.FindPattern(paddedPattern), nullptr);
     EXPECT_EQ(references.FindPattern({}), nullptr);
+}
+
+TEST(IO, JsonSchemaBoundTargetsSurviveMoves)
+{
+    using References = rad::detail::JsonSchemaReferences;
+    rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
+    options.retrievalUri = "https://example.com/root.json";
+    rad::JsonArray branches{
+        rad::JsonObject{{"$ref", "#"}},
+        rad::JsonObject{{"$ref", "#/$defs/yes"}},
+        rad::JsonObject{{"$ref", "#/$defs/no"}},
+    };
+    for (std::size_t index = 0; index < 32; ++index)
+    {
+        const auto uri = "https://example.com/doc" + std::to_string(index) + ".json";
+        options.documents.push_back({uri, rad::JsonObject{{"const", index}}});
+        branches.push_back(rad::JsonObject{{"$ref", uri}});
+    }
+    rad::JsonValue schema = rad::JsonObject{
+        {"$defs", rad::JsonObject{{"yes", true}, {"no", false}}},
+        {"allOf", std::move(branches)},
+    };
+    auto compiled = References::Compile(
+        schema, options.dialect, options.maxCompilationDepth, options);
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    schema = nullptr;
+    options.documents.clear();
+
+    const auto check = [](const References& references)
+    {
+        ASSERT_EQ(references.Documents().as_array().size(), 33U);
+        for (std::size_t index = 0; index < 35; ++index)
+        {
+            const auto path = "/0/allOf/" + std::to_string(index) + "/$ref";
+            const auto* resolution = references.Find(path);
+            ASSERT_NE(resolution, nullptr);
+            ASSERT_TRUE(*resolution);
+            const auto& target = resolution->value();
+            ASSERT_NE(target.schema, nullptr);
+            EXPECT_EQ(target.schema,
+                      rad::detail::FindJsonSchemaValue(references.Documents(), target.path));
+            if (index == 0)
+            {
+                EXPECT_EQ(target.schema, &references.Documents().as_array()[0]);
+            }
+            else if (index < 3)
+            {
+                ASSERT_TRUE(target.schema->is_bool());
+                EXPECT_EQ(target.schema->as_bool(), index == 1);
+            }
+            else
+            {
+                EXPECT_EQ(target.schema->as_object().at("const"), rad::JsonValue(index - 3));
+            }
+        }
+    };
+    check(compiled.value());
+    const auto* root = compiled.value().Find("/0/allOf/0/$ref")->value().schema;
+    auto moved = std::move(compiled.value());
+    check(moved);
+    EXPECT_EQ(moved.Find("/0/allOf/0/$ref")->value().schema, root);
+
+    auto replacement = References::Compile(
+        rad::JsonObject{{"$ref", "#"}}, options.dialect, options.maxCompilationDepth, options);
+    ASSERT_TRUE(replacement);
+    replacement.value() = std::move(moved);
+    check(replacement.value());
+    EXPECT_EQ(replacement.value().Find("/0/allOf/0/$ref")->value().schema, root);
 }
 
 TEST(IO, JsonSchemaIndexProfileErrors)

@@ -881,6 +881,15 @@ Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compi
         return Failure(std::move(error));
     }
     references.m_targets = std::move(targets.value());
+    // Targets lie inside the now-final document array, whose storage is retained by moves.
+    for (auto& [path, resolution] : references.m_targets)
+    {
+        if (resolution)
+        {
+            auto& target = resolution.value();
+            target.schema = FindJsonSchemaValue(references.m_documents, target.path);
+        }
+    }
     if (rootProfile.dialect == JsonSchemaDialect::Draft2020_12)
     {
         for (const auto& [path, resource] : references.m_schemaResources)

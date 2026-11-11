@@ -358,7 +358,14 @@ template <typename SelectTarget>
         return Failure(resolution->error());
     }
     const auto* targetPath = resolution ? selectTarget(resolution->value()) : nullptr;
-    const auto* target = targetPath ? detail::FindJsonSchemaValue(documents, *targetPath) : nullptr;
+    const JsonValue* target = nullptr;
+    if (targetPath != nullptr)
+    {
+        const auto& resolved = resolution->value();
+        target = targetPath == &resolved.path
+                     ? resolved.schema
+                     : detail::FindJsonSchemaValue(documents, *targetPath);
+    }
     if (target == nullptr)
     {
         return Failure(MakeSchemaCompileError(
