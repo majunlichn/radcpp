@@ -220,7 +220,8 @@ struct JsonSchemaCompileOptions
 //
 // Regular expressions:
 // - pattern and patternProperties use PCRE2 with UTF-8 and Unicode category escape support.
-//   Expressions compile once per schema location; matching scratch state is local to each call.
+//   Expressions compile once per schema location. Matching workspace is initialized lazily and
+//   reused within one validation call; concurrent calls keep separate workspace.
 // - Matching is unanchored unless the pattern supplies anchors. \d and \w are ASCII by default;
 //   \s and \S use ECMAScript whitespace semantics, including inside character classes.
 //   Other PCRE2 syntax and semantics are not fully ECMAScript-compatible.
@@ -229,9 +230,6 @@ struct JsonSchemaCompileOptions
 //   validation with RegexResourceLimitExceeded, not an ordinary pattern mismatch. Other matching
 //   failures report RegexEvaluationFailed. Evaluation failures are the final entry in errors,
 //   following any schema violations collected before validation stopped.
-// - For debugging, RAD_JSON_SCHEMA_USE_STD_REGEX=1 selects std::regex ECMAScript over UTF-8
-//   bytes instead; this backend is not fully Unicode-aware and cannot enforce matching limits.
-//   It rejects non-default regex limits when matching is attempted.
 //
 // Limitations:
 // - No automatic file/network loading, mixed-base-draft resources, custom Draft 7 dialects,

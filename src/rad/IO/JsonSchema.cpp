@@ -466,11 +466,7 @@ private:
         auto expression = detail::JsonSchemaRegex::Compile(pattern);
         if (!expression)
         {
-            const auto& error = expression.error();
-            AddError(schemaPath, error.message,
-                     error.unsupported && !error.resource
-                         ? JsonSchemaCompileErrorCode::UnsupportedFeature
-                         : JsonSchemaCompileErrorCode::InvalidSchema);
+            AddError(schemaPath, expression.error().message);
             return;
         }
         m_patterns.emplace(std::string(schemaPath), std::move(expression.value()));
@@ -1027,13 +1023,17 @@ private:
 class JsonSchemaEvaluator
 {
 public:
+    using RegexMatchContext = std::optional<detail::JsonSchemaRegex::MatchContext>;
+
     JsonSchemaEvaluator(JsonSchemaDialect dialect, const JsonSchemaValidationOptions& options,
                         const JsonValue& rootSchema,
-                        const detail::JsonSchemaReferences& references) :
+                        const detail::JsonSchemaReferences& references,
+                        RegexMatchContext& regexContext) :
         m_dialect(dialect),
         m_options(options),
         m_rootSchema(rootSchema),
-        m_references(references)
+        m_references(references),
+        m_regexContext(regexContext)
     {
     }
 
@@ -1307,7 +1307,11 @@ private:
                                       std::string_view value, std::string_view instancePath,
                                       std::string_view schemaPath)
     {
-        const auto result = expression.Matches(value, m_options.regex);
+        if (!m_regexContext)
+        {
+            m_regexContext.emplace(m_options.regex);
+        }
+        const auto result = expression.Matches(value, *m_regexContext);
         if (!result)
         {
             AddRegexError(result.error(), instancePath, schemaPath);
@@ -1327,7 +1331,8 @@ private:
         }
         JsonSchemaValidationOptions options = m_options;
         options.maxErrors = 1;
-        JsonSchemaEvaluator evaluator(m_dialect, options, m_rootSchema, m_references);
+        JsonSchemaEvaluator evaluator(m_dialect, options, m_rootSchema, m_references,
+                                      m_regexContext);
         evaluator.m_dynamicScope = m_dynamicScope;
         evaluator.m_activeEvaluation = m_activeEvaluation;
         auto evaluation = evaluator.Validate(schema, instance, instancePath, schemaPath, depth);
@@ -2435,6 +2440,7 @@ private:
     JsonSchemaValidationOptions m_options;
     const JsonValue& m_rootSchema;
     const detail::JsonSchemaReferences& m_references;
+    RegexMatchContext& m_regexContext;
     JsonSchemaValidationResult m_result;
     std::size_t m_errorCount = 0;
     std::vector<const std::string*> m_dynamicScope;
@@ -2538,7 +2544,8 @@ JsonSchema::Validate(const JsonValue& instance,
                      const JsonSchemaValidationOptions& options) const
 {
     const auto& documents = m_references->Documents();
-    JsonSchemaEvaluator evaluator(m_dialect, options, documents, *m_references);
+    JsonSchemaEvaluator::RegexMatchContext regexContext;
+    JsonSchemaEvaluator evaluator(m_dialect, options, documents, *m_references, regexContext);
     return evaluator.ValidateInstance(documents.as_array()[0], instance);
 }
 

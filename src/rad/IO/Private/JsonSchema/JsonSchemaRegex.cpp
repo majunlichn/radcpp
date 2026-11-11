@@ -9,23 +9,14 @@
 #include <optional>
 #include <utility>
 
-#ifndef RAD_JSON_SCHEMA_USE_STD_REGEX
-#define RAD_JSON_SCHEMA_USE_STD_REGEX 0
-#endif
-
-#if RAD_JSON_SCHEMA_USE_STD_REGEX
-#include <regex>
-#else
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
-#endif
 
 namespace rad::detail
 {
 namespace
 {
 
-#if !RAD_JSON_SCHEMA_USE_STD_REGEX
 [[nodiscard]] std::string RegexErrorMessage(int code)
 {
     std::array<PCRE2_UCHAR, 256> buffer{};
@@ -243,26 +234,35 @@ namespace
     }
     return normalized;
 }
-#endif
 
 } // namespace
 
-struct JsonSchemaRegex::Impl
+void JsonSchemaRegex::MatchContext::ContextDeleter::operator()(
+    pcre2_real_match_context_8* context) const noexcept
 {
-#if RAD_JSON_SCHEMA_USE_STD_REGEX
-    using Expression = std::regex;
-#else
-    using Expression = std::unique_ptr<pcre2_code, decltype(&pcre2_code_free)>;
-#endif
+    pcre2_match_context_free(context);
+}
 
-    explicit Impl(Expression expression) : expression(std::move(expression))
-    {
-    }
+void JsonSchemaRegex::MatchContext::DataDeleter::operator()(
+    pcre2_real_match_data_8* data) const noexcept
+{
+    pcre2_match_data_free(data);
+}
 
-    Expression expression;
-};
+JsonSchemaRegex::MatchContext::MatchContext(const JsonSchemaRegexLimits& limits) : m_limits(limits)
+{
+}
 
-JsonSchemaRegex::JsonSchemaRegex(std::unique_ptr<Impl> impl) : m_impl(std::move(impl))
+JsonSchemaRegex::MatchContext::~MatchContext() = default;
+
+void JsonSchemaRegex::CodeDeleter::operator()(pcre2_real_code_8* expression) const noexcept
+{
+    pcre2_code_free(expression);
+}
+
+JsonSchemaRegex::JsonSchemaRegex(Expression expression, std::uint32_t matchPairs) :
+    m_expression(std::move(expression)),
+    m_matchPairs(matchPairs)
 {
 }
 JsonSchemaRegex::JsonSchemaRegex(JsonSchemaRegex&&) noexcept = default;
@@ -272,24 +272,6 @@ JsonSchemaRegex::~JsonSchemaRegex() = default;
 Result<JsonSchemaRegex, JsonSchemaRegexError>
 JsonSchemaRegex::Compile(std::string_view pattern)
 {
-#if RAD_JSON_SCHEMA_USE_STD_REGEX
-    if (pattern.find("\\p{") != std::string_view::npos ||
-        pattern.find("\\P{") != std::string_view::npos)
-    {
-        return Failure(JsonSchemaRegexError{
-            true, false, "Unicode property escapes are not supported by std::regex"});
-    }
-    try
-    {
-        return Success(JsonSchemaRegex(
-            std::make_unique<Impl>(std::regex(std::string(pattern)))));
-    }
-    catch (const std::regex_error&)
-    {
-        return Failure(JsonSchemaRegexError{
-            false, false, "pattern is not a valid regular expression"});
-    }
-#else
     int errorCode = 0;
     PCRE2_SIZE errorOffset = 0;
     // Preserve ASCII \d and \w by leaving PCRE2_UCP disabled.
@@ -299,69 +281,63 @@ JsonSchemaRegex::Compile(std::string_view pattern)
     if (!normalized)
     {
         return Failure(JsonSchemaRegexError{
-            false, false, "whitespace escape cannot be a character range endpoint"});
+            "whitespace escape cannot be a character range endpoint"});
     }
-    Impl::Expression expression(
+    Expression expression(
         pcre2_compile(reinterpret_cast<PCRE2_SPTR>(normalized->data()),
-                      normalized->size(), options, &errorCode, &errorOffset, nullptr),
-        &pcre2_code_free);
+                      normalized->size(), options, &errorCode, &errorOffset, nullptr));
     if (!expression)
     {
         return Failure(JsonSchemaRegexError{
-            false, false,
             "pattern is not a valid regular expression at normalized byte " +
                 std::to_string(errorOffset) + ": " + RegexErrorMessage(errorCode)});
     }
-    return Success(JsonSchemaRegex(std::make_unique<Impl>(std::move(expression))));
-#endif
+    std::uint32_t captures = 0;
+    const int info = pcre2_pattern_info(expression.get(), PCRE2_INFO_CAPTURECOUNT, &captures);
+    if (info != 0)
+    {
+        return Failure(JsonSchemaRegexError{
+            "unable to inspect regular expression: " + RegexErrorMessage(info)});
+    }
+    return Success(JsonSchemaRegex(std::move(expression), captures + 1));
 }
 
 Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(
-    std::string_view value, const JsonSchemaRegexLimits& limits) const
+    std::string_view value, MatchContext& context) const
 {
-#if RAD_JSON_SCHEMA_USE_STD_REGEX
-    const JsonSchemaRegexLimits defaults;
-    if (limits.matchLimit != defaults.matchLimit ||
-        limits.backtrackingDepthLimit != defaults.backtrackingDepthLimit ||
-        limits.heapLimitKiB != defaults.heapLimitKiB)
+    if (!context.m_context)
     {
-        return Failure(JsonSchemaRegexError{
-            true, true,
-            "custom regular expression matching limits are not supported by std::regex"});
+        MatchContext::ContextHandle state(pcre2_match_context_create(nullptr));
+        if (!state)
+        {
+            return Failure(JsonSchemaRegexError{
+                "unable to allocate regular expression matching state"});
+        }
+        const auto& limits = context.m_limits;
+        if (pcre2_set_match_limit(state.get(), limits.matchLimit) != 0 ||
+            pcre2_set_depth_limit(state.get(), limits.backtrackingDepthLimit) != 0 ||
+            pcre2_set_heap_limit(state.get(), limits.heapLimitKiB) != 0)
+        {
+            return Failure(JsonSchemaRegexError{
+                "unable to set regular expression matching limits"});
+        }
+        context.m_context = std::move(state);
     }
-    try
+    if (context.m_capacity < m_matchPairs)
     {
-        return Success(std::regex_search(value.begin(), value.end(), m_impl->expression));
-    }
-    catch (const std::regex_error& error)
-    {
-        return Failure(JsonSchemaRegexError{
-            false, true,
-            std::string("regular expression matching failed: ") + error.what()});
-    }
-#else
-    const auto& expression = m_impl->expression;
-    const std::unique_ptr<pcre2_match_data, decltype(&pcre2_match_data_free)> matchData(
-        pcre2_match_data_create_from_pattern(expression.get(), nullptr),
-        &pcre2_match_data_free);
-    const std::unique_ptr<pcre2_match_context, decltype(&pcre2_match_context_free)> context(
-        pcre2_match_context_create(nullptr), &pcre2_match_context_free);
-    if (!matchData || !context)
-    {
-        return Failure(JsonSchemaRegexError{
-            false, true, "unable to allocate regular expression matching state"});
-    }
-    if (pcre2_set_match_limit(context.get(), limits.matchLimit) != 0 ||
-        pcre2_set_depth_limit(context.get(), limits.backtrackingDepthLimit) != 0 ||
-        pcre2_set_heap_limit(context.get(), limits.heapLimitKiB) != 0)
-    {
-        return Failure(JsonSchemaRegexError{
-            false, true, "unable to set regular expression matching limits"});
+        MatchContext::DataHandle data(pcre2_match_data_create(m_matchPairs, nullptr));
+        if (!data)
+        {
+            return Failure(JsonSchemaRegexError{
+                "unable to allocate regular expression matching state"});
+        }
+        context.m_data = std::move(data);
+        context.m_capacity = m_matchPairs;
     }
     const int result = pcre2_match(
-        expression.get(),
+        m_expression.get(),
         reinterpret_cast<PCRE2_SPTR>(value.empty() ? "" : value.data()), value.size(),
-        0, 0, matchData.get(), context.get());
+        0, 0, context.m_data.get(), context.m_context.get());
     if (result >= 0)
     {
         return Success(true);
@@ -374,11 +350,10 @@ Result<bool, JsonSchemaRegexError> JsonSchemaRegex::Matches(
                                 ? JsonSchemaValidationStatus::RegexResourceLimitExceeded
                                 : JsonSchemaValidationStatus::RegexEvaluationFailed;
         return Failure(JsonSchemaRegexError{
-            false, true, "regular expression matching failed: " + RegexErrorMessage(result),
+            "regular expression matching failed: " + RegexErrorMessage(result),
             status});
     }
     return Success(false);
-#endif
 }
 
 } // namespace rad::detail

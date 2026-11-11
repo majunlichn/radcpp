@@ -113,7 +113,8 @@ TEST(IO, JsonSchemaIndexLookup)
     const auto* expression =
         references.FindPattern(std::string_view(paddedPattern).substr(0, patternPath.size()));
     ASSERT_NE(expression, nullptr);
-    const auto matches = expression->Matches("x", {});
+    rad::detail::JsonSchemaRegex::MatchContext context({});
+    const auto matches = expression->Matches("x", context);
     ASSERT_TRUE(matches);
     EXPECT_TRUE(matches.value());
     EXPECT_EQ(references.FindPattern(paddedPattern), nullptr);

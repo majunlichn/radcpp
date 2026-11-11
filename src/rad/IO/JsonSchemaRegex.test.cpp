@@ -16,7 +16,6 @@
 
 using rad::test::FormatValidationErrors;
 
-#if !defined(RAD_JSON_SCHEMA_USE_STD_REGEX) || !RAD_JSON_SCHEMA_USE_STD_REGEX
 TEST(IO, JsonSchemaRegexWhitespaceCompatibility)
 {
     struct Pattern
@@ -109,8 +108,6 @@ TEST(IO, JsonSchemaRegexWhitespaceCompatibility)
         EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
     }
 }
-#endif
-
 TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
 {
     const auto makeSchema = []
@@ -118,15 +115,16 @@ TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
         rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
         options.retrievalUri = "https://example.com/root.json";
         options.documents = {
-            {"https://example.com/remote.json", rad::JsonObject{{"pattern", "^remote$"}}},
+            {"https://example.com/remote.json",
+             rad::JsonObject{{"pattern", "^(r)(e)(m)(o)(t)(e)$"}}},
         };
         return rad::JsonSchema::Compile(
             rad::JsonObject{
                 {"properties",
-                 rad::JsonObject{{"local", rad::JsonObject{{"pattern", "^local$"}}},
+                 rad::JsonObject{{"local", rad::JsonObject{{"pattern", "^(local)$"}}},
                                  {"remote", rad::JsonObject{{"$ref", "remote.json"}}}}},
                 {"patternProperties",
-                 rad::JsonObject{{"^x/~", rad::JsonObject{{"pattern", "^extra$"}}}}},
+                 rad::JsonObject{{"^x/~", rad::JsonObject{{"pattern", R"(^(ex)(tra)\1$)"}}}}},
             },
             options);
     };
@@ -135,7 +133,7 @@ TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
     auto copied = compiled.value();
     auto moved = std::move(copied);
     const rad::JsonValue valid =
-        rad::JsonObject{{"local", "local"}, {"remote", "remote"}, {"x/~tag", "extra"}};
+        rad::JsonObject{{"local", "local"}, {"remote", "remote"}, {"x/~tag", "extraex"}};
     const rad::JsonValue invalid =
         rad::JsonObject{{"local", "remote"}, {"remote", "local"}, {"x/~tag", "bad"}};
     const auto result = moved.Validate(invalid);
@@ -168,7 +166,6 @@ TEST(IO, JsonSchemaRegexCacheLifetimeAndConcurrency)
     }
 }
 
-#if !defined(RAD_JSON_SCHEMA_USE_STD_REGEX) || !RAD_JSON_SCHEMA_USE_STD_REGEX
 TEST(IO, JsonSchemaRegexLimits)
 {
     constexpr std::string_view pattern = "^((((((((((a+))))))))))$";
@@ -231,6 +228,15 @@ TEST(IO, JsonSchemaRegexLimits)
         EXPECT_EQ(compiled.value().Validate(schema.instance).status,
                   rad::JsonSchemaValidationStatus::Completed);
     }
+
+    const auto batch = rad::JsonSchema::Compile(
+        rad::JsonObject{{"items", schemas[0].schema}}, compileOptions);
+    ASSERT_TRUE(batch);
+    rad::JsonArray values;
+    values.resize(128, "aaaa");
+    rad::JsonSchemaValidationOptions batchOptions;
+    batchOptions.regex.matchLimit = 64;
+    EXPECT_TRUE(batch.value().Validate(values, batchOptions));
 
     const auto compiled = rad::JsonSchema::Compile(
         schemas[0].schema, {.dialect = rad::JsonSchemaDialect::Draft2020_12});
@@ -313,4 +319,3 @@ TEST(IO, JsonSchemaErrorLimitSkipsRegexEvaluation)
         }
     }
 }
-#endif
