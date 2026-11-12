@@ -159,7 +159,8 @@ struct JsonSchemaCompileOptions
 // Large-array duplicate checks may reserve O(n) auxiliary storage up front, even when a
 // duplicate is found early.
 // Validation stops at the effective error limit or the first evaluation failure. Speculative
-// branches keep their violations local, so a rejected branch does not reject a valid alternative.
+// branches stop at their first violation without collecting ordinary diagnostics, so a rejected
+// branch does not reject a valid alternative. Evaluation failures still propagate.
 // Reentering an active schema/instance evaluation with equivalent reference scope and error policy
 // reports EvaluationCycleDetected, not a violation. Completed sibling evaluations are independent.
 // The depth limit still applies before entering an evaluation, including a cyclic one.

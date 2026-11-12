@@ -1249,16 +1249,20 @@ private:
         return std::move(target.value());
     }
 
-    void AddError(std::string_view instancePath, std::string_view schemaPath, std::string message)
+    void AddError(std::string_view instancePath, std::string_view schemaPath,
+                  std::string_view message)
     {
         if (ShouldStop())
         {
             return;
         }
         ++m_errorCount;
-        m_result.errors.push_back({std::string(instancePath), m_references.SchemaUri(schemaPath),
-                                   m_references.SchemaPath(schemaPath), std::move(message)});
-        if (m_result.errors.size() >= std::max<std::size_t>(m_options.maxErrors, 1))
+        if (m_collectErrors)
+        {
+            m_result.errors.push_back({std::string(instancePath), m_references.SchemaUri(schemaPath),
+                                      m_references.SchemaPath(schemaPath), std::string(message)});
+        }
+        if (m_errorCount >= std::max<std::size_t>(m_options.maxErrors, 1))
         {
             m_result.status = JsonSchemaValidationStatus::MaxErrorsReached;
         }
@@ -1332,6 +1336,7 @@ private:
         options.maxErrors = 1;
         JsonSchemaEvaluator evaluator(m_dialect, options, m_rootSchema, m_references,
                                       m_regexContext);
+        evaluator.m_collectErrors = false;
         evaluator.m_dynamicScope = m_dynamicScope;
         evaluator.m_activeEvaluation = m_activeEvaluation;
         auto evaluation = evaluator.Validate(schema, instance, instancePath, schemaPath, depth);
@@ -1802,10 +1807,10 @@ private:
         {
             const auto errorsBefore = m_errorCount;
             Evaluation propertiesEvaluation;
+            const auto keywordPath = ChildPath(schemaPath, "properties");
             if (!propertiesValue->is_object())
             {
-                AddError(instancePath, ChildPath(schemaPath, "properties"),
-                         "properties must be an object");
+                AddError(instancePath, keywordPath, "properties must be an object");
             }
             else
             {
@@ -1816,16 +1821,16 @@ private:
                     {
                         return;
                     }
-                    if (const auto* value = instance.if_contains(property.key()))
+                    const auto found = instance.find(property.key());
+                    if (found != instance.end())
                     {
-                        Validate(property.value(), *value,
+                        Validate(property.value(), found->value(),
                                  ChildPath(instancePath, property.key()),
-                                 ChildPath(ChildPath(schemaPath, "properties"), property.key()),
+                                 ChildPath(keywordPath, property.key()),
                                  depth + 1);
                         Evaluation::Mark(
                             propertiesEvaluation.properties,
-                            static_cast<std::size_t>(
-                                std::distance(instance.begin(), instance.find(property.key()))));
+                            static_cast<std::size_t>(std::distance(instance.begin(), found)));
                     }
                 }
             }
@@ -2442,6 +2447,7 @@ private:
     RegexMatchContext& m_regexContext;
     JsonSchemaValidationResult m_result;
     std::size_t m_errorCount = 0;
+    bool m_collectErrors = true;
     std::vector<const std::string*> m_dynamicScope;
     const ActiveEvaluationScope* m_activeEvaluation = nullptr;
 }; // class JsonSchemaEvaluator
