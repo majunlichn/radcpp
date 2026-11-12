@@ -15,6 +15,7 @@
 #include <utility>
 
 using rad::test::FormatValidationErrors;
+using rad::test::MakeJsonDocument;
 
 TEST(JsonSchemaRegex, WhitespaceCompatibility)
 {
@@ -58,7 +59,7 @@ TEST(JsonSchemaRegex, WhitespaceCompatibility)
     {
         SCOPED_TRACE(pattern.text);
         const auto compiled =
-            rad::JsonSchema::Compile(rad::JsonObject{{"pattern", pattern.text}},
+            rad::JsonSchema::Compile(MakeJsonDocument(rad::JsonObject{{"pattern", pattern.text}}),
                                      {.dialect = rad::JsonSchemaDialect::Draft2020_12});
         ASSERT_TRUE(compiled) << compiled.error().message;
         for (const char32_t point : points)
@@ -92,9 +93,9 @@ TEST(JsonSchemaRegex, WhitespaceCompatibility)
     for (const auto& literal : literals)
     {
         SCOPED_TRACE(literal.pattern);
-        const auto compiled =
-            rad::JsonSchema::Compile(rad::JsonObject{{"pattern", literal.pattern}},
-                                     {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+        const auto compiled = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"pattern", literal.pattern}}),
+            {.dialect = rad::JsonSchemaDialect::Draft2020_12});
         ASSERT_TRUE(compiled) << compiled.error().message;
         EXPECT_TRUE(compiled.value().Validate(rad::JsonValue(literal.value)));
     }
@@ -102,7 +103,7 @@ TEST(JsonSchemaRegex, WhitespaceCompatibility)
     {
         SCOPED_TRACE(pattern);
         const auto compiled =
-            rad::JsonSchema::Compile(rad::JsonObject{{"pattern", pattern}},
+            rad::JsonSchema::Compile(MakeJsonDocument(rad::JsonObject{{"pattern", pattern}}),
                                      {.dialect = rad::JsonSchemaDialect::Draft2020_12});
         ASSERT_FALSE(compiled);
         EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
@@ -112,20 +113,22 @@ TEST(JsonSchemaRegex, CacheLifetimeAndConcurrency)
 {
     const auto makeSchema = []
     {
+        const std::string rootUri = "https://example.com/root.json";
         rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
-        options.retrievalUri = "https://example.com/root.json";
         options.documents = {
-            {"https://example.com/remote.json",
-             rad::JsonObject{{"pattern", "^(r)(e)(m)(o)(t)(e)$"}}},
+            MakeJsonDocument(rad::JsonObject{{"pattern", "^(r)(e)(m)(o)(t)(e)$"}},
+                             "https://example.com/remote.json"),
         };
         return rad::JsonSchema::Compile(
-            rad::JsonObject{
-                {"properties",
-                 rad::JsonObject{{"local", rad::JsonObject{{"pattern", "^(local)$"}}},
-                                 {"remote", rad::JsonObject{{"$ref", "remote.json"}}}}},
-                {"patternProperties",
-                 rad::JsonObject{{"^x/~", rad::JsonObject{{"pattern", R"(^(ex)(tra)\1$)"}}}}},
-            },
+            MakeJsonDocument(
+                rad::JsonObject{
+                    {"properties",
+                     rad::JsonObject{{"local", rad::JsonObject{{"pattern", "^(local)$"}}},
+                                     {"remote", rad::JsonObject{{"$ref", "remote.json"}}}}},
+                    {"patternProperties",
+                     rad::JsonObject{{"^x/~", rad::JsonObject{{"pattern", R"(^(ex)(tra)\1$)"}}}}},
+                },
+                rootUri),
             options);
     };
     const auto compiled = makeSchema();
@@ -182,7 +185,7 @@ TEST(JsonSchemaRegex, Limits)
     {
         SCOPED_TRACE(testCase.pattern);
         const auto compiled = rad::JsonSchema::Compile(
-            rad::JsonObject{{"pattern", testCase.pattern}},
+            MakeJsonDocument(rad::JsonObject{{"pattern", testCase.pattern}}),
             {.dialect = rad::JsonSchemaDialect::Draft2020_12});
         ASSERT_TRUE(compiled) << compiled.error().message;
 
@@ -229,11 +232,12 @@ TEST(JsonSchemaRegex, Limits)
         {rad::JsonObject{{"contains", rad::JsonObject{{"pattern", pattern}}}},
          rad::JsonArray{"aaaa"}, "/contains/pattern"},
     };
+    const std::string rootUri = "https://example.com/root.json";
     rad::JsonSchemaCompileOptions compileOptions{.dialect = rad::JsonSchemaDialect::Draft2020_12};
-    compileOptions.retrievalUri = "https://example.com/root.json";
     for (const auto& schema : schemas)
     {
-        const auto compiled = rad::JsonSchema::Compile(schema.schema, compileOptions);
+        const auto compiled =
+            rad::JsonSchema::Compile(MakeJsonDocument(schema.schema, rootUri), compileOptions);
         ASSERT_TRUE(compiled) << compiled.error().message;
         EXPECT_EQ(compiled.value().Validate(schema.instance).status,
                   rad::JsonSchemaValidationStatus::Completed);
@@ -253,14 +257,14 @@ TEST(JsonSchemaRegex, Limits)
             EXPECT_NE(result.errors.back().message.find(limit.message),
                       std::string::npos);
             EXPECT_EQ(result.errors.back().schemaPath, schema.path);
-            EXPECT_EQ(result.errors.back().schemaUri, compileOptions.retrievalUri);
+            EXPECT_EQ(result.errors.back().schemaUri, rootUri);
         }
         EXPECT_EQ(compiled.value().Validate(schema.instance).status,
                   rad::JsonSchemaValidationStatus::Completed);
     }
 
     const auto batch = rad::JsonSchema::Compile(
-        rad::JsonObject{{"items", schemas[0].schema}}, compileOptions);
+        MakeJsonDocument(rad::JsonObject{{"items", schemas[0].schema}}, rootUri), compileOptions);
     ASSERT_TRUE(batch);
     rad::JsonArray values;
     values.resize(128, "aaaa");
@@ -269,7 +273,7 @@ TEST(JsonSchemaRegex, Limits)
     EXPECT_TRUE(batch.value().Validate(values, batchOptions));
 
     const auto compiled = rad::JsonSchema::Compile(
-        schemas[0].schema, {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+        MakeJsonDocument(schemas[0].schema), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(compiled);
     std::vector<std::future<bool>> workers;
     for (std::size_t worker = 0; worker < 4; ++worker)
@@ -303,8 +307,9 @@ TEST(JsonSchemaRegex, Limits)
 }
 TEST(JsonSchemaRegex, EvaluationFailure)
 {
-    const auto compiled = rad::JsonSchema::Compile(
-        rad::JsonObject{{"pattern", "."}}, {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+    const auto compiled =
+        rad::JsonSchema::Compile(MakeJsonDocument(rad::JsonObject{{"pattern", "."}}),
+                                 {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(compiled);
     for (const std::size_t maxErrors : {0U, 1U, 2U, 64U})
     {
@@ -323,11 +328,11 @@ TEST(JsonSchemaRegex, EvaluationFailure)
 
 TEST(JsonSchemaRegex, ErrorLimitSkipsEvaluation)
 {
-    const auto compiled =
-        rad::JsonSchema::Compile(rad::JsonObject{{"enum", rad::JsonArray{"different"}},
-                                                 {"minLength", 5},
-                                                 {"pattern", "^((((((((((a+))))))))))$"}},
-                                 {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+    const auto compiled = rad::JsonSchema::Compile(
+        MakeJsonDocument(rad::JsonObject{{"enum", rad::JsonArray{"different"}},
+                                         {"minLength", 5},
+                                         {"pattern", "^((((((((((a+))))))))))$"}}),
+        {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(compiled);
     for (const std::size_t maxErrors : {0U, 1U, 2U, 3U, 64U})
     {

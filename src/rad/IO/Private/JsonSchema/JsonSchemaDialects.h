@@ -23,7 +23,7 @@ struct JsonSchemaVocabularyProfile
 class JsonSchemaDialectResolver
 {
 public:
-    JsonSchemaDialectResolver(const JsonValue& root, const JsonSchemaCompileOptions& options,
+    JsonSchemaDialectResolver(const JsonDocument& root, const JsonSchemaCompileOptions& options,
                               std::optional<JsonSchemaDialect> fallbackDialect,
                               std::size_t maxDepth);
     ~JsonSchemaDialectResolver();

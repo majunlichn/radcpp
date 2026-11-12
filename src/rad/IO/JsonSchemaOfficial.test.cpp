@@ -16,6 +16,7 @@
 #include <cstddef>
 
 using rad::test::FormatValidationErrors;
+using rad::test::MakeJsonDocument;
 
 TEST(JsonSchemaOfficial, ValidateSupportedDrafts)
 {
@@ -37,11 +38,9 @@ TEST(JsonSchemaOfficial, ValidateSupportedDrafts)
         ASSERT_TRUE(text) << entry.path().string();
         const auto schema = rad::ParseJson(*text);
         ASSERT_TRUE(schema) << entry.path().string();
-        compileOptions.documents.push_back({
-            "http://localhost:1234/" +
-                std::filesystem::relative(entry.path(), remotes).generic_string(),
-            schema.value(),
-        });
+        compileOptions.documents.push_back(MakeJsonDocument(
+            schema.value(), "http://localhost:1234/" +
+                                std::filesystem::relative(entry.path(), remotes).generic_string()));
     }
 
     struct Suite
@@ -115,7 +114,8 @@ TEST(JsonSchemaOfficial, ValidateSupportedDrafts)
                 const auto& description = group.at("description").as_string();
                 SCOPED_TRACE(std::string(description.data(), description.size()));
 
-                const auto compiled = rad::JsonSchema::Compile(group.at("schema"), compileOptions);
+                const auto compiled =
+                    rad::JsonSchema::Compile(MakeJsonDocument(group.at("schema")), compileOptions);
                 if (!compiled)
                 {
                     ++failedCompileGroups;

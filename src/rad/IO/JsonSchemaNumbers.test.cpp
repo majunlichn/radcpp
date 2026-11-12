@@ -15,6 +15,7 @@
 #include <utility>
 
 using rad::test::FormatValidationErrors;
+using rad::test::MakeJsonDocument;
 
 TEST(JsonSchemaNumbers, NonFiniteInstances)
 {
@@ -26,15 +27,16 @@ TEST(JsonSchemaNumbers, NonFiniteInstances)
         rad::JsonObject{{"enum", rad::JsonArray{std::numeric_limits<std::uint64_t>::max(), 2.0}}},
         rad::JsonObject{{"anyOf", rad::JsonArray{true, rad::JsonObject{{"minimum", 0}}}}},
     };
+    const std::string rootUri = "https://example.com/root.json";
     rad::JsonSchemaCompileOptions compileOptions;
-    compileOptions.retrievalUri = "https://example.com/root.json";
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         compileOptions.dialect = dialect;
         for (const auto& schema : schemas)
         {
-            const auto compiled = rad::JsonSchema::Compile(schema, compileOptions);
+            const auto compiled =
+                rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), compileOptions);
             ASSERT_TRUE(compiled) << compiled.error().message;
             for (const double value :
                  {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity(),
@@ -47,10 +49,11 @@ TEST(JsonSchemaNumbers, NonFiniteInstances)
                 EXPECT_EQ(result.errors[0].message, "number must be finite");
                 EXPECT_EQ(result.errors[0].instancePath, "");
                 EXPECT_EQ(result.errors[0].schemaPath, "");
-                EXPECT_EQ(result.errors[0].schemaUri, compileOptions.retrievalUri);
+                EXPECT_EQ(result.errors[0].schemaUri, rootUri);
             }
         }
-        const auto permissive = rad::JsonSchema::Compile(true, compileOptions);
+        const auto permissive =
+            rad::JsonSchema::Compile(MakeJsonDocument(true, rootUri), compileOptions);
         ASSERT_TRUE(permissive);
         const rad::JsonValue nested =
             rad::JsonObject{{"x/~", rad::JsonArray{1, std::numeric_limits<double>::quiet_NaN()}},
@@ -99,8 +102,8 @@ TEST(JsonSchemaNumbers, NonFiniteInstances)
 
 TEST(JsonSchemaNumbers, NonFiniteLiterals)
 {
+    const std::string rootUri = "https://example.com/root.json";
     rad::JsonSchemaCompileOptions options;
-    options.retrievalUri = "https://example.com/root.json";
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
     {
@@ -125,11 +128,12 @@ TEST(JsonSchemaNumbers, NonFiniteLiterals)
             };
             for (const auto& testCase : cases)
             {
-                const auto compiled = rad::JsonSchema::Compile(testCase.schema, options);
+                const auto compiled =
+                    rad::JsonSchema::Compile(MakeJsonDocument(testCase.schema, rootUri), options);
                 ASSERT_FALSE(compiled);
                 EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
                 EXPECT_EQ(compiled.error().schemaPath, testCase.path);
-                EXPECT_EQ(compiled.error().schemaUri, options.retrievalUri);
+                EXPECT_EQ(compiled.error().schemaUri, rootUri);
             }
         }
         const auto nan = std::numeric_limits<double>::quiet_NaN();
@@ -138,34 +142,37 @@ TEST(JsonSchemaNumbers, NonFiniteLiterals)
               rad::JsonArray{nan, std::int64_t{1}}, rad::JsonArray{nan, std::uint64_t{1}},
               rad::JsonArray{nan, nan}})
         {
-            const auto invalidNames =
-                rad::JsonSchema::Compile(rad::JsonObject{{"required", names}}, options);
+            const auto invalidNames = rad::JsonSchema::Compile(
+                MakeJsonDocument(rad::JsonObject{{"required", names}}, rootUri), options);
             ASSERT_FALSE(invalidNames);
             EXPECT_EQ(invalidNames.error().schemaPath, "/required/0");
         }
         options.documents = {
-            {"https://example.com/unused.json",
-             rad::JsonObject{{"const", std::numeric_limits<double>::quiet_NaN()}}},
+            MakeJsonDocument(rad::JsonObject{{"const", std::numeric_limits<double>::quiet_NaN()}},
+                             "https://example.com/unused.json"),
         };
-        EXPECT_TRUE(rad::JsonSchema::Compile(true, options));
-        const auto referenced =
-            rad::JsonSchema::Compile(rad::JsonObject{{"$ref", "unused.json"}}, options);
+        EXPECT_TRUE(rad::JsonSchema::Compile(MakeJsonDocument(true, rootUri), options));
+        const auto referenced = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"$ref", "unused.json"}}, rootUri), options);
         ASSERT_FALSE(referenced);
         EXPECT_EQ(referenced.error().schemaPath, "/const");
-        EXPECT_EQ(referenced.error().schemaUri, options.documents[0].uri);
+        EXPECT_EQ(referenced.error().schemaUri, options.documents[0]->Uri());
     }
     options.documents = {
-        {"https://example.com/meta",
-         rad::JsonObject{
-             {"$schema", "https://json-schema.org/draft/2020-12/schema"},
-             {"$vocabulary",
-              rad::JsonObject{{"https://json-schema.org/draft/2020-12/vocab/core", true}}}}},
+        MakeJsonDocument(
+            rad::JsonObject{
+                {"$schema", "https://json-schema.org/draft/2020-12/schema"},
+                {"$vocabulary",
+                 rad::JsonObject{{"https://json-schema.org/draft/2020-12/vocab/core", true}}}},
+            "https://example.com/meta"),
     };
     options.dialect = rad::JsonSchemaDialect::Auto;
     const auto disabled = rad::JsonSchema::Compile(
-        rad::JsonObject{{"$schema", "https://example.com/meta"},
-                        {"const", std::numeric_limits<double>::quiet_NaN()},
-                        {"enum", rad::JsonArray{std::numeric_limits<double>::infinity()}}},
+        MakeJsonDocument(
+            rad::JsonObject{{"$schema", "https://example.com/meta"},
+                            {"const", std::numeric_limits<double>::quiet_NaN()},
+                            {"enum", rad::JsonArray{std::numeric_limits<double>::infinity()}}},
+            rootUri),
         options);
     ASSERT_TRUE(disabled) << disabled.error().message;
     EXPECT_TRUE(disabled.value().Validate(1));
@@ -198,9 +205,9 @@ TEST(JsonSchemaNumbers, ComparisonBoundaries)
     {
         for (const auto keyword : {"const", "minimum", "maximum"})
         {
-            const auto compiled =
-                rad::JsonSchema::Compile(rad::JsonObject{{keyword, testCase.limit}},
-                                         {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+            const auto compiled = rad::JsonSchema::Compile(
+                MakeJsonDocument(rad::JsonObject{{keyword, testCase.limit}}),
+                {.dialect = rad::JsonSchemaDialect::Draft2020_12});
             ASSERT_TRUE(compiled);
             const bool expected = std::string_view(keyword) == "const"     ? testCase.ordering == 0
                                   : std::string_view(keyword) == "minimum" ? testCase.ordering >= 0
@@ -256,8 +263,8 @@ TEST(JsonSchemaNumbers, SizeConstraints)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string rootUri = "https://example.com/sizes.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/sizes.json";
         for (const auto& constraint : constraints)
         {
             SCOPED_TRACE(constraint.keyword);
@@ -269,7 +276,8 @@ TEST(JsonSchemaNumbers, SizeConstraints)
                 {
                     schema.emplace("contains", rad::JsonObject{{"type", "integer"}});
                 }
-                const auto compiled = rad::JsonSchema::Compile(schema, options);
+                const auto compiled =
+                    rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), options);
                 ASSERT_TRUE(compiled) << compiled.error().message;
                 const bool expected =
                     (constraint.contains && dialect == rad::JsonSchemaDialect::Draft7) ||
@@ -287,7 +295,7 @@ TEST(JsonSchemaNumbers, SizeConstraints)
                     if (!expected)
                     {
                         EXPECT_EQ(result.errors[0].instancePath, "");
-                        EXPECT_EQ(result.errors[0].schemaUri, options.retrievalUri);
+                        EXPECT_EQ(result.errors[0].schemaUri, rootUri);
                         EXPECT_EQ(result.errors[0].schemaPath,
                                   "/" + std::string(constraint.keyword));
                     }
@@ -296,7 +304,8 @@ TEST(JsonSchemaNumbers, SizeConstraints)
             if (constraint.contains)
             {
                 const auto inactive = rad::JsonSchema::Compile(
-                    rad::JsonObject{{constraint.keyword, 1e100}}, options);
+                    MakeJsonDocument(rad::JsonObject{{constraint.keyword, 1e100}}, rootUri),
+                    options);
                 ASSERT_TRUE(inactive);
                 EXPECT_TRUE(inactive.value().Validate(constraint.instance));
             }
@@ -304,13 +313,15 @@ TEST(JsonSchemaNumbers, SizeConstraints)
         if (dialect != rad::JsonSchemaDialect::Draft7)
         {
             rad::JsonObject schema{{"contains", false}, {"maxContains", 1e100}};
-            const auto defaultMinimum = rad::JsonSchema::Compile(schema, options);
+            const auto defaultMinimum =
+                rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), options);
             ASSERT_TRUE(defaultMinimum);
             const auto rejected = defaultMinimum.value().Validate(rad::JsonArray{});
             ASSERT_EQ(rejected.errors.size(), 1);
             EXPECT_EQ(rejected.errors[0].schemaPath, "/contains");
             schema.emplace("minContains", -0.0);
-            const auto zeroMinimum = rad::JsonSchema::Compile(schema, options);
+            const auto zeroMinimum =
+                rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), options);
             ASSERT_TRUE(zeroMinimum);
             EXPECT_TRUE(zeroMinimum.value().Validate(rad::JsonArray{}));
         }
@@ -329,8 +340,8 @@ TEST(JsonSchemaNumbers, InvalidSizeConstraints)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string rootUri = "https://example.com/invalid-sizes.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/invalid-sizes.json";
         for (const std::string_view keyword :
              {"minLength", "maxLength", "minItems", "maxItems", "minProperties", "maxProperties",
               "minContains", "maxContains"})
@@ -343,7 +354,8 @@ TEST(JsonSchemaNumbers, InvalidSizeConstraints)
                 {
                     schema.emplace("contains", true);
                 }
-                const auto compiled = rad::JsonSchema::Compile(schema, options);
+                const auto compiled =
+                    rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), options);
                 if (dialect == rad::JsonSchemaDialect::Draft7 && keyword.ends_with("Contains"))
                 {
                     ASSERT_TRUE(compiled);
@@ -353,7 +365,7 @@ TEST(JsonSchemaNumbers, InvalidSizeConstraints)
                 }
                 ASSERT_FALSE(compiled);
                 EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
-                EXPECT_EQ(compiled.error().schemaUri, options.retrievalUri);
+                EXPECT_EQ(compiled.error().schemaUri, rootUri);
                 EXPECT_EQ(compiled.error().schemaPath, "/" + std::string(keyword));
                 EXPECT_EQ(compiled.error().message,
                           std::string(keyword) + " must be a non-negative integer");
@@ -402,7 +414,8 @@ TEST(JsonSchemaNumbers, MultipleOfDecimalSemantics)
             SCOPED_TRACE(rad::PrettyJson(testCase.value));
             SCOPED_TRACE(rad::PrettyJson(testCase.divisor));
             const auto compiled = rad::JsonSchema::Compile(
-                rad::JsonObject{{"multipleOf", testCase.divisor}}, {.dialect = dialect});
+                MakeJsonDocument(rad::JsonObject{{"multipleOf", testCase.divisor}}),
+                {.dialect = dialect});
             ASSERT_TRUE(compiled) << compiled.error().message;
             rad::JsonSchemaValidationOptions options;
             options.maxErrors = 1;
@@ -417,8 +430,8 @@ TEST(JsonSchemaNumbers, MultipleOfDecimalSemantics)
         for (const double divisor : {0.0, -0.1, std::numeric_limits<double>::infinity(),
                                      std::numeric_limits<double>::quiet_NaN()})
         {
-            const auto compiled = rad::JsonSchema::Compile(rad::JsonObject{{"multipleOf", divisor}},
-                                                           {.dialect = dialect});
+            const auto compiled = rad::JsonSchema::Compile(
+                MakeJsonDocument(rad::JsonObject{{"multipleOf", divisor}}), {.dialect = dialect});
             ASSERT_FALSE(compiled);
             EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
             EXPECT_EQ(compiled.error().schemaPath, "/multipleOf");
@@ -444,9 +457,9 @@ TEST(JsonSchemaNumbers, MultipleOfDecimalGrid)
             const auto divisor =
                 rad::ParseJson(std::format("{}e{}", divisorCoefficient, divisorExponent));
             ASSERT_TRUE(divisor);
-            const auto compiled =
-                rad::JsonSchema::Compile(rad::JsonObject{{"multipleOf", divisor.value()}},
-                                         {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+            const auto compiled = rad::JsonSchema::Compile(
+                MakeJsonDocument(rad::JsonObject{{"multipleOf", divisor.value()}}),
+                {.dialect = rad::JsonSchemaDialect::Draft2020_12});
             ASSERT_TRUE(compiled) << compiled.error().message;
             for (int coefficient = -50; coefficient <= 50; ++coefficient)
             {

@@ -90,7 +90,7 @@ bool JsonSchemaVocabularyProfile::IsKeywordEnabled(std::string_view keyword) con
 class JsonSchemaDialectResolver::Impl
 {
 public:
-    Impl(const JsonValue& root, const JsonSchemaCompileOptions& options,
+    Impl(const JsonDocument& root, const JsonSchemaCompileOptions& options,
          std::optional<JsonSchemaDialect> fallbackDialect, std::size_t maxDepth) :
         m_root(root),
         m_options(options),
@@ -102,7 +102,7 @@ public:
     [[nodiscard]] Result<JsonSchemaVocabularyProfile, JsonSchemaCompileError>
     Resolve(std::string_view uri)
     {
-        return Resolve(uri, m_options.retrievalUri, "/$schema");
+        return Resolve(uri, m_root.Uri(), "/$schema");
     }
 
     [[nodiscard]] Result<JsonSchemaVocabularyProfile, JsonSchemaCompileError>
@@ -230,10 +230,10 @@ private:
                 const auto normalized = NormalizeUri(text, true);
                 if (!normalized)
                 {
-                    m_prepareError = Error(JsonSchemaCompileErrorCode::InvalidSchema,
-                                           m_options.retrievalUri, "/$schema",
-                                           "meta-schema retrieval URIs must be absolute and "
-                                           "fragment-free");
+                    m_prepareError =
+                        Error(JsonSchemaCompileErrorCode::InvalidSchema, m_root.Uri(), "/$schema",
+                              "meta-schema retrieval URIs must be absolute and "
+                              "fragment-free");
                     return;
                 }
                 retrieval = *normalized;
@@ -246,14 +246,14 @@ private:
             }
             Scan(value, "", retrieval.empty() ? "rad-schema://document/" : retrieval, retrieval);
         };
-        add(m_root, m_options.retrievalUri, true);
+        add(m_root.Root(), m_root.Uri(), true);
         for (const auto& document : m_options.documents)
         {
             if (m_prepareError)
             {
                 break;
             }
-            add(document.schema, document.uri, false);
+            add(document->Root(), document->Uri(), false);
         }
         return m_prepareError ? Result<void, JsonSchemaCompileError>(Failure(*m_prepareError))
                               : Result<void, JsonSchemaCompileError>(Success());
@@ -313,18 +313,17 @@ private:
         {
             return Success(JsonSchemaVocabularyProfile{*m_fallbackDialect});
         }
-        if (node.value != &m_root && m_root.is_object())
+        if (node.value != &m_root.Root() && m_root.Root().is_object())
         {
-            if (const auto* declaration = m_root.as_object().if_contains("$schema"))
+            if (const auto* declaration = m_root.Root().as_object().if_contains("$schema"))
             {
                 if (!declaration->is_string())
                 {
-                    return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema,
-                                         m_options.retrievalUri, "/$schema",
-                                         "$schema must be an absolute URI string"));
+                    return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, m_root.Uri(),
+                                         "/$schema", "$schema must be an absolute URI string"));
                 }
-                return ResolveMeta(StringView(declaration->as_string()), m_options.retrievalUri,
-                                   "/$schema", depth + 1);
+                return ResolveMeta(StringView(declaration->as_string()), m_root.Uri(), "/$schema",
+                                   depth + 1);
             }
         }
         return Failure(Error(JsonSchemaCompileErrorCode::UnsupportedFeature, node.documentUri,
@@ -606,7 +605,7 @@ private:
         return Success(profile);
     }
 
-    const JsonValue& m_root;
+    const JsonDocument& m_root;
     const JsonSchemaCompileOptions& m_options;
     std::optional<JsonSchemaDialect> m_fallbackDialect;
     std::size_t m_maxDepth;
@@ -622,7 +621,7 @@ private:
 }; // class JsonSchemaDialectResolver::Impl
 
 JsonSchemaDialectResolver::JsonSchemaDialectResolver(
-    const JsonValue& root, const JsonSchemaCompileOptions& options,
+    const JsonDocument& root, const JsonSchemaCompileOptions& options,
     std::optional<JsonSchemaDialect> fallbackDialect, std::size_t maxDepth) :
     m_impl(std::make_unique<Impl>(root, options, fallbackDialect, maxDepth))
 {

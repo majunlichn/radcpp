@@ -2,6 +2,7 @@
 
 #include <boost/json/parse.hpp>
 #include <boost/json/serialize.hpp>
+#include <boost/json/value_ref.hpp>
 
 namespace rad
 {
@@ -77,6 +78,81 @@ void PrettyJsonImpl(const JsonValue& value, std::string_view indent, std::string
 }
 
 } // namespace
+
+JsonDocument::JsonDocument(JsonValue root) :
+    m_root(std::move(root))
+{
+}
+
+Ref<JsonDocument> JsonDocument::FromValue(JsonValue root)
+{
+    return Ref<JsonDocument>(new JsonDocument(std::move(root)));
+}
+
+Result<Ref<JsonDocument>, JsonErrorCode> JsonDocument::Parse(std::string_view text,
+                                                             const JsonParseOptions& options)
+{
+    auto root = ParseJson(text, options);
+    if (!root)
+    {
+        return Failure(root.error());
+    }
+    return Success(FromValue(std::move(root.value())));
+}
+
+JsonValue& JsonDocument::Root() noexcept
+{
+    return m_root;
+}
+
+const JsonValue& JsonDocument::Root() const noexcept
+{
+    return m_root;
+}
+
+const std::string& JsonDocument::Uri() const noexcept
+{
+    return m_uri;
+}
+
+void JsonDocument::SetUri(std::string uri)
+{
+    m_uri = std::move(uri);
+}
+
+Result<JsonValue*, JsonErrorCode> JsonDocument::Find(std::string_view pointer)
+{
+    JsonErrorCode error;
+    auto* value = m_root.find_pointer({pointer.data(), pointer.size()}, error);
+    if (error)
+    {
+        return Failure(error);
+    }
+    return Success(value);
+}
+
+Result<const JsonValue*, JsonErrorCode> JsonDocument::Find(std::string_view pointer) const
+{
+    JsonErrorCode error;
+    const auto* value = m_root.find_pointer({pointer.data(), pointer.size()}, error);
+    if (error)
+    {
+        return Failure(error);
+    }
+    return Success(value);
+}
+
+Result<JsonValue*, JsonErrorCode> JsonDocument::Set(std::string_view pointer, JsonValue value,
+                                                    const JsonSetPointerOptions& options)
+{
+    auto result =
+        m_root.try_set_at_pointer({pointer.data(), pointer.size()}, std::move(value), options);
+    if (!result)
+    {
+        return Failure(result.error());
+    }
+    return Success(&result.value());
+}
 
 Result<JsonValue, JsonErrorCode> ParseJson(std::string_view text)
 {

@@ -1,10 +1,14 @@
 #include "JsonSchemaReferences.h"
 
+#include <rad/IO/JsonSchema.test.h>
+
 #include <gtest/gtest.h>
 
 #include <string>
 #include <string_view>
 #include <utility>
+
+using rad::test::MakeJsonDocument;
 
 TEST(JsonSchemaInternalReferences, IndexStringMap)
 {
@@ -49,10 +53,10 @@ TEST(JsonSchemaInternalReferences, IndexLookup)
             {name, rad::JsonObject{{"$id", "nested"}, {"$dynamicAnchor", anchor}}}}},
         {"properties", rad::JsonObject{{name, rad::JsonObject{{"$ref", "nested#" + anchor}}}}},
     };
-    const rad::JsonSchemaCompileOptions options{
-        .dialect = rad::JsonSchemaDialect::Draft2020_12, .retrievalUri = uri};
+    const std::string rootUri = uri;
+    const rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
     auto compiled = rad::detail::JsonSchemaReferences::Compile(
-        schema, options.dialect, options.maxCompilationDepth, options);
+        MakeJsonDocument(schema, rootUri), options.dialect, options.maxCompilationDepth, options);
     ASSERT_TRUE(compiled) << compiled.error().message;
     auto& references = compiled.value();
     const auto targetPath = rad::detail::ChildPath("/0/$defs", name);
@@ -124,8 +128,8 @@ TEST(JsonSchemaInternalReferences, IndexLookup)
 TEST(JsonSchemaInternalReferences, BoundTargetsSurviveMoves)
 {
     using References = rad::detail::JsonSchemaReferences;
+    const std::string rootUri = "https://example.com/root.json";
     rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
-    options.retrievalUri = "https://example.com/root.json";
     rad::JsonArray branches{
         rad::JsonObject{{"$ref", "#"}},
         rad::JsonObject{{"$ref", "#/$defs/yes"}},
@@ -134,22 +138,30 @@ TEST(JsonSchemaInternalReferences, BoundTargetsSurviveMoves)
     for (std::size_t index = 0; index < 32; ++index)
     {
         const auto uri = "https://example.com/doc" + std::to_string(index) + ".json";
-        options.documents.push_back({uri, rad::JsonObject{{"const", index}}});
+        options.documents.push_back(MakeJsonDocument(rad::JsonObject{{"const", index}}, uri));
         branches.push_back(rad::JsonObject{{"$ref", uri}});
     }
     rad::JsonValue schema = rad::JsonObject{
         {"$defs", rad::JsonObject{{"yes", true}, {"no", false}}},
         {"allOf", std::move(branches)},
     };
-    auto compiled = References::Compile(
-        schema, options.dialect, options.maxCompilationDepth, options);
+    const auto document = MakeJsonDocument(std::move(schema), rootUri);
+    const auto registered = options.documents;
+    auto compiled =
+        References::Compile(document, options.dialect, options.maxCompilationDepth, options);
     ASSERT_TRUE(compiled) << compiled.error().message;
+    ASSERT_EQ(compiled.value().Documents().size(), 33U);
+    EXPECT_EQ(compiled.value().Documents()[0].get(), document.get());
+    for (std::size_t index = 0; index < registered.size(); ++index)
+    {
+        EXPECT_EQ(compiled.value().Documents()[index + 1].get(), registered[index].get());
+    }
     schema = nullptr;
     options.documents.clear();
 
     const auto check = [](const References& references)
     {
-        ASSERT_EQ(references.Documents().as_array().size(), 33U);
+        ASSERT_EQ(references.Documents().size(), 33U);
         for (std::size_t index = 0; index < 35; ++index)
         {
             const auto path = "/0/allOf/" + std::to_string(index) + "/$ref";
@@ -162,7 +174,7 @@ TEST(JsonSchemaInternalReferences, BoundTargetsSurviveMoves)
                       rad::detail::FindJsonSchemaValue(references.Documents(), target.path));
             if (index == 0)
             {
-                EXPECT_EQ(target.schema, &references.Documents().as_array()[0]);
+                EXPECT_EQ(target.schema, &references.Documents()[0]->Root());
             }
             else if (index < 3)
             {
@@ -181,8 +193,9 @@ TEST(JsonSchemaInternalReferences, BoundTargetsSurviveMoves)
     check(moved);
     EXPECT_EQ(moved.Find("/0/allOf/0/$ref")->value().schema, root);
 
-    auto replacement = References::Compile(
-        rad::JsonObject{{"$ref", "#"}}, options.dialect, options.maxCompilationDepth, options);
+    auto replacement =
+        References::Compile(MakeJsonDocument(rad::JsonObject{{"$ref", "#"}}, rootUri),
+                            options.dialect, options.maxCompilationDepth, options);
     ASSERT_TRUE(replacement);
     replacement.value() = std::move(moved);
     check(replacement.value());
@@ -197,18 +210,20 @@ TEST(JsonSchemaInternalReferences, IndexProfileErrors)
          {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
-        const rad::JsonSchemaCompileOptions options{
-            .dialect = dialect, .retrievalUri = "https://example.com/profile.json"};
+        const std::string rootUri = "https://example.com/profile.json";
+        const rad::JsonSchemaCompileOptions options{.dialect = dialect};
         const auto compiled = rad::detail::JsonSchemaReferences::Compile(
-            rad::JsonObject{{"$defs", rad::JsonObject{
-                {name, rad::JsonObject{{"$schema", 42}}}}}},
+            MakeJsonDocument(
+                rad::JsonObject{
+                    {"$defs", rad::JsonObject{{name, rad::JsonObject{{"$schema", 42}}}}}},
+                rootUri),
             dialect, options.maxCompilationDepth, options);
         ASSERT_TRUE(compiled) << compiled.error().message;
         const auto& references = compiled.value();
         const auto* error = references.ProfileError(path);
         ASSERT_NE(error, nullptr);
         EXPECT_EQ(error->code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
-        EXPECT_EQ(error->schemaUri, options.retrievalUri);
+        EXPECT_EQ(error->schemaUri, rootUri);
         EXPECT_EQ(error->schemaPath, rad::detail::ChildPath(path.substr(2), "$schema"));
 
         const auto descendant = path + "/properties/child";

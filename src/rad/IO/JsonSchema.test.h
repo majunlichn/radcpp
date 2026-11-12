@@ -4,9 +4,17 @@
 
 #include <format>
 #include <string>
+#include <utility>
 
 namespace rad::test
 {
+
+[[nodiscard]] inline Ref<JsonDocument> MakeJsonDocument(JsonValue root, std::string uri = {})
+{
+    auto document = JsonDocument::FromValue(std::move(root));
+    document->SetUri(std::move(uri));
+    return document;
+}
 
 [[nodiscard]] inline std::string
 FormatValidationErrors(const rad::JsonSchemaValidationResult& result)

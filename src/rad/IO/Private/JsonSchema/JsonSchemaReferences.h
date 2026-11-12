@@ -42,7 +42,7 @@ public:
     {
         std::string path;
         std::string dynamicAnchor;
-        // Bound into the owned document array after document discovery finishes.
+        // Points into a retained document after reference discovery finishes.
         const JsonValue* schema = nullptr;
     };
 
@@ -51,11 +51,11 @@ public:
     using Patterns = JsonSchemaStringMap<JsonSchemaRegex>;
 
     [[nodiscard]] static Result<JsonSchemaReferences, JsonSchemaCompileError> Compile(
-        const JsonValue& schema, std::optional<JsonSchemaDialect> dialect, std::size_t maxDepth,
-        const JsonSchemaCompileOptions& options);
+        const Ref<const JsonDocument>& document, std::optional<JsonSchemaDialect> dialect,
+        std::size_t maxDepth, const JsonSchemaCompileOptions& options);
 
     [[nodiscard]] const Resolution* Find(std::string_view referencePath) const;
-    [[nodiscard]] const JsonValue& Documents() const;
+    [[nodiscard]] const std::vector<Ref<const JsonDocument>>& Documents() const;
     [[nodiscard]] std::string SchemaPath(std::string_view path) const;
     [[nodiscard]] std::string SchemaUri(std::string_view path) const;
     [[nodiscard]] const std::string* Resource(std::string_view schemaPath) const;
@@ -70,7 +70,7 @@ public:
 private:
     JsonSchemaStringMap<Resolution> m_targets;
     // Internal paths begin with a document index; public diagnostics omit that prefix.
-    JsonValue m_documents;
+    std::vector<Ref<const JsonDocument>> m_documents;
     std::vector<std::string> m_uris;
     JsonSchemaStringMap<std::string> m_schemaResources;
     JsonSchemaStringMap<Anchors> m_dynamicAnchors;

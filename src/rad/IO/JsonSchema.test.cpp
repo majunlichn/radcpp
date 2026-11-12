@@ -1,13 +1,9 @@
-#include <rad/IO/File.h>
 #include <rad/IO/JsonSchema.h>
 
 #include "JsonSchema.test.h"
 
-#include <boost/filesystem/operations.hpp>
-
 #include <gtest/gtest.h>
 
-#include <filesystem>
 #include <string_view>
 #include <cstddef>
 #include <utility>
@@ -19,6 +15,7 @@
 #include <system_error>
 
 using rad::test::FormatValidationErrors;
+using rad::test::MakeJsonDocument;
 
 TEST(JsonSchema, DocumentationExamples)
 {
@@ -299,88 +296,13 @@ TEST(JsonSchema, DocumentationExamples)
         const auto data = rad::ParseJson(example.data);
         ASSERT_TRUE(data) << data.error().message();
 
-        const auto compiled = rad::JsonSchema::Compile(schema.value());
+        const auto compiled = rad::JsonSchema::Compile(MakeJsonDocument(schema.value()));
         ASSERT_TRUE(compiled) << compiled.error().schemaPath << ": "
                               << compiled.error().message;
         const auto result = compiled.value().Validate(data.value());
         EXPECT_EQ(static_cast<bool>(result), example.valid)
             << FormatValidationErrors(result);
     }
-}
-
-TEST(JsonSchema, CompileFileOptions)
-{
-    const auto path = std::filesystem::temp_directory_path() /
-                      boost::filesystem::unique_path("rad-schema-%%%%-%%%%-%%%%.json").string();
-    ASSERT_TRUE(rad::File::WriteText(path, R"json({"$ref": "child.json"})json"));
-    struct SchemaFile
-    {
-        rad::FilePath path;
-        ~SchemaFile() { EXPECT_TRUE(rad::File::Remove(path)); }
-    } file{path};
-    const rad::JsonSchemaCompileOptions options{
-        .dialect = rad::JsonSchemaDialect::Draft2020_12,
-        .retrievalUri = "https://example.com/root.json",
-        .documents =
-            {
-                {"https://example.com/child.json", rad::JsonObject{{"type", "integer"}}},
-            },
-    };
-    const auto compiled = rad::JsonSchema::CompileFile(path, {}, options);
-    ASSERT_TRUE(compiled) << compiled.error().message;
-    EXPECT_EQ(compiled.value().Dialect(), options.dialect);
-    EXPECT_TRUE(compiled.value().Validate(1));
-    EXPECT_FALSE(compiled.value().Validate("invalid"));
-
-    ASSERT_TRUE(rad::File::WriteText(path, R"json({
-        // Schema files can opt into non-standard JSON syntax.
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "integer",
-    })json"));
-    const auto strict = rad::JsonSchema::CompileFile(path);
-    ASSERT_FALSE(strict);
-    EXPECT_EQ(strict.error().code, rad::JsonSchemaCompileErrorCode::InvalidJson);
-    rad::JsonParseOptions parseOptions;
-    parseOptions.allow_comments = true;
-    parseOptions.allow_trailing_commas = true;
-    const auto parsed = rad::JsonSchema::CompileFile(path, parseOptions);
-    ASSERT_TRUE(parsed) << parsed.error().message;
-    EXPECT_TRUE(parsed.value().Validate(1));
-    EXPECT_FALSE(parsed.value().Validate("invalid"));
-
-    rad::JsonValue nested = true;
-    for (std::size_t index = 0; index < 40; ++index)
-    {
-        nested = rad::JsonObject{{"allOf", rad::JsonArray{std::move(nested)}}};
-    }
-    ASSERT_TRUE(rad::File::WriteText(path, rad::PrettyJson(nested)));
-    const auto parseLimited = rad::JsonSchema::CompileFile(path, {}, options);
-    ASSERT_FALSE(parseLimited);
-    EXPECT_EQ(parseLimited.error().code, rad::JsonSchemaCompileErrorCode::InvalidJson);
-    parseOptions.max_depth = 128;
-    auto compileOptions = options;
-    compileOptions.maxCompilationDepth = 39;
-    const auto compileLimited =
-        rad::JsonSchema::CompileFile(path, parseOptions, compileOptions);
-    ASSERT_FALSE(compileLimited);
-    EXPECT_EQ(compileLimited.error().code,
-              rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
-    EXPECT_EQ(compileLimited.error().schemaUri, options.retrievalUri);
-    compileOptions.maxCompilationDepth = 40;
-    const auto deep = rad::JsonSchema::CompileFile(path, parseOptions, compileOptions);
-    ASSERT_TRUE(deep) << deep.error().message;
-    EXPECT_TRUE(deep.value().Validate(1));
-
-    ASSERT_TRUE(rad::File::WriteText(path, "{"));
-    const auto invalidJson = rad::JsonSchema::CompileFile(path, {}, options);
-    ASSERT_FALSE(invalidJson);
-    EXPECT_EQ(invalidJson.error().code, rad::JsonSchemaCompileErrorCode::InvalidJson);
-    EXPECT_EQ(invalidJson.error().schemaUri, options.retrievalUri);
-
-    const auto missing = rad::JsonSchema::CompileFile(path.string() + ".missing", {}, options);
-    ASSERT_FALSE(missing);
-    EXPECT_EQ(missing.error().code, rad::JsonSchemaCompileErrorCode::FileReadFailed);
-    EXPECT_EQ(missing.error().schemaUri, options.retrievalUri);
 }
 
 TEST(JsonSchema, CompilationDepth)
@@ -390,35 +312,38 @@ TEST(JsonSchema, CompilationDepth)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string rootUri = "https://example.com/root.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/root.json";
         options.maxCompilationDepth = 0;
-        EXPECT_TRUE(rad::JsonSchema::Compile(true, options));
-        EXPECT_TRUE(rad::JsonSchema::Compile(rad::JsonObject{{"type", "integer"}}, options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(MakeJsonDocument(true, rootUri), options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"type", "integer"}}, rootUri), options));
         const rad::JsonValue nested = rad::JsonObject{{"allOf", rad::JsonArray{true, true, true}}};
-        const auto limited = rad::JsonSchema::Compile(nested, options);
+        const auto limited = rad::JsonSchema::Compile(MakeJsonDocument(nested, rootUri), options);
         ASSERT_FALSE(limited);
         EXPECT_EQ(limited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
-        EXPECT_EQ(limited.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(limited.error().schemaUri, rootUri);
         EXPECT_EQ(limited.error().schemaPath, "/allOf/0");
         options.maxCompilationDepth = 1;
-        EXPECT_TRUE(rad::JsonSchema::Compile(nested, options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(MakeJsonDocument(nested, rootUri), options));
 
         options.documents = {
-            {"https://example.com/a.json", rad::JsonObject{{"$ref", "b.json"}}},
-            {"https://example.com/b.json", rad::JsonObject{{"$ref", "c.json"}}},
-            {"https://example.com/c.json", rad::JsonObject{{"type", "integer"}}},
+            MakeJsonDocument(rad::JsonObject{{"$ref", "b.json"}}, "https://example.com/a.json"),
+            MakeJsonDocument(rad::JsonObject{{"$ref", "c.json"}}, "https://example.com/b.json"),
+            MakeJsonDocument(rad::JsonObject{{"type", "integer"}}, "https://example.com/c.json"),
         };
         const rad::JsonValue referenced = rad::JsonObject{{"$ref", "a.json"}};
         options.maxCompilationDepth = 2;
-        const auto referenceLimited = rad::JsonSchema::Compile(referenced, options);
+        const auto referenceLimited =
+            rad::JsonSchema::Compile(MakeJsonDocument(referenced, rootUri), options);
         ASSERT_FALSE(referenceLimited);
         EXPECT_EQ(referenceLimited.error().code,
                   rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
         EXPECT_EQ(referenceLimited.error().schemaUri, "https://example.com/c.json");
         EXPECT_EQ(referenceLimited.error().schemaPath, "");
         options.maxCompilationDepth = 3;
-        const auto compiled = rad::JsonSchema::Compile(referenced, options);
+        const auto compiled =
+            rad::JsonSchema::Compile(MakeJsonDocument(referenced, rootUri), options);
         ASSERT_TRUE(compiled) << compiled.error().message;
         EXPECT_TRUE(compiled.value().Validate(1));
         rad::JsonSchemaValidationOptions validationOptions;
@@ -451,9 +376,9 @@ TEST(JsonSchema, CompilationSharedReferences)
                 {"shared", rad::JsonObject{{"type", "integer"}, {"minimum", 0}}}}},
             {"properties", std::move(properties)},
         };
+        const std::string rootUri = "https://example.com/shared.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/shared.json";
-        const auto compiled = rad::JsonSchema::Compile(schema, options);
+        const auto compiled = rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), options);
         ASSERT_TRUE(compiled) << compiled.error().message;
         EXPECT_TRUE(compiled.value().Validate(rad::JsonObject{{"p0", 1}, {"p511", 2}}));
         const auto invalid = compiled.value().Validate(rad::JsonObject{{"p511", -1}});
@@ -462,14 +387,14 @@ TEST(JsonSchema, CompilationSharedReferences)
         EXPECT_EQ(invalid.errors[0].instancePath, "/p511");
         EXPECT_EQ(invalid.errors[0].schemaPath,
                   "/" + std::string(definitions) + "/shared/minimum");
-        EXPECT_EQ(invalid.errors[0].schemaUri, options.retrievalUri);
+        EXPECT_EQ(invalid.errors[0].schemaUri, rootUri);
 
         schema.as_object().at("properties").as_object().emplace(
             "invalid", rad::JsonObject{{"type", 42}});
-        const auto malformed = rad::JsonSchema::Compile(schema, options);
+        const auto malformed = rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), options);
         ASSERT_FALSE(malformed);
         EXPECT_EQ(malformed.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
-        EXPECT_EQ(malformed.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(malformed.error().schemaUri, rootUri);
         EXPECT_EQ(malformed.error().schemaPath, "/properties/invalid/type");
     }
 }
@@ -480,30 +405,32 @@ TEST(JsonSchema, CompilationVisitedDepth)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string rootUri = "https://example.com/visited.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/visited.json";
         options.maxCompilationDepth = 1;
         const rad::JsonValue schema = rad::JsonObject{
             {"properties", rad::JsonObject{
                 {"shared", rad::JsonObject{{"type", "integer"}}},
                 {"again", rad::JsonObject{{"$ref", "#/properties/shared"}}}}},
         };
-        const auto limited = rad::JsonSchema::Compile(schema, options);
+        const auto limited = rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), options);
         ASSERT_FALSE(limited);
         EXPECT_EQ(limited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
-        EXPECT_EQ(limited.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(limited.error().schemaUri, rootUri);
         EXPECT_EQ(limited.error().schemaPath, "/properties/shared");
         options.maxCompilationDepth = 2;
-        EXPECT_TRUE(rad::JsonSchema::Compile(schema, options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(MakeJsonDocument(schema, rootUri), options));
 
         const rad::JsonValue cycle = rad::JsonObject{{"$ref", "#"}};
         options.maxCompilationDepth = 0;
-        const auto cycleLimited = rad::JsonSchema::Compile(cycle, options);
+        const auto cycleLimited =
+            rad::JsonSchema::Compile(MakeJsonDocument(cycle, rootUri), options);
         ASSERT_FALSE(cycleLimited);
         EXPECT_EQ(cycleLimited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
         EXPECT_EQ(cycleLimited.error().schemaPath, "");
         options.maxCompilationDepth = 1;
-        const auto compiledCycle = rad::JsonSchema::Compile(cycle, options);
+        const auto compiledCycle =
+            rad::JsonSchema::Compile(MakeJsonDocument(cycle, rootUri), options);
         ASSERT_TRUE(compiledCycle) << compiledCycle.error().message;
         EXPECT_EQ(compiledCycle.value().Validate(1).status,
                   rad::JsonSchemaValidationStatus::EvaluationCycleDetected);
@@ -533,13 +460,13 @@ TEST(JsonSchema, DefaultCompilationDepth)
             nested = wrap(std::move(nested));
         }
         rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
-        EXPECT_TRUE(rad::JsonSchema::Compile(nested, options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(MakeJsonDocument(nested), options));
         nested = wrap(std::move(nested));
-        const auto limited = rad::JsonSchema::Compile(nested, options);
+        const auto limited = rad::JsonSchema::Compile(MakeJsonDocument(nested), options);
         ASSERT_FALSE(limited);
         EXPECT_EQ(limited.error().code, rad::JsonSchemaCompileErrorCode::DepthLimitExceeded);
         options.maxCompilationDepth = 129;
-        EXPECT_TRUE(rad::JsonSchema::Compile(nested, options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(MakeJsonDocument(nested), options));
     }
 }
 
@@ -590,8 +517,9 @@ TEST(JsonSchema, ValidationStatusAndErrorLimits)
         EXPECT_FALSE(result);
     }
 
-    const auto compiled = rad::JsonSchema::Compile(
-        rad::JsonObject{{"type", "integer"}}, {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+    const auto compiled =
+        rad::JsonSchema::Compile(MakeJsonDocument(rad::JsonObject{{"type", "integer"}}),
+                                 {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(compiled);
     const auto valid = compiled.value().Validate(1);
     EXPECT_TRUE(valid);
@@ -611,9 +539,9 @@ TEST(JsonSchema, ValidationStatusAndErrorLimits)
         EXPECT_EQ(invalid.errors[0].schemaPath, "/type");
     }
 
-    const auto repeated =
-        rad::JsonSchema::Compile(rad::JsonObject{{"allOf", rad::JsonArray{false, false, false}}},
-                                 {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+    const auto repeated = rad::JsonSchema::Compile(
+        MakeJsonDocument(rad::JsonObject{{"allOf", rad::JsonArray{false, false, false}}}),
+        {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(repeated);
     for (const std::size_t maxErrors : {0U, 1U, 2U, 3U, 4U, 64U})
     {
@@ -658,11 +586,14 @@ TEST(JsonSchema, DuplicateValues)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string rootUri = "https://example.com/duplicates.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/duplicates.json";
         const auto compiled = rad::JsonSchema::Compile(
-            rad::JsonObject{
-                {"properties", rad::JsonObject{{"values", rad::JsonObject{{"uniqueItems", true}}}}}},
+            MakeJsonDocument(
+                rad::JsonObject{
+                    {"properties",
+                     rad::JsonObject{{"values", rad::JsonObject{{"uniqueItems", true}}}}}},
+                rootUri),
             options);
         ASSERT_TRUE(compiled) << compiled.error().message;
         for (const auto& testCase : cases)
@@ -677,7 +608,7 @@ TEST(JsonSchema, DuplicateValues)
                     values.push_back(rad::JsonObject{{"padding", values.size()}});
                 }
                 const auto enumeration = rad::JsonSchema::Compile(
-                    rad::JsonObject{{"enum", values}}, options);
+                    MakeJsonDocument(rad::JsonObject{{"enum", values}}, rootUri), options);
                 const bool rejectEnumeration =
                     dialect == rad::JsonSchemaDialect::Draft7 &&
                     (values.empty() || testCase.duplicate);
@@ -686,7 +617,7 @@ TEST(JsonSchema, DuplicateValues)
                 {
                     EXPECT_EQ(enumeration.error().code,
                               rad::JsonSchemaCompileErrorCode::InvalidSchema);
-                    EXPECT_EQ(enumeration.error().schemaUri, options.retrievalUri);
+                    EXPECT_EQ(enumeration.error().schemaUri, rootUri);
                     EXPECT_EQ(enumeration.error().schemaPath, "/enum");
                     EXPECT_EQ(enumeration.error().message,
                               "enum must be a non-empty array of unique values");
@@ -724,7 +655,9 @@ TEST(JsonSchema, DuplicateValues)
                     ASSERT_EQ(end, token.data() + token.size()) << path;
                     ASSERT_LT(duplicateIndex, values.size());
                     const auto equality = rad::JsonSchema::Compile(
-                        rad::JsonObject{{"const", values[duplicateIndex]}}, options);
+                        MakeJsonDocument(rad::JsonObject{{"const", values[duplicateIndex]}},
+                                         rootUri),
+                        options);
                     ASSERT_TRUE(equality) << equality.error().message;
                     bool repeated = false;
                     for (std::size_t index = 0; index < values.size(); ++index)
@@ -758,10 +691,10 @@ TEST(JsonSchema, EmptyEnum)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string rootUri = "https://example.com/enum.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/enum.json";
-        const auto compiled =
-            rad::JsonSchema::Compile(rad::JsonObject{{"enum", rad::JsonArray{}}}, options);
+        const auto compiled = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"enum", rad::JsonArray{}}}, rootUri), options);
         if (dialect == rad::JsonSchemaDialect::Draft7)
         {
             ASSERT_FALSE(compiled);
@@ -783,19 +716,23 @@ TEST(JsonSchema, EmptyEnum)
                                                  : rad::JsonSchemaValidationStatus::Completed);
                     ASSERT_EQ(result.errors.size(), 1);
                     EXPECT_EQ(result.errors[0].instancePath, "");
-                    EXPECT_EQ(result.errors[0].schemaUri, options.retrievalUri);
+                    EXPECT_EQ(result.errors[0].schemaUri, rootUri);
                     EXPECT_EQ(result.errors[0].schemaPath, "/enum");
                     EXPECT_EQ(result.errors[0].message, "value is not one of the allowed values");
                 }
             }
             const auto alternative = rad::JsonSchema::Compile(
-                rad::JsonObject{{"anyOf", rad::JsonArray{
-                    rad::JsonObject{{"enum", rad::JsonArray{}}}, true}}}, options);
+                MakeJsonDocument(
+                    rad::JsonObject{
+                        {"anyOf",
+                         rad::JsonArray{rad::JsonObject{{"enum", rad::JsonArray{}}}, true}}},
+                    rootUri),
+                options);
             ASSERT_TRUE(alternative);
             EXPECT_TRUE(alternative.value().Validate(nullptr, {.maxErrors = 1}));
         }
-        const auto invalid =
-            rad::JsonSchema::Compile(rad::JsonObject{{"enum", false}}, options);
+        const auto invalid = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"enum", false}}, rootUri), options);
         ASSERT_FALSE(invalid);
         EXPECT_EQ(invalid.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
         EXPECT_EQ(invalid.error().schemaPath, "/enum");
@@ -808,10 +745,10 @@ TEST(JsonSchema, PrefixItemsDefinitions)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string rootUri = "https://example.com/prefix.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/prefix.json";
-        const auto empty =
-            rad::JsonSchema::Compile(rad::JsonObject{{"prefixItems", rad::JsonArray{}}}, options);
+        const auto empty = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"prefixItems", rad::JsonArray{}}}, rootUri), options);
         if (dialect != rad::JsonSchemaDialect::Draft2020_12)
         {
             ASSERT_TRUE(empty);
@@ -820,19 +757,25 @@ TEST(JsonSchema, PrefixItemsDefinitions)
         }
         ASSERT_FALSE(empty);
         EXPECT_EQ(empty.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
-        EXPECT_EQ(empty.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(empty.error().schemaUri, rootUri);
         EXPECT_EQ(empty.error().schemaPath, "/prefixItems");
         EXPECT_EQ(empty.error().message, "prefixItems must be a non-empty array");
 
         const auto nested = rad::JsonSchema::Compile(
-            rad::JsonObject{{"properties", rad::JsonObject{
-                {"x", rad::JsonObject{{"prefixItems", rad::JsonArray{}}}}}}}, options);
+            MakeJsonDocument(
+                rad::JsonObject{
+                    {"properties",
+                     rad::JsonObject{{"x", rad::JsonObject{{"prefixItems", rad::JsonArray{}}}}}}},
+                rootUri),
+            options);
         ASSERT_FALSE(nested);
         EXPECT_EQ(nested.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
         EXPECT_EQ(nested.error().schemaPath, "/properties/x/prefixItems");
 
         const auto valid = rad::JsonSchema::Compile(
-            rad::JsonObject{{"prefixItems", rad::JsonArray{true, false}}}, options);
+            MakeJsonDocument(rad::JsonObject{{"prefixItems", rad::JsonArray{true, false}}},
+                             rootUri),
+            options);
         ASSERT_TRUE(valid);
         EXPECT_TRUE(valid.value().Validate(rad::JsonArray{1}));
         EXPECT_FALSE(valid.value().Validate(rad::JsonArray{1, 2}));
@@ -866,14 +809,15 @@ TEST(JsonSchema, StringLength)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string rootUri = "https://example.com/string-length.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/string-length.json";
         for (const auto& testCase : cases)
         {
             SCOPED_TRACE(testCase.schema);
             const auto schema = rad::ParseJson(testCase.schema);
             ASSERT_TRUE(schema);
-            const auto compiled = rad::JsonSchema::Compile(schema.value(), options);
+            const auto compiled =
+                rad::JsonSchema::Compile(MakeJsonDocument(schema.value(), rootUri), options);
             ASSERT_TRUE(compiled) << compiled.error().message;
             const std::string_view paths[] = {testCase.firstError, testCase.secondError};
             const std::size_t totalErrors =
@@ -893,7 +837,7 @@ TEST(JsonSchema, StringLength)
                 for (std::size_t index = 0; index < result.errors.size(); ++index)
                 {
                     EXPECT_EQ(result.errors[index].instancePath, "");
-                    EXPECT_EQ(result.errors[index].schemaUri, options.retrievalUri);
+                    EXPECT_EQ(result.errors[index].schemaUri, rootUri);
                     EXPECT_EQ(result.errors[index].schemaPath, paths[index]);
                 }
             }
@@ -906,11 +850,14 @@ TEST(JsonSchema, DuplicateDiagnostics)
     for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
                                rad::JsonSchemaDialect::Draft2020_12})
     {
+        const std::string rootUri = "https://example.com/duplicates.json";
         rad::JsonSchemaCompileOptions options{.dialect = dialect};
-        options.retrievalUri = "https://example.com/duplicates.json";
         const auto compiled = rad::JsonSchema::Compile(
-            rad::JsonObject{
-                {"properties", rad::JsonObject{{"values", rad::JsonObject{{"uniqueItems", true}}}}}},
+            MakeJsonDocument(
+                rad::JsonObject{
+                    {"properties",
+                     rad::JsonObject{{"values", rad::JsonObject{{"uniqueItems", true}}}}}},
+                rootUri),
             options);
         ASSERT_TRUE(compiled) << compiled.error().message;
         for (const std::size_t minimumSize : {0U, 256U})
@@ -934,7 +881,7 @@ TEST(JsonSchema, DuplicateDiagnostics)
                                              : rad::JsonSchemaValidationStatus::Completed);
                 ASSERT_EQ(result.errors.size(), 1);
                 EXPECT_EQ(result.errors[0].instancePath, "/values/2");
-                EXPECT_EQ(result.errors[0].schemaUri, options.retrievalUri);
+                EXPECT_EQ(result.errors[0].schemaUri, rootUri);
                 EXPECT_EQ(result.errors[0].schemaPath, "/properties/values/uniqueItems");
                 EXPECT_EQ(result.errors[0].message, "array items must be unique");
             }
@@ -974,12 +921,13 @@ TEST(JsonSchema, DuplicateDefinitionDiagnostics)
         SCOPED_TRACE(testCase.schema);
         const auto schema = rad::ParseJson(testCase.schema);
         ASSERT_TRUE(schema);
+        const std::string rootUri = "https://example.com/duplicates.json";
         rad::JsonSchemaCompileOptions options{.dialect = testCase.dialect};
-        options.retrievalUri = "https://example.com/duplicates.json";
-        const auto compiled = rad::JsonSchema::Compile(schema.value(), options);
+        const auto compiled =
+            rad::JsonSchema::Compile(MakeJsonDocument(schema.value(), rootUri), options);
         ASSERT_FALSE(compiled);
         EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
-        EXPECT_EQ(compiled.error().schemaUri, options.retrievalUri);
+        EXPECT_EQ(compiled.error().schemaUri, rootUri);
         EXPECT_EQ(compiled.error().schemaPath, testCase.path);
         EXPECT_EQ(compiled.error().message, testCase.message);
     }
@@ -1001,13 +949,15 @@ TEST(JsonSchema, HashedDuplicateDefinitions)
             {
                 names.push_back(rad::JsonValue("property" + std::to_string(index)));
             }
-            const auto required =
-                rad::JsonSchema::Compile(rad::JsonObject{{"required", names}}, options);
+            const auto required = rad::JsonSchema::Compile(
+                MakeJsonDocument(rad::JsonObject{{"required", names}}), options);
             ASSERT_FALSE(required);
             EXPECT_EQ(required.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
             EXPECT_EQ(required.error().schemaPath, std::isnan(value) ? "/required/0" : "/required");
-            const auto dependent = rad::JsonSchema::Compile(
-                rad::JsonObject{{dependency, rad::JsonObject{{"trigger", names}}}}, options);
+            const auto dependent =
+                rad::JsonSchema::Compile(MakeJsonDocument(rad::JsonObject{
+                                             {dependency, rad::JsonObject{{"trigger", names}}}}),
+                                         options);
             ASSERT_FALSE(dependent);
             EXPECT_EQ(dependent.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
             EXPECT_EQ(dependent.error().schemaPath,
@@ -1019,16 +969,19 @@ TEST(JsonSchema, HashedDuplicateDefinitions)
         {
             names.push_back(rad::JsonValue("property" + std::to_string(index)));
         }
-        EXPECT_TRUE(rad::JsonSchema::Compile(rad::JsonObject{{"required", names}}, options));
+        EXPECT_TRUE(rad::JsonSchema::Compile(MakeJsonDocument(rad::JsonObject{{"required", names}}),
+                                             options));
         EXPECT_TRUE(rad::JsonSchema::Compile(
-            rad::JsonObject{{dependency, rad::JsonObject{{"trigger", names}}}}, options));
+            MakeJsonDocument(rad::JsonObject{{dependency, rad::JsonObject{{"trigger", names}}}}),
+            options));
         names.push_back(names[0]);
-        const auto required =
-            rad::JsonSchema::Compile(rad::JsonObject{{"required", names}}, options);
+        const auto required = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"required", names}}), options);
         ASSERT_FALSE(required);
         EXPECT_EQ(required.error().schemaPath, "/required");
         const auto dependent = rad::JsonSchema::Compile(
-            rad::JsonObject{{dependency, rad::JsonObject{{"trigger", names}}}}, options);
+            MakeJsonDocument(rad::JsonObject{{dependency, rad::JsonObject{{"trigger", names}}}}),
+            options);
         ASSERT_FALSE(dependent);
         EXPECT_EQ(dependent.error().schemaPath, "/" + std::string(dependency) + "/trigger");
     }
@@ -1042,7 +995,8 @@ TEST(JsonSchema, EvaluationDepth)
     {
         SCOPED_TRACE(static_cast<int>(dialect));
         const auto compiled = rad::JsonSchema::Compile(
-            rad::JsonObject{{"items", rad::JsonObject{{"$ref", "#"}}}}, {.dialect = dialect});
+            MakeJsonDocument(rad::JsonObject{{"items", rad::JsonObject{{"$ref", "#"}}}}),
+            {.dialect = dialect});
         ASSERT_TRUE(compiled) << compiled.error().message;
 
         rad::JsonSchemaValidationOptions options;
@@ -1099,7 +1053,7 @@ TEST(JsonSchema, EvaluationFailurePropagation)
         const auto schema = rad::ParseJson(source);
         ASSERT_TRUE(schema);
         const auto compiled = rad::JsonSchema::Compile(
-            schema.value(), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+            MakeJsonDocument(schema.value()), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
         ASSERT_TRUE(compiled);
         for (const std::size_t maxErrors : {0U, 1U, 2U})
         {
@@ -1119,8 +1073,8 @@ TEST(JsonSchema, EvaluationFailurePropagation)
     const auto schema =
         rad::ParseJson(R"json({"allOf": [false, {"allOf": [true]}, {"allOf": [false]}]})json");
     ASSERT_TRUE(schema);
-    const auto compiled =
-        rad::JsonSchema::Compile(schema.value(), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+    const auto compiled = rad::JsonSchema::Compile(
+        MakeJsonDocument(schema.value()), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(compiled);
     for (const std::size_t maxErrors : {0U, 1U, 2U, 3U, 64U})
     {
@@ -1171,7 +1125,7 @@ TEST(JsonSchema, EvaluationFailureAfterViolations)
         ASSERT_TRUE(schema);
         ASSERT_TRUE(instance);
         const auto compiled = rad::JsonSchema::Compile(
-            schema.value(), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+            MakeJsonDocument(schema.value()), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
         ASSERT_TRUE(compiled) << compiled.error().message;
         for (const std::size_t maxErrors : {0U, 1U, 2U, 3U, 64U})
         {
@@ -1205,8 +1159,8 @@ TEST(JsonSchema, BranchErrorLimit)
             true
         ]})json");
     ASSERT_TRUE(schema);
-    const auto compiled =
-        rad::JsonSchema::Compile(schema.value(), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+    const auto compiled = rad::JsonSchema::Compile(
+        MakeJsonDocument(schema.value()), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(compiled) << compiled.error().message;
 
     rad::JsonSchemaValidationOptions options;
@@ -1277,8 +1231,8 @@ TEST(JsonSchema, ErrorLimitStopsEvaluation)
         const auto instance = rad::ParseJson(testCase.instance);
         ASSERT_TRUE(schema);
         ASSERT_TRUE(instance);
-        const auto compiled =
-            rad::JsonSchema::Compile(schema.value(), {.dialect = testCase.dialect});
+        const auto compiled = rad::JsonSchema::Compile(MakeJsonDocument(schema.value()),
+                                                       {.dialect = testCase.dialect});
         ASSERT_TRUE(compiled) << compiled.error().message;
         for (const std::size_t maxErrors : {0U, 1U, 2U, 3U, 64U})
         {
@@ -1330,7 +1284,7 @@ TEST(JsonSchema, SpeculativeBranchErrorLimits)
         ASSERT_TRUE(schema);
         ASSERT_TRUE(instance);
         const auto compiled = rad::JsonSchema::Compile(
-            schema.value(), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+            MakeJsonDocument(schema.value()), {.dialect = rad::JsonSchemaDialect::Draft2020_12});
         ASSERT_TRUE(compiled) << compiled.error().message;
         for (const std::size_t maxErrors : {0U, 1U, 2U})
         {
@@ -1355,7 +1309,8 @@ TEST(JsonSchema, UnevaluatedItemsDiagnostics)
                                rad::JsonSchemaDialect::Draft2020_12})
     {
         SCOPED_TRACE(static_cast<int>(dialect));
-        const auto compiled = rad::JsonSchema::Compile(schema.value(), {.dialect = dialect});
+        const auto compiled =
+            rad::JsonSchema::Compile(MakeJsonDocument(schema.value()), {.dialect = dialect});
         ASSERT_TRUE(compiled) << compiled.error().message;
         const auto result = compiled.value().Validate(rad::JsonArray{1, "invalid"});
         ASSERT_FALSE(result);
@@ -1374,14 +1329,15 @@ TEST(JsonSchema, UnevaluatedItemsDiagnostics)
         EXPECT_EQ(limited.errors[0].schemaPath, "/unevaluatedItems");
         EXPECT_EQ(limited.errors[0].message, "maximum validation depth exceeded");
 
-        const auto invalid = rad::JsonSchema::Compile(rad::JsonObject{{"unevaluatedItems", 42}},
-                                                      {.dialect = dialect});
+        const auto invalid = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"unevaluatedItems", 42}}), {.dialect = dialect});
         ASSERT_FALSE(invalid);
         EXPECT_EQ(invalid.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
         EXPECT_EQ(invalid.error().schemaPath, "/unevaluatedItems");
     }
-    const auto olderDraft = rad::JsonSchema::Compile(rad::JsonObject{{"unevaluatedItems", 42}},
-                                                     {.dialect = rad::JsonSchemaDialect::Draft7});
+    const auto olderDraft =
+        rad::JsonSchema::Compile(MakeJsonDocument(rad::JsonObject{{"unevaluatedItems", 42}}),
+                                 {.dialect = rad::JsonSchemaDialect::Draft7});
     ASSERT_TRUE(olderDraft) << olderDraft.error().message;
     EXPECT_TRUE(olderDraft.value().Validate(rad::JsonArray{1, "ignored"}));
 }

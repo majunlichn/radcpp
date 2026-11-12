@@ -1,4 +1,3 @@
-#include <rad/IO/File.h>
 #include <rad/IO/JsonSchema.h>
 
 #include "Private/JsonSchema/JsonSchemaRegex.h"
@@ -343,7 +342,7 @@ struct ReferenceTarget
 
 template <typename SelectTarget>
 [[nodiscard]] Result<ReferenceTarget, JsonSchemaCompileError> ResolveSchemaReference(
-    const JsonValue& reference, const JsonValue& documents,
+    const JsonValue& reference, const std::vector<Ref<const JsonDocument>>& documents,
     const detail::JsonSchemaReferences& references, std::string_view schemaPath,
     std::string_view keyword, SelectTarget selectTarget)
 {
@@ -1012,7 +1011,7 @@ private:
 
     JsonSchemaDialect m_dialect;
     std::size_t m_maxDepth;
-    const JsonValue& m_rootSchema;
+    const std::vector<Ref<const JsonDocument>>& m_rootSchema;
     const detail::JsonSchemaReferences& m_references;
     std::optional<JsonSchemaCompileError> m_compileError;
     std::unordered_set<const JsonValue*> m_checkedSchemas;
@@ -1026,7 +1025,7 @@ public:
     using RegexMatchContext = std::optional<detail::JsonSchemaRegex::MatchContext>;
 
     JsonSchemaEvaluator(JsonSchemaDialect dialect, const JsonSchemaValidationOptions& options,
-                        const JsonValue& rootSchema,
+                        const std::vector<Ref<const JsonDocument>>& rootSchema,
                         const detail::JsonSchemaReferences& references,
                         RegexMatchContext& regexContext) :
         m_dialect(dialect),
@@ -2438,7 +2437,7 @@ private:
 
     JsonSchemaDialect m_dialect;
     JsonSchemaValidationOptions m_options;
-    const JsonValue& m_rootSchema;
+    const std::vector<Ref<const JsonDocument>>& m_rootSchema;
     const detail::JsonSchemaReferences& m_references;
     RegexMatchContext& m_regexContext;
     JsonSchemaValidationResult m_result;
@@ -2447,20 +2446,20 @@ private:
     const ActiveEvaluationScope* m_activeEvaluation = nullptr;
 }; // class JsonSchemaEvaluator
 
-[[nodiscard]] Result<detail::JsonSchemaReferences, JsonSchemaCompileError>
-CompileReferences(const JsonValue& schema, std::optional<JsonSchemaDialect> dialect,
-                  const JsonSchemaCompileOptions& compileOptions)
+[[nodiscard]] Result<detail::JsonSchemaReferences, JsonSchemaCompileError> CompileReferences(
+    const Ref<const JsonDocument>& document, std::optional<JsonSchemaDialect> dialect,
+    const JsonSchemaCompileOptions& compileOptions)
 {
     const auto maxCompileDepth = compileOptions.maxCompilationDepth;
     auto references =
-        detail::JsonSchemaReferences::Compile(schema, dialect, maxCompileDepth, compileOptions);
+        detail::JsonSchemaReferences::Compile(document, dialect, maxCompileDepth, compileOptions);
     if (!references)
     {
         return Failure(std::move(references.error()));
     }
     const auto& documents = references.value().Documents();
     JsonSchemaCompiler compiler(references.value(), maxCompileDepth);
-    auto patterns = compiler.CheckSchema(documents.as_array()[0]);
+    auto patterns = compiler.CheckSchema(documents[0]->Root());
     if (!patterns)
     {
         return Failure(std::move(patterns.error()));
@@ -2477,45 +2476,21 @@ JsonSchema::JsonSchema(JsonSchemaDialect dialect,
 {
 }
 
-Result<JsonSchema, JsonSchemaCompileError> JsonSchema::CompileFile(
-    const FilePath& path, const JsonParseOptions& parseOptions,
-    const JsonSchemaCompileOptions& compileOptions)
-{
-    const auto text = File::ReadAllText(path);
-    if (!text)
-    {
-        return Failure(JsonSchemaCompileError{
-            JsonSchemaCompileErrorCode::FileReadFailed,
-            compileOptions.retrievalUri,
-            {},
-            "unable to read schema file: " + path.string(),
-        });
-    }
-
-    const auto schema = ParseJson(*text, parseOptions);
-    if (!schema)
-    {
-        return Failure(JsonSchemaCompileError{
-            JsonSchemaCompileErrorCode::InvalidJson,
-            compileOptions.retrievalUri,
-            {},
-            "unable to parse schema file: " + schema.error().message(),
-        });
-    }
-
-    return Compile(schema.value(), compileOptions);
-}
-
 Result<JsonSchema, JsonSchemaCompileError> JsonSchema::Compile(
-    const JsonValue& schema, const JsonSchemaCompileOptions& compileOptions)
+    Ref<const JsonDocument> document, const JsonSchemaCompileOptions& compileOptions)
 {
+    if (!document)
+    {
+        return Failure(JsonSchemaCompileError{
+            JsonSchemaCompileErrorCode::InvalidSchema, {}, {}, "root schema document is null"});
+    }
     const auto dialect = compileOptions.dialect;
     if (dialect != JsonSchemaDialect::Auto && dialect != JsonSchemaDialect::Draft7 &&
         dialect != JsonSchemaDialect::Draft2019_09 && dialect != JsonSchemaDialect::Draft2020_12)
     {
         return Failure(JsonSchemaCompileError{
             JsonSchemaCompileErrorCode::InvalidDialect,
-            compileOptions.retrievalUri,
+            document->Uri(),
             {},
             "dialect option is not a valid JsonSchemaDialect value",
         });
@@ -2524,7 +2499,7 @@ Result<JsonSchema, JsonSchemaCompileError> JsonSchema::Compile(
     const auto selectedDialect = dialect == JsonSchemaDialect::Auto
                                      ? std::nullopt
                                      : std::optional<JsonSchemaDialect>(dialect);
-    auto references = CompileReferences(schema, selectedDialect, compileOptions);
+    auto references = CompileReferences(document, selectedDialect, compileOptions);
     if (!references)
     {
         return Failure(std::move(references.error()));
@@ -2546,7 +2521,7 @@ JsonSchema::Validate(const JsonValue& instance,
     const auto& documents = m_references->Documents();
     JsonSchemaEvaluator::RegexMatchContext regexContext;
     JsonSchemaEvaluator evaluator(m_dialect, options, documents, *m_references, regexContext);
-    return evaluator.ValidateInstance(documents.as_array()[0], instance);
+    return evaluator.ValidateInstance(documents[0]->Root(), instance);
 }
 
 } // namespace rad

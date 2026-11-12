@@ -1,6 +1,7 @@
 #include "JsonSchemaValues.h"
 
 #include <rad/IO/JsonSchema.h>
+#include <rad/IO/JsonSchema.test.h>
 
 #include <gtest/gtest.h>
 
@@ -11,6 +12,8 @@
 #include <string_view>
 #include <utility>
 #include <bit>
+
+using rad::test::MakeJsonDocument;
 
 namespace
 {
@@ -465,9 +468,9 @@ TEST(JsonSchemaInternalValues, EqualityDepth)
 
 TEST(JsonSchemaInternalValues, DeepDuplicateValues)
 {
-    const auto compiled = rad::JsonSchema::Compile(
-        rad::JsonObject{{"uniqueItems", true}},
-        {.dialect = rad::JsonSchemaDialect::Draft2020_12});
+    const auto compiled =
+        rad::JsonSchema::Compile(MakeJsonDocument(rad::JsonObject{{"uniqueItems", true}}),
+                                 {.dialect = rad::JsonSchemaDialect::Draft2020_12});
     ASSERT_TRUE(compiled);
     for (const std::size_t depth : {64U, 2048U})
     {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <rad/IO/Json.h>
-#include <rad/System/FileSystem.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -27,9 +26,7 @@ enum class JsonSchemaDialect
 
 enum class JsonSchemaCompileErrorCode
 {
-    // CompileFile could not read the supplied schema file.
-    FileReadFailed,
-    // Schema text is not valid JSON.
+    // Bundled meta-schema text is not valid JSON.
     InvalidJson,
 
     // Auto was selected and the root schema has no $schema declaration.
@@ -128,22 +125,15 @@ struct JsonSchemaValidationOptions
     JsonSchemaRegexLimits regex;
 };
 
-struct JsonSchemaDocument
-{
-    // Absolute, fragment-free retrieval URI. No file or network access is performed.
-    std::string uri;
-    JsonValue schema;
-};
-
 struct JsonSchemaCompileOptions
 {
     // Auto follows the root $schema declaration; a missing declaration is an error.
     JsonSchemaDialect dialect = JsonSchemaDialect::Auto;
-    // Empty means an anonymous root; otherwise an absolute, fragment-free retrieval URI.
-    std::string retrievalUri;
-    // Compilation owns copies of reachable documents; unused documents are not validated.
-    // Retrieval URIs and resource identifiers must not conflict.
-    std::vector<JsonSchemaDocument> documents;
+    // Documents registered for offline reference and meta-schema resolution.
+    // Each must be non-null with an absolute, fragment-free URI.
+    // URIs and resource identifiers must not conflict with the root or each other.
+    // Unused schemas are not validated.
+    std::vector<Ref<const JsonDocument>> documents;
     // Maximum recursive traversal depth during schema and meta-schema compilation.
     // Each traversal starts at zero. Zero is restrictive, not unlimited.
     // Independent of JSON parsing and instance evaluation depth; not a total work budget.
@@ -155,7 +145,9 @@ struct JsonSchemaCompileOptions
 // Compilation checks definitions, binds static reference targets, and prepares regular expressions.
 // JsonSchemaCompileOptions::maxCompilationDepth guards recursive compilation independently of
 // parsing and validation options; it is not a JSON nesting or reference-count limit.
-// Compiled schemas own their documents and expressions; copies share immutable state.
+// Compiled schemas retain input documents without copying JSON and own prepared expressions.
+// Retained documents and their URIs must not be modified while a compiled schema uses them.
+// Copies share compiled state.
 // Instance evaluation keeps diagnostics and resource scopes local to each call.
 // Validation passes only with Completed status and an empty error list.
 // Status describes why validation ended; errors contain source locations and explanations.
@@ -191,7 +183,7 @@ struct JsonSchemaCompileOptions
 //   a missing fragment in a registered document is an error, not a built-in fallback.
 // - $ref targets are static. $dynamicRef can rebind named dynamic anchors through the active
 //   resource scope; JSON Pointer targets and ordinary anchors remain static.
-// - CompileFile reads only the supplied file and does not use its path as a retrieval URI.
+// - Resolution performs no file or network access; URIs identify registered resources.
 //
 // Dialects and vocabularies:
 // - Draft 2019-09 and 2020-12 support registered custom meta-schemas. A resource's $schema
@@ -239,12 +231,11 @@ struct JsonSchemaCompileOptions
 class JsonSchema
 {
 public:
+    // document must be non-null; URI must be empty or absolute and fragment-free.
+    // URI is the initial base before $id; empty means an anonymous root.
+    // Null documents and invalid URIs report InvalidSchema.
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> Compile(
-        const JsonValue& schema, const JsonSchemaCompileOptions& options = {});
-    // Parse options apply only to the supplied file, not registered or bundled documents.
-    [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> CompileFile(
-        const FilePath& path, const JsonParseOptions& parseOptions = {},
-        const JsonSchemaCompileOptions& compileOptions = {});
+        Ref<const JsonDocument> document, const JsonSchemaCompileOptions& options = {});
 
     // Returns the resolved standard draft, never Auto, including for a custom vocabulary dialect.
     [[nodiscard]] JsonSchemaDialect Dialect() const noexcept;
