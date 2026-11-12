@@ -1128,6 +1128,82 @@ TEST(JsonSchemaReferences, DynamicAnchorTargetCompilation)
     EXPECT_EQ(result.errors[0].schemaUri, "https://example.com/child.json");
 }
 
+TEST(JsonSchemaReferences, MultipleOfTargetsAndCopies)
+{
+    const std::string integerUri = "https://example.com/integer.json";
+    const std::string fractionUri = "https://example.com/fraction.json";
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.documents = {
+            MakeJsonDocument(rad::JsonObject{{"multipleOf", 3}}, integerUri),
+            MakeJsonDocument(rad::JsonObject{{"multipleOf", 0.25}}, fractionUri),
+        };
+        const auto compiled = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"properties", rad::JsonObject{
+                {"integer", rad::JsonObject{{"$ref", integerUri}}},
+                {"fraction", rad::JsonObject{{"$ref", fractionUri}}}}}}),
+            options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        auto copied = compiled.value();
+        auto moved = std::move(copied);
+        options.documents.clear();
+        for (const std::size_t maxErrors : {1U, 64U})
+        {
+            rad::JsonSchemaValidationOptions validation;
+            validation.maxErrors = maxErrors;
+            EXPECT_TRUE(moved.Validate(rad::JsonObject{{"integer", 9.0}, {"fraction", 0.5}},
+                                       validation));
+            const auto result =
+                moved.Validate(rad::JsonObject{{"integer", 10.0}, {"fraction", 0.625}}, validation);
+            ASSERT_FALSE(result);
+            ASSERT_EQ(result.errors.size(), maxErrors == 1 ? 1 : 2);
+            EXPECT_EQ(result.status, maxErrors == 1
+                                         ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                         : rad::JsonSchemaValidationStatus::Completed);
+            EXPECT_EQ(result.errors[0].instancePath, "/integer");
+            EXPECT_EQ(result.errors[0].schemaUri, integerUri);
+            EXPECT_EQ(result.errors[0].schemaPath, "/multipleOf");
+            if (maxErrors > 1)
+            {
+                EXPECT_EQ(result.errors[1].instancePath, "/fraction");
+                EXPECT_EQ(result.errors[1].schemaUri, fractionUri);
+                EXPECT_EQ(result.errors[1].schemaPath, "/multipleOf");
+            }
+        }
+    }
+}
+
+TEST(JsonSchemaReferences, DynamicDivisorTargets)
+{
+    const auto child = rad::ParseJson(R"json({"$defs": {
+        "entry": {"$dynamicRef": "other.json#node"},
+        "hidden": {"$dynamicAnchor": "node", "multipleOf": 3}
+    }})json");
+    ASSERT_TRUE(child);
+    const std::string childUri = "https://example.com/child.json";
+    rad::JsonSchemaCompileOptions options;
+    options.documents = {
+        MakeJsonDocument(child.value(), childUri),
+        MakeJsonDocument(rad::JsonObject{{"$dynamicAnchor", "node"}, {"multipleOf", 7}},
+                         "https://example.com/other.json"),
+    };
+    const auto compiled = rad::JsonSchema::Compile(
+        MakeJsonDocument(rad::JsonObject{{"$ref", "child.json#/$defs/entry"}},
+                         "https://example.com/root.json"),
+        options);
+    ASSERT_TRUE(compiled) << compiled.error().message;
+    EXPECT_TRUE(compiled.value().Validate(9.0));
+    const auto result = compiled.value().Validate(7.0);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(result.errors.size(), 1);
+    EXPECT_EQ(result.status, rad::JsonSchemaValidationStatus::Completed);
+    EXPECT_EQ(result.errors[0].schemaUri, childUri);
+    EXPECT_EQ(result.errors[0].schemaPath, "/$defs/hidden/multipleOf");
+}
+
 TEST(JsonSchemaReferences, DynamicUnevaluatedAnnotations)
 {
     struct Case

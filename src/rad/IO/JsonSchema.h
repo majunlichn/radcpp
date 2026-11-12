@@ -213,7 +213,8 @@ struct JsonSchemaCompileOptions
 // - Size and count bounds accept finite non-negative integers beyond container size limits.
 //   Comparisons do not narrow these bounds to the container's size type.
 // - multipleOf uses exact arithmetic on integers and shortest round-trip decimal representations
-//   of doubles. Enabled divisors are checked for positivity and finiteness during compilation.
+//   of doubles. Enabled divisors are checked for positivity and finiteness and converted once
+//   during compilation. Pure-integer validation still uses integer remainders without a lookup.
 //   No epsilon is used. Original numeric text is not retained; a computed value
 //   such as 0.1 + 0.2 need not be a multiple of 0.1.
 //

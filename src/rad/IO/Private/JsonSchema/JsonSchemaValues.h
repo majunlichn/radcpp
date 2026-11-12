@@ -12,6 +12,12 @@
 namespace rad::detail
 {
 
+struct JsonSchemaDecimalNumber
+{
+    std::uint64_t coefficient;
+    int exponent;
+};
+
 [[nodiscard]] bool IsNumber(const JsonValue& value) noexcept;
 [[nodiscard]] long double AsNumber(const JsonValue& value) noexcept;
 [[nodiscard]] std::partial_ordering CompareNumbers(const JsonValue& left,

@@ -125,11 +125,7 @@ template <typename OnError>
     return static_cast<std::uint64_t>(-(integer + 1)) + 1;
 }
 
-struct DecimalNumber
-{
-    std::uint64_t coefficient;
-    int exponent;
-};
+using DecimalNumber = detail::JsonSchemaDecimalNumber;
 
 [[nodiscard]] Result<DecimalNumber, std::string> AsDecimal(const JsonValue& value)
 {
@@ -431,6 +427,11 @@ public:
         return m_evaluationRequirements;
     }
 
+    [[nodiscard]] detail::JsonSchemaReferences::Divisors TakeDivisors()
+    {
+        return std::move(m_divisors);
+    }
+
 private:
     [[nodiscard]] std::optional<ReferenceTarget>
     ResolveReference(const JsonValue& reference, std::string_view schemaPath,
@@ -713,6 +714,18 @@ private:
                 AsNumber(*value) <= 0)
             {
                 AddError(keywordPath, "multipleOf must be a positive finite number");
+            }
+            else
+            {
+                const auto divisor = AsDecimal(*value);
+                if (!divisor)
+                {
+                    AddError(keywordPath, divisor.error());
+                }
+                else
+                {
+                    m_divisors.push_back({value, divisor.value()});
+                }
             }
         }
 
@@ -1024,6 +1037,7 @@ private:
     std::unordered_set<const JsonValue*> m_checkedSchemas;
     std::vector<std::string> m_checkedResources;
     detail::JsonSchemaReferences::Patterns m_patterns;
+    detail::JsonSchemaReferences::Divisors m_divisors;
     detail::JsonSchemaReferences::EvaluationRequirements m_evaluationRequirements;
 }; // class JsonSchemaCompiler
 
@@ -2369,13 +2383,15 @@ private:
                     AddError(instancePath, ChildPath(schemaPath, "multipleOf"), value.error());
                     return;
                 }
-                const auto divisor = AsDecimal(*multipleOf);
-                if (!divisor)
+                const auto* divisor = m_references.FindDivisor(*multipleOf);
+                if (divisor == nullptr)
                 {
-                    AddError(instancePath, ChildPath(schemaPath, "multipleOf"), divisor.error());
+                    AddEvaluationError(JsonSchemaValidationStatus::InternalError, instancePath,
+                                       ChildPath(schemaPath, "multipleOf"),
+                                       "compiled multipleOf divisor does not exist");
                     return;
                 }
-                isMultiple = IsDecimalMultiple(value.value(), divisor.value());
+                isMultiple = IsDecimalMultiple(value.value(), *divisor);
             }
             if (!isMultiple)
             {
@@ -2480,6 +2496,7 @@ private:
         return Failure(std::move(patterns.error()));
     }
     references.value().SetPatterns(std::move(patterns.value()));
+    references.value().SetDivisors(compiler.TakeDivisors());
     references.value().SetEvaluationRequirements(compiler.Requirements());
     return references;
 }

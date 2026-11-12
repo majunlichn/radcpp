@@ -5,12 +5,14 @@
 #include "JsonSchemaDialects.h"
 #include "JsonSchemaRegex.h"
 #include "JsonSchemaPaths.h"
+#include "JsonSchemaValues.h"
 
 #include <cstddef>
 #include <functional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 namespace rad::detail
 {
@@ -50,6 +52,14 @@ public:
     using Anchors = std::unordered_map<std::string, std::string>;
     using Patterns = JsonSchemaStringMap<JsonSchemaRegex>;
 
+    struct Divisor
+    {
+        const JsonValue* value;
+        JsonSchemaDecimalNumber number;
+    };
+
+    using Divisors = std::vector<Divisor>;
+
     // Conservative across checked schemas, including reference and dynamic-anchor targets.
     struct EvaluationRequirements
     {
@@ -73,6 +83,8 @@ public:
     [[nodiscard]] const JsonSchemaCompileError* ProfileError(std::string_view schemaPath) const;
     void SetPatterns(Patterns patterns);
     [[nodiscard]] const JsonSchemaRegex* FindPattern(std::string_view schemaPath) const;
+    void SetDivisors(Divisors divisors);
+    [[nodiscard]] const JsonSchemaDecimalNumber* FindDivisor(const JsonValue& value) const;
     void SetEvaluationRequirements(EvaluationRequirements requirements);
     [[nodiscard]] EvaluationRequirements Requirements() const noexcept;
 
@@ -87,6 +99,8 @@ private:
     JsonSchemaStringMap<JsonSchemaVocabularyProfile> m_profiles;
     JsonSchemaStringMap<JsonSchemaCompileError> m_profileErrors;
     Patterns m_patterns;
+    // Sorted by the addresses of multipleOf values in the retained documents.
+    Divisors m_divisors;
     EvaluationRequirements m_evaluationRequirements;
 }; // class JsonSchemaReferences
 

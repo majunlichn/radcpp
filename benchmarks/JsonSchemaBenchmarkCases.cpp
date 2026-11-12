@@ -4,6 +4,7 @@
 #include <string_view>
 #include <utility>
 #include <cstdint>
+#include <format>
 
 namespace benchmark
 {
@@ -329,7 +330,7 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
 }
 
 [[nodiscard]] JsonSchemaBenchmarkCase MakeMultipleOf(std::string name, JsonValue divisor,
-                                                     bool nested)
+                                                     bool nested, bool floatingInstances)
 {
     constexpr std::string_view property = "monthly/accounting~balances";
     auto testCase = MakeCase(
@@ -352,13 +353,24 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
         for (std::size_t index = 0; index < count; ++index)
         {
             const auto value = batch * count + index;
-            values.push_back(divisor.is_double() ? JsonValue(static_cast<double>(value) * 0.25)
-                                                : JsonValue(value * 3));
+            if (floatingInstances)
+            {
+                const auto step = divisor.is_double()
+                                      ? divisor.as_double()
+                                      : static_cast<double>(divisor.as_int64());
+                values.emplace_back(
+                    Parse(std::format("{:.2f}", static_cast<double>(value) * step)).as_double());
+            }
+            else
+            {
+                values.emplace_back(value * 3);
+            }
         }
         JsonValue valid = std::move(values);
         auto early = valid;
         auto late = valid;
-        const JsonValue invalid = divisor.is_double() ? JsonValue(0.125) : JsonValue(1);
+        const JsonValue invalid = divisor.is_double() ? JsonValue(0.125)
+                                  : floatingInstances ? JsonValue(1.0) : JsonValue(1);
         early.as_array().front() = invalid;
         late.as_array().back() = invalid;
         if (nested)
@@ -370,6 +382,20 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
         AddPair(testCase, std::move(valid), std::move(early));
         testCase.corpora[2].instances.push_back(std::move(late));
     }
+    return testCase;
+}
+
+[[nodiscard]] JsonSchemaBenchmarkCase MakeManyDivisors()
+{
+    auto testCase = MakeMultipleOf("multiple_many_divisors_1024", 0.25, false, true);
+    auto schema = testCase.schema->Root();
+    JsonArray prefix;
+    for (std::size_t index = 0; index < 256; ++index)
+    {
+        prefix.emplace_back(JsonObject{{"multipleOf", 0.25}});
+    }
+    schema.as_object()["prefixItems"] = std::move(prefix);
+    testCase.schema = rad::JsonDocument::FromValue(std::move(schema));
     return testCase;
 }
 
@@ -453,9 +479,13 @@ std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
                                JsonArray{"integer", "null", "boolean", "array", "string"}),
             MakeTypeValidation("type_union_last_1024",
                                JsonArray{"null", "boolean", "array", "string", "integer"}),
-            MakeMultipleOf("multiple_integer_1024", 3, false),
-            MakeMultipleOf("multiple_decimal_1024", 0.25, false),
-            MakeMultipleOf("multiple_nested_decimal_1024", 0.25, true)};
+            MakeMultipleOf("multiple_integer_1024", 3, false, false),
+            MakeMultipleOf("multiple_decimal_1024", 0.25, false, true),
+            MakeMultipleOf("multiple_nested_decimal_1024", 0.25, true, true),
+            MakeMultipleOf("multiple_integer_instances_1024", 0.25, false, false),
+            MakeMultipleOf("multiple_integer_divisor_1024", 3, false, true),
+            MakeMultipleOf("multiple_cents_1024", 0.01, false, true),
+            MakeManyDivisors()};
 }
 
 } // namespace benchmark

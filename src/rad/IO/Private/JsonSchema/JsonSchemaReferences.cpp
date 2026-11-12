@@ -1005,6 +1005,23 @@ const JsonSchemaRegex* JsonSchemaReferences::FindPattern(std::string_view schema
     return found == m_patterns.end() ? nullptr : &found->second;
 }
 
+void JsonSchemaReferences::SetDivisors(Divisors divisors)
+{
+    std::sort(divisors.begin(), divisors.end(),
+              [](const Divisor& left, const Divisor& right)
+              { return std::less<const JsonValue*>{}(left.value, right.value); });
+    m_divisors = std::move(divisors);
+}
+
+const JsonSchemaDecimalNumber* JsonSchemaReferences::FindDivisor(const JsonValue& value) const
+{
+    const auto found = std::lower_bound(
+        m_divisors.begin(), m_divisors.end(), &value,
+        [](const Divisor& divisor, const JsonValue* key)
+        { return std::less<const JsonValue*>{}(divisor.value, key); });
+    return found != m_divisors.end() && found->value == &value ? &found->number : nullptr;
+}
+
 void JsonSchemaReferences::SetEvaluationRequirements(EvaluationRequirements requirements)
 {
     m_evaluationRequirements = requirements;
