@@ -493,8 +493,9 @@ TEST(JsonSchemaDialects, CustomSelection)
             "$schema": "https://example.com/applicator",
             "type": 42, "enum": [], "required": false, "pattern": 1,
             "minLength": false, "maxLength": false,
-            "minimum": false, "minContains": "ignored", "uniqueItems": 1,
-            "dependentRequired": 4, "properties": {"value": {"minimum": false}}
+            "minimum": false, "multipleOf": 0, "minContains": "ignored", "uniqueItems": 1,
+            "dependentRequired": 4,
+            "properties": {"value": {"minimum": false, "multipleOf": false}}
         })json");
         ASSERT_TRUE(loose);
         const auto inferred =
@@ -503,6 +504,8 @@ TEST(JsonSchemaDialects, CustomSelection)
                               << inferred.error().message;
         EXPECT_EQ(inferred.value().Dialect(), dialect);
         EXPECT_TRUE(inferred.value().Validate(rad::JsonObject{{"value", 1}}));
+        EXPECT_TRUE(inferred.value().Validate(1));
+        EXPECT_TRUE(inferred.value().Validate(1.5));
         EXPECT_TRUE(inferred.value().Validate(""));
         EXPECT_TRUE(inferred.value().Validate(rad::JsonValue(std::string(4096, 'a'))));
         for (const auto selected :

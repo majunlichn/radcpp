@@ -285,6 +285,7 @@ int RunBenchmark(const Options& options)
     csv << "case,phase,corpus,max_errors,us_per_op\n";
 
     std::size_t caseIndex = 0;
+    std::size_t resultCount = 0;
     for (const auto& testCase : cases)
     {
         std::cout << '[' << ++caseIndex << '/' << cases.size() << "] " << testCase.name << '\n';
@@ -294,6 +295,7 @@ int RunBenchmark(const Options& options)
                 const auto compiled = Compile(testCase);
                 return std::uint64_t{1};
             });
+        ++resultCount;
 
         const auto schema = Compile(testCase);
         for (const auto& corpus : testCase.corpora)
@@ -312,12 +314,13 @@ int RunBenchmark(const Options& options)
                         }
                         return static_cast<std::uint64_t>(corpus.instances.size());
                     });
+                ++resultCount;
             }
         }
         csv.flush();
     }
     csv.close();
-    std::cout << "Wrote " << cases.size() * 5 << " results to " << options.output << '\n';
+    std::cout << "Wrote " << resultCount << " results to " << options.output << '\n';
     return 0;
 }
 

@@ -439,6 +439,57 @@ TEST(JsonSchemaNumbers, MultipleOfDecimalSemantics)
     }
 }
 
+TEST(JsonSchemaNumbers, MultipleOfNestedDiagnostics)
+{
+    struct Case
+    {
+        rad::JsonValue divisor;
+        rad::JsonValue valid;
+        rad::JsonValue invalid;
+    };
+    const Case cases[] = {{3, 6, 7}, {0.1, 0.3, 0.1 + 0.2}};
+    const std::string uri = "https://example.com/numbers.json";
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(rad::PrettyJson(testCase.divisor));
+            const auto compiled = rad::JsonSchema::Compile(
+                MakeJsonDocument(
+                    rad::JsonObject{{"properties", rad::JsonObject{
+                        {"accounting/records~", rad::JsonObject{
+                            {"items", rad::JsonObject{{"multipleOf", testCase.divisor}}}}}}}},
+                    uri),
+                {.dialect = dialect});
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            const rad::JsonValue valid =
+                rad::JsonObject{{"accounting/records~", rad::JsonArray{testCase.valid}}};
+            const rad::JsonValue invalid =
+                rad::JsonObject{{"accounting/records~", rad::JsonArray{testCase.invalid}}};
+            for (const std::size_t maxErrors : {0U, 1U, 64U})
+            {
+                rad::JsonSchemaValidationOptions options;
+                options.maxErrors = maxErrors;
+                EXPECT_TRUE(compiled.value().Validate(valid, options));
+                const auto result = compiled.value().Validate(invalid, options);
+                ASSERT_FALSE(result);
+                ASSERT_EQ(result.errors.size(), 1);
+                EXPECT_EQ(result.status, maxErrors <= 1
+                                             ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                             : rad::JsonSchemaValidationStatus::Completed);
+                EXPECT_EQ(result.errors[0].instancePath, "/accounting~1records~0/0");
+                EXPECT_EQ(result.errors[0].schemaUri, uri);
+                EXPECT_EQ(result.errors[0].schemaPath,
+                          "/properties/accounting~1records~0/items/multipleOf");
+                EXPECT_EQ(result.errors[0].message,
+                          "number is not a multiple of the required value");
+            }
+        }
+    }
+}
+
 TEST(JsonSchemaNumbers, MultipleOfDecimalGrid)
 {
     const auto powerOfTen = [](int exponent)

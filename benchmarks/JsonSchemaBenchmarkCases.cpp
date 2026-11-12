@@ -328,6 +328,51 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
     return testCase;
 }
 
+[[nodiscard]] JsonSchemaBenchmarkCase MakeMultipleOf(std::string name, JsonValue divisor,
+                                                     bool nested)
+{
+    constexpr std::string_view property = "monthly/accounting~balances";
+    auto testCase = MakeCase(
+        std::move(name),
+        nested ? R"json({"properties": {"monthly/accounting~balances":
+                     {"type": "array", "items": {"multipleOf": 1}}}})json"
+               : R"json({"type": "array", "items": {"multipleOf": 1}})json");
+    auto schema = testCase.schema->Root();
+    auto& arraySchema = nested ? schema.as_object().at("properties").as_object().at(property)
+                               : schema;
+    arraySchema.as_object().at("items").as_object()["multipleOf"] = divisor;
+    testCase.schema = rad::JsonDocument::FromValue(std::move(schema));
+    testCase.corpora[1].name = "invalid_early";
+    testCase.corpora.push_back({"invalid_late", {}, 1});
+    constexpr std::size_t count = 1024;
+    for (std::uint64_t batch = 0; batch < 4; ++batch)
+    {
+        JsonArray values;
+        values.reserve(count);
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const auto value = batch * count + index;
+            values.push_back(divisor.is_double() ? JsonValue(static_cast<double>(value) * 0.25)
+                                                : JsonValue(value * 3));
+        }
+        JsonValue valid = std::move(values);
+        auto early = valid;
+        auto late = valid;
+        const JsonValue invalid = divisor.is_double() ? JsonValue(0.125) : JsonValue(1);
+        early.as_array().front() = invalid;
+        late.as_array().back() = invalid;
+        if (nested)
+        {
+            valid = JsonObject{{property, std::move(valid)}};
+            early = JsonObject{{property, std::move(early)}};
+            late = JsonObject{{property, std::move(late)}};
+        }
+        AddPair(testCase, std::move(valid), std::move(early));
+        testCase.corpora[2].instances.push_back(std::move(late));
+    }
+    return testCase;
+}
+
 [[nodiscard]] JsonSchemaBenchmarkCase MakeUniqueIds(std::size_t count)
 {
     auto testCase = MakeCase("unique_ids_" + std::to_string(count), R"json({
@@ -407,7 +452,10 @@ std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
             MakeTypeValidation("type_union_first_1024",
                                JsonArray{"integer", "null", "boolean", "array", "string"}),
             MakeTypeValidation("type_union_last_1024",
-                               JsonArray{"null", "boolean", "array", "string", "integer"})};
+                               JsonArray{"null", "boolean", "array", "string", "integer"}),
+            MakeMultipleOf("multiple_integer_1024", 3, false),
+            MakeMultipleOf("multiple_decimal_1024", 0.25, false),
+            MakeMultipleOf("multiple_nested_decimal_1024", 0.25, true)};
 }
 
 } // namespace benchmark

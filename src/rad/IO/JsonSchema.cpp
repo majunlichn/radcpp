@@ -2356,12 +2356,6 @@ private:
         }
         if (const auto* multipleOf = schema.if_contains("multipleOf"))
         {
-            const auto keywordPath = ChildPath(schemaPath, "multipleOf");
-            if (!IsNumber(*multipleOf) || AsNumber(*multipleOf) <= 0)
-            {
-                AddError(instancePath, keywordPath, "multipleOf must be a positive number");
-                return;
-            }
             bool isMultiple = false;
             if (!instance.is_double() && !multipleOf->is_double())
             {
@@ -2372,20 +2366,20 @@ private:
                 const auto value = AsDecimal(instance);
                 if (!value)
                 {
-                    AddError(instancePath, keywordPath, value.error());
+                    AddError(instancePath, ChildPath(schemaPath, "multipleOf"), value.error());
                     return;
                 }
                 const auto divisor = AsDecimal(*multipleOf);
                 if (!divisor)
                 {
-                    AddError(instancePath, keywordPath, divisor.error());
+                    AddError(instancePath, ChildPath(schemaPath, "multipleOf"), divisor.error());
                     return;
                 }
                 isMultiple = IsDecimalMultiple(value.value(), divisor.value());
             }
             if (!isMultiple)
             {
-                AddError(instancePath, keywordPath,
+                AddError(instancePath, ChildPath(schemaPath, "multipleOf"),
                          "number is not a multiple of the required value");
             }
         }
