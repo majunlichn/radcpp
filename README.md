@@ -66,3 +66,7 @@ Use the same configuration throughout.
 **Runtime outputs** are in `build/bin/` for single-config builds or `build/bin/<Config>/` for
 multi-config builds. When running the test executable directly, use that directory as the
 working directory to keep logs, temporary files, and other test outputs out of the source tree.
+
+## Benchmarks
+
+- [JsonSchemaBenchmark](benchmarks/): measures JSON Schema compilation and validation performance.

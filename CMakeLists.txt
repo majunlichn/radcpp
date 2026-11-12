@@ -18,6 +18,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Build options
 option(RAD_BUILD_TESTS "Build tests" ON)
+option(RAD_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(RAD_ENABLE_INSTALL "Enable installation rules" ON)
 set(JSON_SCHEMA_TEST_SUITE_ROOT "" CACHE PATH
     "Local JSON Schema test suite root; leave empty to download automatically")
@@ -367,6 +368,27 @@ if(RAD_BUILD_TESTS)
         VERBATIM
     )
     gtest_discover_tests(rad_tests)
+endif()
+
+if(RAD_BUILD_BENCHMARKS)
+    add_executable(rad_jsonschema_bench
+        benchmarks/JsonSchemaBenchmark.cpp
+        benchmarks/JsonSchemaBenchmarkCases.h
+        benchmarks/JsonSchemaBenchmarkCases.cpp
+    )
+    source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks"
+        FILES
+            benchmarks/JsonSchemaBenchmark.cpp
+            benchmarks/JsonSchemaBenchmarkCases.h
+            benchmarks/JsonSchemaBenchmarkCases.cpp
+    )
+    target_link_libraries(rad_jsonschema_bench PRIVATE rad::rad)
+    target_compile_definitions(rad_jsonschema_bench PRIVATE
+        RAD_BENCHMARK_BUILD_CONFIG="$<CONFIG>"
+    )
+    set_target_properties(rad_jsonschema_bench PROPERTIES
+        VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:rad_jsonschema_bench>"
+    )
 endif()
 
 if(RAD_ENABLE_INSTALL)
