@@ -1128,6 +1128,73 @@ TEST(JsonSchemaReferences, DynamicAnchorTargetCompilation)
     EXPECT_EQ(result.errors[0].schemaUri, "https://example.com/child.json");
 }
 
+TEST(JsonSchemaReferences, DynamicUnevaluatedAnnotations)
+{
+    struct Case
+    {
+        std::string_view schema;
+        std::string_view valid;
+        std::string_view invalid;
+        std::string_view instancePath;
+        std::string_view schemaPath;
+    };
+    constexpr Case cases[] = {
+        {R"json({"$dynamicAnchor": "node",
+                 "allOf": [{"properties": {"known": true}}],
+                 "unevaluatedProperties": false})json",
+         R"json({"known": 1})json", R"json({"known": 1, "extra": 2})json",
+         "/extra", "/$defs/hidden/unevaluatedProperties"},
+        {R"json({"$dynamicAnchor": "node",
+                 "allOf": [{"prefixItems": [true]}],
+                 "unevaluatedItems": false})json",
+         "[1]", "[1, 2]", "/1", "/$defs/hidden/unevaluatedItems"},
+    };
+    const std::string childUri = "https://example.com/child.json";
+    for (const auto& testCase : cases)
+    {
+        SCOPED_TRACE(testCase.schema);
+        const auto hidden = rad::ParseJson(testCase.schema);
+        const auto valid = rad::ParseJson(testCase.valid);
+        const auto invalid = rad::ParseJson(testCase.invalid);
+        ASSERT_TRUE(hidden);
+        ASSERT_TRUE(valid);
+        ASSERT_TRUE(invalid);
+        rad::JsonSchemaCompileOptions options{.dialect = rad::JsonSchemaDialect::Draft2020_12};
+        options.documents = {
+            MakeJsonDocument(
+                rad::JsonObject{{"$defs", rad::JsonObject{
+                    {"entry", rad::JsonObject{{"$dynamicRef", "other.json#node"}}},
+                    {"hidden", hidden.value()}}}},
+                childUri),
+            MakeJsonDocument(rad::JsonObject{{"$dynamicAnchor", "node"}},
+                             "https://example.com/other.json"),
+        };
+        const auto compiled = rad::JsonSchema::Compile(
+            MakeJsonDocument(rad::JsonObject{{"$ref", "child.json#/$defs/entry"}},
+                             "https://example.com/root.json"),
+            options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        auto copied = compiled.value();
+        auto moved = std::move(copied);
+        for (const std::size_t maxErrors : {1U, 64U})
+        {
+            SCOPED_TRACE(maxErrors);
+            rad::JsonSchemaValidationOptions validation;
+            validation.maxErrors = maxErrors;
+            EXPECT_TRUE(moved.Validate(valid.value(), validation));
+            const auto result = moved.Validate(invalid.value(), validation);
+            ASSERT_FALSE(result);
+            ASSERT_EQ(result.errors.size(), 1);
+            EXPECT_EQ(result.status, maxErrors == 1
+                                         ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                         : rad::JsonSchemaValidationStatus::Completed);
+            EXPECT_EQ(result.errors[0].instancePath, testCase.instancePath);
+            EXPECT_EQ(result.errors[0].schemaPath, testCase.schemaPath);
+            EXPECT_EQ(result.errors[0].schemaUri, childUri);
+        }
+    }
+}
+
 TEST(JsonSchemaReferences, DynamicResourceLimits)
 {
     struct Case

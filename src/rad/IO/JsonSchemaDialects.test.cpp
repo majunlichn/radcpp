@@ -739,6 +739,49 @@ TEST(JsonSchemaDialects, CustomUnevaluatedVocabulary)
     EXPECT_FALSE(compiled.value().Validate(rad::JsonArray{1}));
 }
 
+TEST(JsonSchemaDialects, UnevaluatedResourceProfileAnnotations)
+{
+    for (const auto dialect :
+         {rad::JsonSchemaDialect::Draft2019_09, rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const std::string base = dialect == rad::JsonSchemaDialect::Draft2019_09
+                                     ? "https://json-schema.org/draft/2019-09/"
+                                     : "https://json-schema.org/draft/2020-12/";
+        const std::string strictUri = "https://example.com/strict.json";
+        rad::JsonSchemaCompileOptions options{.dialect = dialect};
+        options.documents = {
+            MakeJsonDocument(
+                rad::JsonObject{{"$schema", base + "schema"},
+                                 {"$vocabulary",
+                                  rad::JsonObject{{base + "vocab/core", true}}}},
+                "https://example.com/loose-meta"),
+            MakeJsonDocument(
+                rad::JsonObject{
+                    {"$schema", base + "schema"},
+                    {"allOf", rad::JsonArray{
+                        rad::JsonObject{{"properties", rad::JsonObject{{"known", true}}}}}},
+                    {"unevaluatedProperties", false}},
+                strictUri),
+        };
+        const auto compiled = rad::JsonSchema::Compile(
+            MakeJsonDocument(
+                rad::JsonObject{{"$schema", "https://example.com/loose-meta"},
+                                 {"$ref", strictUri}, {"unevaluatedProperties", false}}),
+            options);
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        EXPECT_TRUE(compiled.value().Validate(rad::JsonObject{{"known", 1}}));
+        const auto invalid =
+            compiled.value().Validate(rad::JsonObject{{"known", 1}, {"extra", 2}});
+        ASSERT_FALSE(invalid);
+        ASSERT_EQ(invalid.errors.size(), 1);
+        EXPECT_EQ(invalid.status, rad::JsonSchemaValidationStatus::Completed);
+        EXPECT_EQ(invalid.errors[0].instancePath, "/extra");
+        EXPECT_EQ(invalid.errors[0].schemaPath, "/unevaluatedProperties");
+        EXPECT_EQ(invalid.errors[0].schemaUri, strictUri);
+    }
+}
+
 TEST(JsonSchemaDialects, CustomDiagnostics)
 {
     constexpr auto dialect = rad::JsonSchemaDialect::Draft2020_12;

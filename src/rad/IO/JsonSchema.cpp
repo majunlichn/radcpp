@@ -426,6 +426,11 @@ public:
         return Success(std::move(m_patterns));
     }
 
+    [[nodiscard]] detail::JsonSchemaReferences::EvaluationRequirements Requirements() const noexcept
+    {
+        return m_evaluationRequirements;
+    }
+
 private:
     [[nodiscard]] std::optional<ReferenceTarget>
     ResolveReference(const JsonValue& reference, std::string_view schemaPath,
@@ -883,6 +888,8 @@ private:
             {
                 if (const auto* unevaluated = object.if_contains(keyword))
                 {
+                    m_evaluationRequirements.properties |= keyword == "unevaluatedProperties";
+                    m_evaluationRequirements.items |= keyword == "unevaluatedItems";
                     ValidateSchemaDefinition(*unevaluated, ChildPath(schemaPath, keyword),
                                              depth + 1);
                 }
@@ -1017,6 +1024,7 @@ private:
     std::unordered_set<const JsonValue*> m_checkedSchemas;
     std::vector<std::string> m_checkedResources;
     detail::JsonSchemaReferences::Patterns m_patterns;
+    detail::JsonSchemaReferences::EvaluationRequirements m_evaluationRequirements;
 }; // class JsonSchemaCompiler
 
 class JsonSchemaEvaluator
@@ -1032,7 +1040,8 @@ public:
         m_options(options),
         m_rootSchema(rootSchema),
         m_references(references),
-        m_regexContext(regexContext)
+        m_regexContext(regexContext),
+        m_evaluationRequirements(references.Requirements())
     {
     }
 
@@ -1828,9 +1837,12 @@ private:
                                  ChildPath(instancePath, property.key()),
                                  ChildPath(keywordPath, property.key()),
                                  depth + 1);
-                        Evaluation::Mark(
-                            propertiesEvaluation.properties,
-                            static_cast<std::size_t>(std::distance(instance.begin(), found)));
+                        if (m_evaluationRequirements.properties)
+                        {
+                            Evaluation::Mark(
+                                propertiesEvaluation.properties,
+                                static_cast<std::size_t>(std::distance(instance.begin(), found)));
+                        }
                     }
                 }
             }
@@ -1842,6 +1854,7 @@ private:
         {
             return;
         }
+        // additionalProperties needs local coverage even when annotations are disabled.
         std::vector<bool> patternMatches;
         if (const auto* patterns = schema.if_contains("patternProperties"))
         {
@@ -1880,7 +1893,10 @@ private:
                             patternMatches[index] = true;
                             Validate(pattern.value(), property.value(),
                                      ChildPath(instancePath, name), patternPath, depth + 1);
-                            Evaluation::Mark(patternsEvaluation.properties, index);
+                            if (m_evaluationRequirements.properties)
+                            {
+                                Evaluation::Mark(patternsEvaluation.properties, index);
+                            }
                         }
                         ++index;
                     }
@@ -1936,7 +1952,10 @@ private:
                 {
                     continue;
                 }
-                Evaluation::Mark(additionalEvaluation.properties, index - 1);
+                if (m_evaluationRequirements.properties)
+                {
+                    Evaluation::Mark(additionalEvaluation.properties, index - 1);
+                }
                 const auto propertyPath = ChildPath(instancePath, property.key());
                 if (additional->is_bool())
                 {
@@ -2071,7 +2090,10 @@ private:
             const auto token = std::to_string(index);
             Validate(schemas[index], instance[index], ChildPath(instancePath, token),
                      ChildPath(schemaPath, token), depth + 1);
-            Evaluation::Mark(tupleEvaluation.items, index);
+            if (m_evaluationRequirements.items)
+            {
+                Evaluation::Mark(tupleEvaluation.items, index);
+            }
         }
         tupleEvaluation.valid = m_errorCount == errorsBefore;
         evaluation.Merge(tupleEvaluation);
@@ -2157,7 +2179,10 @@ private:
                         Validate(*additional, instance[index],
                                  ChildPath(instancePath, std::to_string(index)),
                                  additionalPath, depth + 1);
-                        Evaluation::Mark(additionalEvaluation.items, index);
+                        if (m_evaluationRequirements.items)
+                        {
+                            Evaluation::Mark(additionalEvaluation.items, index);
+                        }
                     }
                     additionalEvaluation.valid = m_errorCount == errorsBefore;
                     evaluation.Merge(additionalEvaluation);
@@ -2176,7 +2201,10 @@ private:
                     Validate(*items, instance[index],
                              ChildPath(instancePath, std::to_string(index)), keywordPath,
                              depth + 1);
-                    Evaluation::Mark(itemsEvaluation.items, index);
+                    if (m_evaluationRequirements.items)
+                    {
+                        Evaluation::Mark(itemsEvaluation.items, index);
+                    }
                 }
                 itemsEvaluation.valid = m_errorCount == errorsBefore;
                 evaluation.Merge(itemsEvaluation);
@@ -2245,7 +2273,10 @@ private:
             if (itemMatches->valid)
             {
                 ++matches;
-                Evaluation::Mark(containsEvaluation.items, index);
+                if (m_evaluationRequirements.items)
+                {
+                    Evaluation::Mark(containsEvaluation.items, index);
+                }
             }
         }
 
@@ -2448,6 +2479,7 @@ private:
     JsonSchemaValidationResult m_result;
     std::size_t m_errorCount = 0;
     bool m_collectErrors = true;
+    detail::JsonSchemaReferences::EvaluationRequirements m_evaluationRequirements;
     std::vector<const std::string*> m_dynamicScope;
     const ActiveEvaluationScope* m_activeEvaluation = nullptr;
 }; // class JsonSchemaEvaluator
@@ -2471,6 +2503,7 @@ private:
         return Failure(std::move(patterns.error()));
     }
     references.value().SetPatterns(std::move(patterns.value()));
+    references.value().SetEvaluationRequirements(compiler.Requirements());
     return references;
 }
 

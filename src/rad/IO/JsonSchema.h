@@ -150,6 +150,8 @@ struct JsonSchemaCompileOptions
 // Retained documents and their URIs must not be modified while a compiled schema uses them.
 // Copies share compiled state.
 // Instance evaluation keeps diagnostics and resource scopes local to each call.
+// Compilation conservatively determines whether evaluated-property and evaluated-item annotations
+// are needed across checked schemas. Unneeded annotation bookkeeping is skipped during validation.
 // Validation passes only with Completed status and an empty error list.
 // Status describes why validation ended; errors contain source locations and explanations.
 // uniqueItems reports a repeated element's location; selection among multiple duplicates is

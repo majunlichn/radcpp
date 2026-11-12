@@ -1341,3 +1341,39 @@ TEST(JsonSchema, UnevaluatedItemsDiagnostics)
     ASSERT_TRUE(olderDraft) << olderDraft.error().message;
     EXPECT_TRUE(olderDraft.value().Validate(rad::JsonArray{1, "ignored"}));
 }
+
+TEST(JsonSchema, AdditionalPropertiesWithoutUnevaluated)
+{
+    const auto schema = rad::ParseJson(R"json({
+        "properties": {"known/~": {"type": "integer"}},
+        "patternProperties": {"^p": {"type": "integer"}},
+        "additionalProperties": false
+    })json");
+    ASSERT_TRUE(schema);
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        const auto compiled =
+            rad::JsonSchema::Compile(MakeJsonDocument(schema.value()), {.dialect = dialect});
+        ASSERT_TRUE(compiled) << compiled.error().message;
+        const rad::JsonValue valid = rad::JsonObject{{"pOne", 1}, {"known/~", 2}};
+        for (const std::size_t maxErrors : {0U, 1U, 64U})
+        {
+            SCOPED_TRACE(maxErrors);
+            rad::JsonSchemaValidationOptions options;
+            options.maxErrors = maxErrors;
+            EXPECT_TRUE(compiled.value().Validate(valid, options));
+            auto invalid = valid;
+            invalid.as_object()["extra"] = 3;
+            const auto result = compiled.value().Validate(invalid, options);
+            EXPECT_FALSE(result);
+            ASSERT_EQ(result.errors.size(), 1);
+            EXPECT_EQ(result.status, maxErrors <= 1
+                                         ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                         : rad::JsonSchemaValidationStatus::Completed);
+            EXPECT_EQ(result.errors[0].instancePath, "/extra");
+            EXPECT_EQ(result.errors[0].schemaPath, "/additionalProperties");
+        }
+    }
+}

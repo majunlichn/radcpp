@@ -1005,6 +1005,16 @@ const JsonSchemaRegex* JsonSchemaReferences::FindPattern(std::string_view schema
     return found == m_patterns.end() ? nullptr : &found->second;
 }
 
+void JsonSchemaReferences::SetEvaluationRequirements(EvaluationRequirements requirements)
+{
+    m_evaluationRequirements = requirements;
+}
+
+JsonSchemaReferences::EvaluationRequirements JsonSchemaReferences::Requirements() const noexcept
+{
+    return m_evaluationRequirements;
+}
+
 const JsonSchemaCompileError* JsonSchemaReferences::ProfileError(std::string_view schemaPath) const
 {
     std::string_view path = schemaPath;

@@ -50,6 +50,13 @@ public:
     using Anchors = std::unordered_map<std::string, std::string>;
     using Patterns = JsonSchemaStringMap<JsonSchemaRegex>;
 
+    // Conservative across checked schemas, including reference and dynamic-anchor targets.
+    struct EvaluationRequirements
+    {
+        bool properties = false;
+        bool items = false;
+    };
+
     [[nodiscard]] static Result<JsonSchemaReferences, JsonSchemaCompileError> Compile(
         const Ref<const JsonDocument>& document, JsonSchemaDialect dialect, std::size_t maxDepth,
         const JsonSchemaCompileOptions& options);
@@ -66,6 +73,8 @@ public:
     [[nodiscard]] const JsonSchemaCompileError* ProfileError(std::string_view schemaPath) const;
     void SetPatterns(Patterns patterns);
     [[nodiscard]] const JsonSchemaRegex* FindPattern(std::string_view schemaPath) const;
+    void SetEvaluationRequirements(EvaluationRequirements requirements);
+    [[nodiscard]] EvaluationRequirements Requirements() const noexcept;
 
 private:
     JsonSchemaStringMap<Resolution> m_targets;
@@ -78,6 +87,7 @@ private:
     JsonSchemaStringMap<JsonSchemaVocabularyProfile> m_profiles;
     JsonSchemaStringMap<JsonSchemaCompileError> m_profileErrors;
     Patterns m_patterns;
+    EvaluationRequirements m_evaluationRequirements;
 }; // class JsonSchemaReferences
 
 } // namespace rad::detail

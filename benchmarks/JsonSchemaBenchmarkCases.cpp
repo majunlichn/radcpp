@@ -158,7 +158,7 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
     return testCase;
 }
 
-[[nodiscard]] JsonSchemaBenchmarkCase MakeTelemetry(std::size_t count)
+[[nodiscard]] JsonSchemaBenchmarkCase MakeTelemetry(std::size_t count, bool unevaluated = false)
 {
     auto testCase = MakeCase("telemetry_" + std::to_string(count), R"json({
         "type": "object", "required": ["device", "samples"], "additionalProperties": false,
@@ -178,6 +178,14 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
             }
         }
     })json");
+    if (unevaluated)
+    {
+        testCase.name += "_unevaluated";
+        auto schema = testCase.schema->Root();
+        schema.as_object()["unevaluatedProperties"] = true;
+        schema.as_object()["unevaluatedItems"] = true;
+        testCase.schema = rad::JsonDocument::FromValue(std::move(schema));
+    }
     testCase.corpora[1].expectedErrors = 8;
     for (std::int64_t device = 0; device < 4; ++device)
     {
@@ -366,9 +374,10 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
 
 std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
 {
-    return {MakeServiceConfig(), MakeOrder(),         MakeTelemetry(32),
-            MakeTelemetry(1024), MakeEventBatch(),    MakeMetricLabels(),
-            MakeUniqueIds(32),   MakeUniqueIds(1024), MakeTree()};
+    return {MakeServiceConfig(), MakeOrder(),                  MakeTelemetry(32),
+            MakeTelemetry(1024), MakeTelemetry(1024, true),     MakeEventBatch(),
+            MakeMetricLabels(),  MakeUniqueIds(32),             MakeUniqueIds(1024),
+            MakeTree()};
 }
 
 } // namespace benchmark
