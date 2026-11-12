@@ -428,8 +428,7 @@ private:
             {
                 for (const std::string_view keyword : {"$anchor", "$dynamicAnchor"})
                 {
-                    if (keyword == "$dynamicAnchor" &&
-                        m_dialect != JsonSchemaDialect::Draft2020_12)
+                    if (keyword == "$dynamicAnchor" && m_dialect != JsonSchemaDialect::Draft2020_12)
                     {
                         continue;
                     }
@@ -470,6 +469,15 @@ private:
                         "$schema must be a string"));
                     return;
                 }
+                const bool resourceRoot =
+                    path.find('/', 1) == std::string::npos || object.contains("$id");
+                if (m_dialect != JsonSchemaDialect::Draft7 && !resourceRoot)
+                {
+                    m_profileErrors.emplace(
+                        path, PublicError(JsonSchemaCompileErrorCode::InvalidSchema, keywordPath,
+                                          "$schema must be declared at a resource root"));
+                    return;
+                }
                 auto selected = m_dialectResolver.Resolve(
                     StringView(declared->as_string()), m_graph.SchemaUri(path),
                     m_graph.SchemaPath(keywordPath));
@@ -490,19 +498,6 @@ private:
                 }
                 else
                 {
-                    const auto& next = selected.value();
-                    const bool resourceRoot = path.find('/', 1) == std::string::npos ||
-                                              object.contains("$id");
-                    if (!resourceRoot &&
-                        (next.applicator != profile.applicator ||
-                         next.validation != profile.validation ||
-                         next.unevaluated != profile.unevaluated))
-                    {
-                        m_profileErrors.emplace(path, PublicError(
-                            JsonSchemaCompileErrorCode::InvalidSchema, keywordPath,
-                            "a different $schema vocabulary must be declared at a resource root"));
-                        return;
-                    }
                     profile = selected.value();
                 }
             }
@@ -852,8 +847,8 @@ const JsonValue* FindJsonSchemaValue(std::span<const Ref<const JsonDocument>> do
 }
 
 Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compile(
-    const Ref<const JsonDocument>& document, std::optional<JsonSchemaDialect> dialect,
-    std::size_t maxDepth, const JsonSchemaCompileOptions& options)
+    const Ref<const JsonDocument>& document, JsonSchemaDialect dialect, std::size_t maxDepth,
+    const JsonSchemaCompileOptions& options)
 {
     if (!document)
     {
@@ -872,11 +867,9 @@ Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compi
     }
     const auto& schema = document->Root();
     JsonSchemaDialectResolver resolver(*document, options, dialect, maxDepth);
-    JsonSchemaVocabularyProfile rootProfile{dialect.value_or(JsonSchemaDialect::Draft2020_12)};
+    JsonSchemaVocabularyProfile rootProfile{dialect};
     const auto* declared = schema.is_object() ? schema.as_object().if_contains("$schema") : nullptr;
-    const bool ignoredDeclaration = dialect == JsonSchemaDialect::Draft7 && schema.is_object() &&
-                                    schema.as_object().contains("$ref");
-    if (declared != nullptr && !ignoredDeclaration)
+    if (declared != nullptr)
     {
         if (!declared->is_string())
         {
@@ -890,19 +883,6 @@ Result<JsonSchemaReferences, JsonSchemaCompileError> JsonSchemaReferences::Compi
             return Failure(std::move(selected.error()));
         }
         rootProfile = selected.value();
-        if (dialect && rootProfile.dialect != *dialect)
-        {
-            return Failure(JsonSchemaCompileError{
-                JsonSchemaCompileErrorCode::UnsupportedFeature, document->Uri(), "/$schema",
-                "declared meta-schema has a mismatched base draft"});
-        }
-    }
-    else if (!dialect)
-    {
-        return Failure(JsonSchemaCompileError{JsonSchemaCompileErrorCode::MissingDialect,
-                                              document->Uri(),
-                                              {},
-                                              "schema does not declare $schema"});
     }
     JsonSchemaReferences references;
     references.m_dialect = rootProfile.dialect;

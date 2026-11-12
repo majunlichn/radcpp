@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -91,7 +92,7 @@ class JsonSchemaDialectResolver::Impl
 {
 public:
     Impl(const JsonDocument& root, const JsonSchemaCompileOptions& options,
-         std::optional<JsonSchemaDialect> fallbackDialect, std::size_t maxDepth) :
+         JsonSchemaDialect fallbackDialect, std::size_t maxDepth) :
         m_root(root),
         m_options(options),
         m_fallbackDialect(fallbackDialect),
@@ -285,22 +286,12 @@ private:
                 {
                     return declared;
                 }
-                if (node.parent != NoParent && !node.value->as_object().contains("$id"))
+                if (declared.value().dialect != JsonSchemaDialect::Draft7 &&
+                    node.parent != NoParent && !node.value->as_object().contains("$id"))
                 {
-                    const auto inherited = Semantics(node.parent, depth + 1);
-                    if (!inherited)
-                    {
-                        return Failure(inherited.error());
-                    }
-                    if (declared.value().applicator != inherited.value().applicator ||
-                        declared.value().validation != inherited.value().validation ||
-                        declared.value().unevaluated != inherited.value().unevaluated)
-                    {
-                        return Failure(Error(
-                            JsonSchemaCompileErrorCode::UnsupportedFeature, node.documentUri,
-                            ChildPath(node.path, "$schema"),
-                            "a different $schema vocabulary must be declared at a resource root"));
-                    }
+                    return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema,
+                                         node.documentUri, ChildPath(node.path, "$schema"),
+                                         "$schema must be declared at a resource root"));
                 }
                 return declared;
             }
@@ -309,27 +300,7 @@ private:
         {
             return Semantics(node.parent, depth + 1);
         }
-        if (m_fallbackDialect)
-        {
-            return Success(JsonSchemaVocabularyProfile{*m_fallbackDialect});
-        }
-        if (node.value != &m_root.Root() && m_root.Root().is_object())
-        {
-            if (const auto* declaration = m_root.Root().as_object().if_contains("$schema"))
-            {
-                if (!declaration->is_string())
-                {
-                    return Failure(Error(JsonSchemaCompileErrorCode::InvalidSchema, m_root.Uri(),
-                                         "/$schema", "$schema must be an absolute URI string"));
-                }
-                return ResolveMeta(StringView(declaration->as_string()), m_root.Uri(), "/$schema",
-                                   depth + 1);
-            }
-        }
-        return Failure(Error(JsonSchemaCompileErrorCode::UnsupportedFeature, node.documentUri,
-                             ChildPath(node.path, "$schema"),
-                             "meta-schema has no $schema; an explicit fallback dialect "
-                             "is required"));
+        return Success(JsonSchemaVocabularyProfile{m_fallbackDialect});
     }
 
     [[nodiscard]] Result<bool, JsonSchemaCompileError> Visible(std::size_t index,
@@ -540,17 +511,9 @@ private:
         const auto* declaration = node.value->is_object()
                                       ? node.value->as_object().if_contains("$schema")
                                       : nullptr;
-        if (!declaration && !m_fallbackDialect)
-        {
-            return Failure(Error(JsonSchemaCompileErrorCode::UnsupportedFeature, node.documentUri,
-                                 ChildPath(node.path, "$schema"),
-                                 "meta-schema has no $schema; an explicit fallback dialect "
-                                 "is required"));
-        }
         auto semantics = declaration ? Semantics(index, depth + 1)
                                      : Result<JsonSchemaVocabularyProfile, JsonSchemaCompileError>(
-                                           Success(JsonSchemaVocabularyProfile{
-                                               *m_fallbackDialect}));
+                                           Success(JsonSchemaVocabularyProfile{m_fallbackDialect}));
         if (!semantics)
         {
             return semantics;
@@ -607,7 +570,7 @@ private:
 
     const JsonDocument& m_root;
     const JsonSchemaCompileOptions& m_options;
-    std::optional<JsonSchemaDialect> m_fallbackDialect;
+    JsonSchemaDialect m_fallbackDialect;
     std::size_t m_maxDepth;
     bool m_prepared = false;
     std::optional<JsonSchemaCompileError> m_prepareError;
@@ -620,9 +583,10 @@ private:
     std::unordered_set<std::string> m_active;
 }; // class JsonSchemaDialectResolver::Impl
 
-JsonSchemaDialectResolver::JsonSchemaDialectResolver(
-    const JsonDocument& root, const JsonSchemaCompileOptions& options,
-    std::optional<JsonSchemaDialect> fallbackDialect, std::size_t maxDepth) :
+JsonSchemaDialectResolver::JsonSchemaDialectResolver(const JsonDocument& root,
+                                                     const JsonSchemaCompileOptions& options,
+                                                     JsonSchemaDialect fallbackDialect,
+                                                     std::size_t maxDepth) :
     m_impl(std::make_unique<Impl>(root, options, fallbackDialect, maxDepth))
 {
 }

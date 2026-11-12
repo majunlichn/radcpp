@@ -3,7 +3,6 @@
 #include <rad/IO/JsonSchema.h>
 
 #include <memory>
-#include <optional>
 #include <string_view>
 
 namespace rad::detail
@@ -24,8 +23,7 @@ class JsonSchemaDialectResolver
 {
 public:
     JsonSchemaDialectResolver(const JsonDocument& root, const JsonSchemaCompileOptions& options,
-                              std::optional<JsonSchemaDialect> fallbackDialect,
-                              std::size_t maxDepth);
+                              JsonSchemaDialect fallbackDialect, std::size_t maxDepth);
     ~JsonSchemaDialectResolver();
 
     [[nodiscard]] Result<JsonSchemaVocabularyProfile, JsonSchemaCompileError>

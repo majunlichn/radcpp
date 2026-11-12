@@ -2447,7 +2447,7 @@ private:
 }; // class JsonSchemaEvaluator
 
 [[nodiscard]] Result<detail::JsonSchemaReferences, JsonSchemaCompileError> CompileReferences(
-    const Ref<const JsonDocument>& document, std::optional<JsonSchemaDialect> dialect,
+    const Ref<const JsonDocument>& document, JsonSchemaDialect dialect,
     const JsonSchemaCompileOptions& compileOptions)
 {
     const auto maxCompileDepth = compileOptions.maxCompilationDepth;
@@ -2485,8 +2485,8 @@ Result<JsonSchema, JsonSchemaCompileError> JsonSchema::Compile(
             JsonSchemaCompileErrorCode::InvalidSchema, {}, {}, "root schema document is null"});
     }
     const auto dialect = compileOptions.dialect;
-    if (dialect != JsonSchemaDialect::Auto && dialect != JsonSchemaDialect::Draft7 &&
-        dialect != JsonSchemaDialect::Draft2019_09 && dialect != JsonSchemaDialect::Draft2020_12)
+    if (dialect != JsonSchemaDialect::Draft7 && dialect != JsonSchemaDialect::Draft2019_09 &&
+        dialect != JsonSchemaDialect::Draft2020_12)
     {
         return Failure(JsonSchemaCompileError{
             JsonSchemaCompileErrorCode::InvalidDialect,
@@ -2496,10 +2496,7 @@ Result<JsonSchema, JsonSchemaCompileError> JsonSchema::Compile(
         });
     }
 
-    const auto selectedDialect = dialect == JsonSchemaDialect::Auto
-                                     ? std::nullopt
-                                     : std::optional<JsonSchemaDialect>(dialect);
-    auto references = CompileReferences(document, selectedDialect, compileOptions);
+    auto references = CompileReferences(document, dialect, compileOptions);
     if (!references)
     {
         return Failure(std::move(references.error()));

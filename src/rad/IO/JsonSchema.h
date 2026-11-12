@@ -18,7 +18,6 @@ class JsonSchemaReferences;
 
 enum class JsonSchemaDialect
 {
-    Auto,
     Draft7,
     Draft2019_09,
     Draft2020_12,
@@ -29,8 +28,6 @@ enum class JsonSchemaCompileErrorCode
     // Bundled meta-schema text is not valid JSON.
     InvalidJson,
 
-    // Auto was selected and the root schema has no $schema declaration.
-    MissingDialect,
     // The dialect option is not a valid JsonSchemaDialect enumerator.
     InvalidDialect,
 
@@ -127,8 +124,12 @@ struct JsonSchemaValidationOptions
 
 struct JsonSchemaCompileOptions
 {
-    // Auto follows the root $schema declaration; a missing declaration is an error.
-    JsonSchemaDialect dialect = JsonSchemaDialect::Auto;
+    // Standard default used when the root schema or a selected meta-schema has no $schema.
+    // A root $schema declaration takes precedence, including when its underlying draft differs.
+    // Invalid or unsupported declarations report an error instead of using this default.
+    // The default is fixed at Draft2020_12, not the latest supported draft.
+    // Root $schema selection precedes draft-specific keyword processing, including $ref.
+    JsonSchemaDialect dialect = JsonSchemaDialect::Draft2020_12;
     // Documents registered for offline reference and meta-schema resolution.
     // Each must be non-null with an absolute, fragment-free URI.
     // URIs and resource identifiers must not conflict with the root or each other.
@@ -188,8 +189,9 @@ struct JsonSchemaCompileOptions
 // Dialects and vocabularies:
 // - Draft 2019-09 and 2020-12 support registered custom meta-schemas. A resource's $schema
 //   selects its vocabulary profile and underlying standard draft, reported by Dialect().
-// - Registered documents without $schema inherit the root dialect and vocabulary profile.
-//   A vocabulary-changing $schema in a subschema requires its own $id resource boundary.
+// - Registered documents without $schema inherit the root draft and vocabulary profile.
+//   In Draft 2019-09 and 2020-12, $schema is allowed only at document roots or embedded
+//   resource roots identified by $id, even when it declares the same dialect.
 // - The selected meta-schema's $vocabulary enables the listed supported vocabularies, even
 //   when optional (false); omitted vocabularies are disabled. An absent $vocabulary uses
 //   standard defaults. Unknown optional vocabularies are ignored; unsupported required ones fail.
@@ -237,7 +239,8 @@ public:
     [[nodiscard]] static Result<JsonSchema, JsonSchemaCompileError> Compile(
         Ref<const JsonDocument> document, const JsonSchemaCompileOptions& options = {});
 
-    // Returns the resolved standard draft, never Auto, including for a custom vocabulary dialect.
+    // Returns the root's resolved standard draft. Custom dialects with different
+    // vocabularies can share the same draft; this does not identify the full dialect.
     [[nodiscard]] JsonSchemaDialect Dialect() const noexcept;
     [[nodiscard]] JsonSchemaValidationResult
     Validate(const JsonValue& instance,

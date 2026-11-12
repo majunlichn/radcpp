@@ -166,7 +166,7 @@ TEST(JsonSchemaNumbers, NonFiniteLiterals)
                  rad::JsonObject{{"https://json-schema.org/draft/2020-12/vocab/core", true}}}},
             "https://example.com/meta"),
     };
-    options.dialect = rad::JsonSchemaDialect::Auto;
+    options.dialect = rad::JsonSchemaDialect::Draft2020_12;
     const auto disabled = rad::JsonSchema::Compile(
         MakeJsonDocument(
             rad::JsonObject{{"$schema", "https://example.com/meta"},

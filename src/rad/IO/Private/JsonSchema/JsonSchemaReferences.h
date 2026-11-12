@@ -51,8 +51,8 @@ public:
     using Patterns = JsonSchemaStringMap<JsonSchemaRegex>;
 
     [[nodiscard]] static Result<JsonSchemaReferences, JsonSchemaCompileError> Compile(
-        const Ref<const JsonDocument>& document, std::optional<JsonSchemaDialect> dialect,
-        std::size_t maxDepth, const JsonSchemaCompileOptions& options);
+        const Ref<const JsonDocument>& document, JsonSchemaDialect dialect, std::size_t maxDepth,
+        const JsonSchemaCompileOptions& options);
 
     [[nodiscard]] const Resolution* Find(std::string_view referencePath) const;
     [[nodiscard]] const std::vector<Ref<const JsonDocument>>& Documents() const;

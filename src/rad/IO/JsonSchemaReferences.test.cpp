@@ -821,7 +821,7 @@ TEST(JsonSchemaReferences, DocumentRegistryDiagnostics)
 
     auto detected = rad::JsonObject{{"$schema", "https://json-schema.org/draft/2020-12/schema"},
                                     {"$ref", "child.json"}};
-    options.dialect = rad::JsonSchemaDialect::Auto;
+    options.dialect = rad::JsonSchemaDialect::Draft2020_12;
     EXPECT_TRUE(rad::JsonSchema::Compile(MakeJsonDocument(detected, rootUri), options));
     EXPECT_FALSE(rad::JsonSchema::Compile(MakeJsonDocument(detected)));
     options.dialect = dialect;
