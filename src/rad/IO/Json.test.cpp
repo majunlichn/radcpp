@@ -123,3 +123,51 @@ TEST(JsonDocument, SetPointersAndLimits)
     ASSERT_TRUE(document->Set("", false));
     EXPECT_FALSE(document->Root().as_bool());
 }
+
+static_assert(std::is_same_v<decltype(rad::JsonValueRef(std::declval<rad::JsonValue&>())),
+                             rad::JsonValueRef<rad::JsonValue>>);
+static_assert(std::is_same_v<decltype(rad::JsonValueRef(std::declval<const rad::JsonValue&>())),
+                             rad::JsonValueRef<const rad::JsonValue>>);
+static_assert(!std::is_constructible_v<rad::JsonValueRef<const rad::JsonValue>, rad::JsonValue&&>);
+static_assert(
+    !std::is_constructible_v<rad::JsonValueRef<const rad::JsonValue>, const rad::JsonValue&&>);
+static_assert(!std::is_convertible_v<rad::JsonValueRef<const rad::JsonValue>,
+                                     rad::JsonValueRef<rad::JsonValue>>);
+
+TEST(JsonValueRef, LookupBorrowsValues)
+{
+    rad::JsonValue root = rad::JsonObject{
+        {"a/~", rad::JsonArray{1}},
+    };
+    const rad::JsonValueRef view(root);
+    const auto member = view.TryAt("a/~");
+    ASSERT_TRUE(member) << member.error().message();
+    const auto element = member.value().TryAt(0);
+    ASSERT_TRUE(element) << element.error().message();
+    EXPECT_EQ(&element.value().Get(), &root.as_object().at("a/~").as_array()[0]);
+    const auto copy = element.value();
+    copy.AsInt64() = 42;
+    EXPECT_EQ(root.as_object().at("a/~").as_array()[0].as_int64(), 42);
+
+    const rad::JsonValueRef<const rad::JsonValue> readOnly = view;
+    const auto nested = readOnly.Find("/a~1~0/0");
+    ASSERT_TRUE(nested) << nested.error().message();
+    EXPECT_EQ(&nested.value().Get(), &element.value().Get());
+}
+
+TEST(JsonValueRef, LookupErrors)
+{
+    const rad::JsonValue root = rad::JsonObject{{"array", rad::JsonArray{1}}};
+    const rad::JsonValueRef view(root);
+    const auto missing = view.TryAt("missing");
+    ASSERT_FALSE(missing);
+    EXPECT_EQ(missing.error(), boost::json::error::out_of_range);
+    const auto array = view.TryAt("array");
+    ASSERT_TRUE(array);
+    const auto outOfRange = array.value().TryAt(1);
+    ASSERT_FALSE(outOfRange);
+    EXPECT_EQ(outOfRange.error(), boost::json::error::out_of_range);
+    const auto invalidPointer = view.Find("array");
+    ASSERT_FALSE(invalidPointer);
+    EXPECT_EQ(invalidPointer.error(), boost::json::error::missing_slash);
+}

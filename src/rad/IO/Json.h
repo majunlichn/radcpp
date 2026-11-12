@@ -14,6 +14,7 @@
 
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 namespace rad
 {
@@ -26,6 +27,63 @@ using JsonKind = boost::json::kind;
 using JsonErrorCode = boost::system::error_code;
 using JsonParseOptions = boost::json::parse_options;
 using JsonSetPointerOptions = boost::json::set_pointer_options;
+
+// Non-owning, non-null view of an existing JSON value; copies only the pointer.
+// The value must outlive the view. Container mutation may invalidate child views.
+// Constness of the view does not restrict mutation; constness of Value does.
+template <typename Value>
+class JsonValueRef
+{
+    static_assert(std::is_same_v<Value, JsonValue> || std::is_same_v<Value, const JsonValue>);
+
+public:
+    explicit JsonValueRef(Value& value) noexcept :
+        m_value(&value)
+    {
+    }
+    JsonValueRef(JsonValue&&) = delete;
+    JsonValueRef(const JsonValue&&) = delete;
+
+    template <typename Other>
+        requires(std::is_const_v<Value> && std::is_same_v<Other, JsonValue>)
+    JsonValueRef(const JsonValueRef<Other>& other) noexcept :
+        m_value(&other.Get())
+    {
+    }
+
+    [[nodiscard]] Value& Get() const noexcept { return *m_value; }
+    [[nodiscard]] Value* operator->() const noexcept { return m_value; }
+
+    [[nodiscard]] JsonKind Kind() const noexcept { return m_value->kind(); }
+    [[nodiscard]] bool IsObject() const noexcept { return m_value->is_object(); }
+    [[nodiscard]] bool IsArray() const noexcept { return m_value->is_array(); }
+    [[nodiscard]] bool IsString() const noexcept { return m_value->is_string(); }
+    [[nodiscard]] bool IsInt64() const noexcept { return m_value->is_int64(); }
+    [[nodiscard]] bool IsUInt64() const noexcept { return m_value->is_uint64(); }
+    [[nodiscard]] bool IsDouble() const noexcept { return m_value->is_double(); }
+    [[nodiscard]] bool IsNumber() const noexcept { return m_value->is_number(); }
+    [[nodiscard]] bool IsBool() const noexcept { return m_value->is_bool(); }
+    [[nodiscard]] bool IsNull() const noexcept { return m_value->is_null(); }
+
+    // As* preserves Boost.JSON's reference/value return types and throws on a wrong kind.
+    [[nodiscard]] decltype(auto) AsObject() const { return m_value->as_object(); }
+    [[nodiscard]] decltype(auto) AsArray() const { return m_value->as_array(); }
+    [[nodiscard]] decltype(auto) AsString() const { return m_value->as_string(); }
+    [[nodiscard]] decltype(auto) AsInt64() const { return m_value->as_int64(); }
+    [[nodiscard]] decltype(auto) AsUInt64() const { return m_value->as_uint64(); }
+    [[nodiscard]] decltype(auto) AsDouble() const { return m_value->as_double(); }
+    [[nodiscard]] decltype(auto) AsBool() const { return m_value->as_bool(); }
+
+    // JSON Pointer lookup; empty selects this value. Errors are Boost.JSON error codes.
+    [[nodiscard]] Result<JsonValueRef, JsonErrorCode> Find(std::string_view pointer) const;
+    // Direct object key or array index lookup, without insertion or JSON Pointer decoding.
+    // Missing elements or wrong container kinds return Boost.JSON errors.
+    [[nodiscard]] Result<JsonValueRef, JsonErrorCode> TryAt(std::string_view key) const;
+    [[nodiscard]] Result<JsonValueRef, JsonErrorCode> TryAt(std::size_t index) const;
+
+private:
+    Value* m_value;
+}; // class JsonValueRef
 
 // Owns a JSON root. Reference counting protects lifetime, not concurrent mutation.
 // Values returned by Root, Find, and Set may be invalidated by later mutation.

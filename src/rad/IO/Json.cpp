@@ -79,6 +79,43 @@ void PrettyJsonImpl(const JsonValue& value, std::string_view indent, std::string
 
 } // namespace
 
+template <typename Value>
+Result<JsonValueRef<Value>, JsonErrorCode> JsonValueRef<Value>::Find(std::string_view pointer) const
+{
+    JsonErrorCode error;
+    auto* value = m_value->find_pointer({pointer.data(), pointer.size()}, error);
+    if (error)
+    {
+        return Failure(error);
+    }
+    return Success(JsonValueRef(*value));
+}
+
+template <typename Value>
+Result<JsonValueRef<Value>, JsonErrorCode> JsonValueRef<Value>::TryAt(std::string_view key) const
+{
+    auto value = m_value->try_at({key.data(), key.size()});
+    if (!value)
+    {
+        return Failure(value.error());
+    }
+    return Success(JsonValueRef(value.value()));
+}
+
+template <typename Value>
+Result<JsonValueRef<Value>, JsonErrorCode> JsonValueRef<Value>::TryAt(std::size_t index) const
+{
+    auto value = m_value->try_at(index);
+    if (!value)
+    {
+        return Failure(value.error());
+    }
+    return Success(JsonValueRef(value.value()));
+}
+
+template class JsonValueRef<JsonValue>;
+template class JsonValueRef<const JsonValue>;
+
 JsonDocument::JsonDocument(JsonValue root) :
     m_root(std::move(root))
 {
