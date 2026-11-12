@@ -1550,38 +1550,21 @@ private:
         }
 
         bool matches = false;
-        bool validSchema = true;
         if (typeValue->is_string())
         {
-            const auto type = ToStringView(typeValue->as_string());
-            validSchema = IsKnownType(type);
-            matches = validSchema && MatchesType(instance, type);
-        }
-        else if (typeValue->is_array() && !typeValue->as_array().empty())
-        {
-            for (const auto& candidate : typeValue->as_array())
-            {
-                if (!candidate.is_string() ||
-                    !IsKnownType(ToStringView(candidate.as_string())))
-                {
-                    validSchema = false;
-                    break;
-                }
-                matches =
-                    matches || MatchesType(instance, ToStringView(candidate.as_string()));
-            }
+            matches = MatchesType(instance, ToStringView(typeValue->as_string()));
         }
         else
         {
-            validSchema = false;
+            const auto& types = typeValue->as_array();
+            matches = std::any_of(
+                types.begin(), types.end(),
+                [&instance](const JsonValue& candidate)
+                {
+                    return MatchesType(instance, ToStringView(candidate.as_string()));
+                });
         }
-
-        if (!validSchema)
-        {
-            AddError(instancePath, ChildPath(schemaPath, "type"),
-                     "type must be a known type name or a non-empty array of type names");
-        }
-        else if (!matches)
+        if (!matches)
         {
             AddError(instancePath, ChildPath(schemaPath, "type"),
                      "value does not match the required type");

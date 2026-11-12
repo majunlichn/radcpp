@@ -303,6 +303,31 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
     return testCase;
 }
 
+[[nodiscard]] JsonSchemaBenchmarkCase MakeTypeValidation(std::string name, JsonValue type)
+{
+    auto testCase = MakeCase(std::move(name), R"json({
+        "type": "array", "items": {"type": "integer"}
+    })json");
+    auto schema = testCase.schema->Root();
+    schema.as_object().at("items").as_object()["type"] = std::move(type);
+    testCase.schema = rad::JsonDocument::FromValue(std::move(schema));
+    constexpr std::size_t count = 1024;
+    for (std::uint64_t batch = 0; batch < 4; ++batch)
+    {
+        JsonArray values;
+        values.reserve(count);
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            values.emplace_back(batch * count + index);
+        }
+        JsonValue valid = std::move(values);
+        auto invalid = valid;
+        invalid.as_array().back() = JsonObject{};
+        AddPair(testCase, std::move(valid), std::move(invalid));
+    }
+    return testCase;
+}
+
 [[nodiscard]] JsonSchemaBenchmarkCase MakeUniqueIds(std::size_t count)
 {
     auto testCase = MakeCase("unique_ids_" + std::to_string(count), R"json({
@@ -377,7 +402,12 @@ std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
     return {MakeServiceConfig(), MakeOrder(),                  MakeTelemetry(32),
             MakeTelemetry(1024), MakeTelemetry(1024, true),     MakeEventBatch(),
             MakeMetricLabels(),  MakeUniqueIds(32),             MakeUniqueIds(1024),
-            MakeTree()};
+            MakeTree(),
+            MakeTypeValidation("type_single_1024", "integer"),
+            MakeTypeValidation("type_union_first_1024",
+                               JsonArray{"integer", "null", "boolean", "array", "string"}),
+            MakeTypeValidation("type_union_last_1024",
+                               JsonArray{"null", "boolean", "array", "string", "integer"})};
 }
 
 } // namespace benchmark

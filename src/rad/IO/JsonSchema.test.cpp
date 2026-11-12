@@ -556,6 +556,76 @@ TEST(JsonSchema, ValidationStatusAndErrorLimits)
     }
 }
 
+TEST(JsonSchema, TypeUnions)
+{
+    struct Case
+    {
+        std::string_view types;
+        std::string_view instance;
+        bool valid;
+    };
+    constexpr Case cases[] = {
+        {R"json(["integer", "string"])json", "1", true},
+        {R"json(["integer", "string"])json", R"json("text")json", true},
+        {R"json(["string", "integer"])json", "1.0", true},
+        {R"json(["integer", "number"])json", "1", true},
+        {R"json(["integer", "number"])json", "1.5", true},
+        {R"json(["integer", "string"])json", "1.5", false},
+        {R"json(["integer", "string"])json", "[]", false},
+    };
+    for (const auto dialect : {rad::JsonSchemaDialect::Draft7, rad::JsonSchemaDialect::Draft2019_09,
+                               rad::JsonSchemaDialect::Draft2020_12})
+    {
+        SCOPED_TRACE(static_cast<int>(dialect));
+        for (const auto& testCase : cases)
+        {
+            SCOPED_TRACE(testCase.types);
+            SCOPED_TRACE(testCase.instance);
+            const auto types = rad::ParseJson(testCase.types);
+            const auto instance = rad::ParseJson(testCase.instance);
+            ASSERT_TRUE(types);
+            ASSERT_TRUE(instance);
+            const auto compiled = rad::JsonSchema::Compile(
+                MakeJsonDocument(rad::JsonObject{
+                    {"properties", rad::JsonObject{
+                        {"value", rad::JsonObject{{"type", types.value()}}}}}}),
+                {.dialect = dialect});
+            ASSERT_TRUE(compiled) << compiled.error().message;
+            for (const std::size_t maxErrors : {0U, 1U, 64U})
+            {
+                rad::JsonSchemaValidationOptions options;
+                options.maxErrors = maxErrors;
+                const auto result =
+                    compiled.value().Validate(rad::JsonObject{{"value", instance.value()}}, options);
+                EXPECT_EQ(static_cast<bool>(result), testCase.valid);
+                EXPECT_EQ(result.status, !testCase.valid && maxErrors <= 1
+                                             ? rad::JsonSchemaValidationStatus::MaxErrorsReached
+                                             : rad::JsonSchemaValidationStatus::Completed);
+                ASSERT_EQ(result.errors.size(), testCase.valid ? 0 : 1);
+                if (!testCase.valid)
+                {
+                    EXPECT_EQ(result.errors[0].instancePath, "/value");
+                    EXPECT_EQ(result.errors[0].schemaPath, "/properties/value/type");
+                    EXPECT_EQ(result.errors[0].message, "value does not match the required type");
+                }
+            }
+        }
+        for (const std::string_view source :
+             {R"json(["integer", "unknown"])json", R"json(["integer", 7])json",
+              R"json(["integer", "integer"])json", "[]"})
+        {
+            SCOPED_TRACE(source);
+            const auto types = rad::ParseJson(source);
+            ASSERT_TRUE(types);
+            const auto compiled = rad::JsonSchema::Compile(
+                MakeJsonDocument(rad::JsonObject{{"type", types.value()}}), {.dialect = dialect});
+            ASSERT_FALSE(compiled);
+            EXPECT_EQ(compiled.error().code, rad::JsonSchemaCompileErrorCode::InvalidSchema);
+            EXPECT_EQ(compiled.error().schemaPath, "/type");
+        }
+    }
+}
+
 TEST(JsonSchema, DuplicateValues)
 {
     struct Case
