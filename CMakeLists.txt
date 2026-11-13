@@ -243,6 +243,7 @@ find_package(boost_nowide CONFIG REQUIRED)
 find_package(boost_outcome CONFIG REQUIRED)
 find_package(boost_process CONFIG REQUIRED)
 find_package(boost_smart_ptr CONFIG REQUIRED)
+find_package(boost_unordered CONFIG REQUIRED)
 find_package(boost_url CONFIG REQUIRED)
 find_package(CpuFeatures CONFIG REQUIRED)
 if(WIN32)
@@ -280,6 +281,7 @@ target_link_libraries(rad
     PRIVATE Boost::nowide
     PUBLIC Boost::outcome
     PRIVATE Boost::process
+    PRIVATE Boost::unordered
     PRIVATE Boost::url
     PRIVATE Backward::Backward
     PUBLIC CpuFeatures::cpu_features
@@ -347,6 +349,7 @@ if(RAD_BUILD_TESTS)
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src/rad FILES ${RAD_TEST_SOURCES})
     target_link_libraries(rad_tests
         PRIVATE rad
+        PRIVATE Boost::unordered
         PRIVATE GTest::gtest
     )
     set_target_properties(rad_tests PROPERTIES

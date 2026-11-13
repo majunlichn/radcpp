@@ -6,8 +6,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <unordered_map>
 #include <vector>
+
+#include <boost/unordered/unordered_flat_map.hpp>
 
 namespace rad::detail
 {
@@ -52,7 +53,7 @@ template <typename Hasher = JsonSchemaValueHasher>
 [[nodiscard]] std::optional<std::size_t> FindDuplicateIndexHashed(const JsonArray& values,
                                                                 Hasher hash = {})
 {
-    std::unordered_map<std::uint64_t, std::size_t> buckets;
+    boost::unordered_flat_map<std::uint64_t, std::size_t> buckets;
     buckets.reserve(values.size());
     std::vector<std::size_t> previous;
     previous.reserve(values.size());

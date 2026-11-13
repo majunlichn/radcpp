@@ -399,24 +399,45 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
     return testCase;
 }
 
-[[nodiscard]] JsonSchemaBenchmarkCase MakeUniqueIds(std::size_t count)
+[[nodiscard]] JsonSchemaBenchmarkCase MakeUniqueIds(std::size_t count, bool objects = false)
 {
-    auto testCase = MakeCase("unique_ids_" + std::to_string(count), R"json({
+    auto testCase = MakeCase(
+        std::string(objects ? "unique_objects_" : "unique_ids_") + std::to_string(count), R"json({
         "type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true,
         "items": {"type": "integer", "minimum": 1}
     })json");
+    if (objects)
+    {
+        auto schema = testCase.schema->Root();
+        schema.as_object()["items"] = JsonObject{{"type", "object"}};
+        testCase.schema = rad::JsonDocument::FromValue(std::move(schema));
+    }
+    testCase.corpora[1].name = "invalid_late";
+    testCase.corpora.push_back({"invalid_early", {}, 1});
     for (std::uint64_t batch = 0; batch < 4; ++batch)
     {
         JsonArray ids;
         ids.reserve(count);
         for (std::size_t index = 0; index < count; ++index)
         {
-            ids.emplace_back(batch * count + index + 1);
+            const auto value = batch * count + index + 1;
+            if (objects)
+            {
+                ids.emplace_back(JsonObject{{"id", value},
+                                             {"values", JsonArray{value, 0.25}}});
+            }
+            else
+            {
+                ids.emplace_back(value);
+            }
         }
         JsonValue valid = std::move(ids);
         auto invalid = valid;
         invalid.as_array().back() = invalid.as_array().front();
+        auto early = valid;
+        early.as_array()[2] = early.as_array().front();
         AddPair(testCase, std::move(valid), std::move(invalid));
+        testCase.corpora[2].instances.push_back(std::move(early));
     }
     return testCase;
 }
@@ -485,7 +506,8 @@ std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
             MakeMultipleOf("multiple_integer_instances_1024", 0.25, false, false),
             MakeMultipleOf("multiple_integer_divisor_1024", 3, false, true),
             MakeMultipleOf("multiple_cents_1024", 0.01, false, true),
-            MakeManyDivisors()};
+            MakeManyDivisors(), MakeUniqueIds(31), MakeUniqueIds(33),
+            MakeUniqueIds(4096), MakeUniqueIds(1024, true)};
 }
 
 } // namespace benchmark

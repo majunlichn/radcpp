@@ -160,7 +160,7 @@ struct JsonSchemaCompileOptions
 // Value equality for enum, const, and duplicate checks uses bounded recursion with an iterative
 // fallback, independently of the schema evaluation depth limit.
 // Large-array duplicate checks may reserve O(n) auxiliary storage up front, even when a
-// duplicate is found early.
+// duplicate is found early. The hash-based path reserves entry slots for the full array.
 // Validation stops at the effective error limit or the first evaluation failure. Speculative
 // branches stop at their first violation without collecting ordinary diagnostics, so a rejected
 // branch does not reject a valid alternative. Evaluation failures still propagate.
