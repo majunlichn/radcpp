@@ -304,6 +304,42 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
     return testCase;
 }
 
+[[nodiscard]] JsonSchemaBenchmarkCase MakeMetricLabelBatch(std::string name,
+                                                           std::string_view coverageKeyword = {})
+{
+    auto testCase = MakeCase(std::move(name), R"json({
+        "type": "array",
+        "items": {
+            "type": "object",
+            "patternProperties": {"^metric_": {"type": "number", "minimum": 0}}
+        }
+    })json");
+    if (!coverageKeyword.empty())
+    {
+        auto schema = testCase.schema->Root();
+        schema.as_object().at("items").as_object().emplace(coverageKeyword, false);
+        testCase.schema = rad::JsonDocument::FromValue(std::move(schema));
+    }
+    if (coverageKeyword == "unevaluatedProperties")
+    {
+        // A failed patternProperties check leaves all four properties unevaluated.
+        testCase.corpora[1].expectedErrors = 5;
+    }
+
+    for (std::int64_t batch = 0; batch < 4; ++batch)
+    {
+        const JsonValue labels = JsonObject{{"metric_latency", batch + 1},
+                                            {"metric_errors", 0},
+                                            {"metric_count", 42},
+                                            {"metric_ratio", 0.125}};
+        JsonArray valid(256, labels);
+        auto invalid = valid;
+        invalid.back().as_object().at("metric_latency") = -1;
+        AddPair(testCase, std::move(valid), std::move(invalid));
+    }
+    return testCase;
+}
+
 [[nodiscard]] JsonSchemaBenchmarkCase MakeTypeValidation(std::string name, JsonValue type)
 {
     auto testCase = MakeCase(std::move(name), R"json({
@@ -535,6 +571,9 @@ std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
     return {MakeServiceConfig(), MakeOrder(),                  MakeTelemetry(32),
             MakeTelemetry(1024), MakeTelemetry(1024, true),     MakeEventBatch(),
             MakeMetricLabels(),  MakeUniqueIds(32),             MakeUniqueIds(1024),
+            MakeMetricLabelBatch("metric_label_batch"),
+            MakeMetricLabelBatch("metric_label_batch_unevaluated", "unevaluatedProperties"),
+            MakeMetricLabelBatch("metric_label_batch_additional", "additionalProperties"),
             MakeTree(),
             MakeLongPaths("child_path_long", std::string(64, 'x')),
             MakeLongPaths("child_path_escaped", std::string(31, 'x') + "/~" + std::string(31, 'y')),

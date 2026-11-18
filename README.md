@@ -72,3 +72,5 @@ working directory to keep logs, temporary files, and other test outputs out of t
 - [JsonSchemaBenchmark](benchmarks/): measures JSON Schema compilation and validation performance.
   Use `--filter child_path` for nested objects with long property names, with and without JSON
   Pointer escapes.
+  Use `--filter metric_label_batch` to compare `patternProperties` with and without
+  `additionalProperties` or `unevaluatedProperties`.

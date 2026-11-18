@@ -1863,12 +1863,16 @@ private:
             return;
         }
         // additionalProperties needs local coverage even when annotations are disabled.
+        const auto* additional = schema.if_contains("additionalProperties");
         std::vector<bool> patternMatches;
         if (const auto* patterns = schema.if_contains("patternProperties"))
         {
             const auto errorsBefore = m_errorCount;
             Evaluation patternsEvaluation;
-            patternMatches.resize(instance.size(), false);
+            if (additional != nullptr)
+            {
+                patternMatches.resize(instance.size(), false);
+            }
             const auto keywordPath = ChildPath(schemaPath, "patternProperties");
             if (!patterns->is_object())
             {
@@ -1876,38 +1880,56 @@ private:
             }
             else
             {
-                for (const auto& pattern : patterns->as_object())
+                const auto validatePatterns = [&]<bool TrackMatches>()
                 {
-                    if (ShouldStop())
-                    {
-                        return;
-                    }
-                    const auto patternPath = ChildPath(keywordPath, pattern.key());
-                    const auto* expression = FindPattern(instancePath, patternPath);
-                    if (!expression)
-                    {
-                        continue;
-                    }
-                    std::size_t index = 0;
-                    for (const auto& property : instance)
+                    for (const auto& pattern : patterns->as_object())
                     {
                         if (ShouldStop())
                         {
                             return;
                         }
-                        const auto name = property.key();
-                        if (MatchesPattern(*expression, name, instancePath, patternPath))
+                        const auto patternPath = ChildPath(keywordPath, pattern.key());
+                        const auto* expression = FindPattern(instancePath, patternPath);
+                        if (!expression)
                         {
-                            patternMatches[index] = true;
-                            Validate(pattern.value(), property.value(),
-                                     ChildPath(instancePath, name), patternPath, depth + 1);
-                            if (m_evaluationRequirements.properties)
-                            {
-                                Evaluation::Mark(patternsEvaluation.properties, index);
-                            }
+                            continue;
                         }
-                        ++index;
+                        std::size_t index = 0;
+                        for (const auto& property : instance)
+                        {
+                            if (ShouldStop())
+                            {
+                                return;
+                            }
+                            const auto name = property.key();
+                            if (MatchesPattern(*expression, name, instancePath, patternPath))
+                            {
+                                if constexpr (TrackMatches)
+                                {
+                                    patternMatches[index] = true;
+                                }
+                                Validate(pattern.value(), property.value(),
+                                         ChildPath(instancePath, name), patternPath, depth + 1);
+                                if (m_evaluationRequirements.properties)
+                                {
+                                    Evaluation::Mark(patternsEvaluation.properties, index);
+                                }
+                            }
+                            ++index;
+                        }
                     }
+                };
+                if (additional != nullptr)
+                {
+                    validatePatterns.operator()<true>();
+                }
+                else
+                {
+                    validatePatterns.operator()<false>();
+                }
+                if (ShouldStop())
+                {
+                    return;
                 }
             }
             patternsEvaluation.valid = m_errorCount == errorsBefore;
@@ -1936,7 +1958,7 @@ private:
         {
             return;
         }
-        if (const auto* additional = schema.if_contains("additionalProperties"))
+        if (additional != nullptr)
         {
             const auto errorsBefore = m_errorCount;
             Evaluation additionalEvaluation;
