@@ -500,6 +500,34 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
     return testCase;
 }
 
+[[nodiscard]] JsonSchemaBenchmarkCase MakeLongPaths(std::string name, const std::string& key)
+{
+    auto testCase = MakeCase(std::move(name), R"json({"type": "array", "items": {}})json");
+    JsonValue leaf = JsonObject{{"type", "integer"}};
+    JsonValue valid = 1;
+    JsonValue invalid = "not an integer";
+    for (std::size_t depth = 0; depth < 6; ++depth)
+    {
+        JsonObject properties;
+        properties.emplace(key, std::move(leaf));
+        leaf = JsonObject{{"properties", std::move(properties)}};
+        JsonObject validObject;
+        validObject.emplace(key, std::move(valid));
+        valid = std::move(validObject);
+        JsonObject invalidObject;
+        invalidObject.emplace(key, std::move(invalid));
+        invalid = std::move(invalidObject);
+    }
+    JsonArray values(32, valid);
+    auto invalidValues = values;
+    invalidValues.back() = std::move(invalid);
+    AddPair(testCase, std::move(values), std::move(invalidValues));
+    auto schema = testCase.schema->Root();
+    schema.as_object().at("items") = std::move(leaf);
+    testCase.schema = rad::JsonDocument::FromValue(std::move(schema));
+    return testCase;
+}
+
 } // namespace
 
 std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
@@ -508,6 +536,8 @@ std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
             MakeTelemetry(1024), MakeTelemetry(1024, true),     MakeEventBatch(),
             MakeMetricLabels(),  MakeUniqueIds(32),             MakeUniqueIds(1024),
             MakeTree(),
+            MakeLongPaths("child_path_long", std::string(64, 'x')),
+            MakeLongPaths("child_path_escaped", std::string(31, 'x') + "/~" + std::string(31, 'y')),
             MakeReferenceTarget("reference_target_short_1024", "id"),
             MakeReferenceTarget("reference_target_long_1024", std::string(128, 'x')),
             MakeTypeValidation("type_single_1024", "integer"),

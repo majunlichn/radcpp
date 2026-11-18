@@ -757,23 +757,18 @@ private:
 
 std::string ChildPath(std::string_view path, std::string_view token)
 {
-    std::string child(path);
+    std::string child;
+    child.reserve(path.size() + 1 + token.size());
+    child.append(path);
     child += '/';
-    for (const char c : token)
+    for (auto escape = token.find_first_of("~/"); escape != std::string_view::npos;
+         escape = token.find_first_of("~/"))
     {
-        if (c == '~')
-        {
-            child += "~0";
-        }
-        else if (c == '/')
-        {
-            child += "~1";
-        }
-        else
-        {
-            child += c;
-        }
+        child.append(token.substr(0, escape));
+        child.append(token[escape] == '~' ? "~0" : "~1", 2);
+        token.remove_prefix(escape + 1);
     }
+    child.append(token);
     return child;
 }
 
