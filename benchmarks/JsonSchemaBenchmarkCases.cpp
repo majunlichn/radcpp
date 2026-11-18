@@ -329,6 +329,19 @@ void AddPair(JsonSchemaBenchmarkCase& testCase, JsonValue valid, JsonValue inval
     return testCase;
 }
 
+[[nodiscard]] JsonSchemaBenchmarkCase MakeReferenceTarget(std::string name, std::string key)
+{
+    auto testCase = MakeTypeValidation(std::move(name), "integer");
+    auto schema = testCase.schema->Root();
+    auto& object = schema.as_object();
+    auto& items = object.at("items");
+    auto target = std::move(items);
+    items = JsonObject{{"$ref", "#/$defs/" + key}};
+    object["$defs"] = JsonObject{{key, std::move(target)}};
+    testCase.schema = rad::JsonDocument::FromValue(std::move(schema));
+    return testCase;
+}
+
 [[nodiscard]] JsonSchemaBenchmarkCase MakeMultipleOf(std::string name, JsonValue divisor,
                                                      bool nested, bool floatingInstances)
 {
@@ -495,6 +508,8 @@ std::vector<JsonSchemaBenchmarkCase> MakeJsonSchemaBenchmarkCases()
             MakeTelemetry(1024), MakeTelemetry(1024, true),     MakeEventBatch(),
             MakeMetricLabels(),  MakeUniqueIds(32),             MakeUniqueIds(1024),
             MakeTree(),
+            MakeReferenceTarget("reference_target_short_1024", "id"),
+            MakeReferenceTarget("reference_target_long_1024", std::string(128, 'x')),
             MakeTypeValidation("type_single_1024", "integer"),
             MakeTypeValidation("type_union_first_1024",
                                JsonArray{"integer", "null", "boolean", "array", "string"}),

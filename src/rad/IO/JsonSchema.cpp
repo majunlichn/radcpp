@@ -324,7 +324,8 @@ private:
 struct ReferenceTarget
 {
     const JsonValue* schema;
-    std::string path;
+    // Borrows from the compiled reference index, including anchor and resource paths.
+    std::string_view path;
 };
 
 [[nodiscard]] JsonSchemaCompileError MakeSchemaCompileError(
