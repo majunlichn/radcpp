@@ -1407,26 +1407,36 @@ private:
             return evaluation;
         }
 
-        const auto* resource = m_dialect != JsonSchemaDialect::Draft7
-                                   ? m_references.Resource(schemaPath)
-                                   : nullptr;
-        if (m_dialect != JsonSchemaDialect::Draft7 && resource == nullptr)
+        std::optional<ResourceScope> resourceScope;
+        std::optional<ActiveEvaluationScope> active;
+        // Without references, evaluation can only descend into child schemas.
+        if (m_references.HasReferences())
         {
-            AddEvaluationError(JsonSchemaValidationStatus::InternalError, instancePath,
-                               schemaPath, "compiled schema resource does not exist");
-            evaluation.valid = false;
-            return evaluation;
-        }
-        ResourceScope resourceScope(m_dynamicScope, resource);
-        ActiveEvaluationScope active(m_activeEvaluation, schema, instance, EvaluationResources(),
-                                     m_options.maxErrors);
-        if (active.IsCycle())
-        {
-            AddEvaluationError(JsonSchemaValidationStatus::EvaluationCycleDetected, instancePath,
-                               schemaPath,
-                               "schema evaluation cycle detected without instance progress");
-            evaluation.valid = false;
-            return evaluation;
+            // In Draft 2020-12, only dynamic anchors can affect reference rebinding.
+            if (m_dialect == JsonSchemaDialect::Draft2019_09 ||
+                (m_dialect == JsonSchemaDialect::Draft2020_12 && m_references.HasDynamicAnchors()))
+            {
+                const auto* resource = m_references.Resource(schemaPath);
+                if (resource == nullptr)
+                {
+                    AddEvaluationError(JsonSchemaValidationStatus::InternalError, instancePath,
+                                       schemaPath, "compiled schema resource does not exist");
+                    evaluation.valid = false;
+                    return evaluation;
+                }
+                resourceScope.emplace(m_dynamicScope, resource);
+            }
+            const auto& activeScope =
+                active.emplace(m_activeEvaluation, schema, instance, EvaluationResources(),
+                               m_options.maxErrors);
+            if (activeScope.IsCycle())
+            {
+                AddEvaluationError(JsonSchemaValidationStatus::EvaluationCycleDetected,
+                                   instancePath, schemaPath,
+                                   "schema evaluation cycle detected without instance progress");
+                evaluation.valid = false;
+                return evaluation;
+            }
         }
         const auto* profile = m_references.Profile(schemaPath);
         if (profile == nullptr)

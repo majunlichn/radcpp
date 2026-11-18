@@ -71,6 +71,8 @@ public:
         const Ref<const JsonDocument>& document, JsonSchemaDialect dialect, std::size_t maxDepth,
         const JsonSchemaCompileOptions& options);
 
+    [[nodiscard]] bool HasReferences() const noexcept { return !m_targets.empty(); }
+    [[nodiscard]] bool HasDynamicAnchors() const noexcept { return !m_dynamicAnchors.empty(); }
     [[nodiscard]] const Resolution* Find(std::string_view referencePath) const;
     [[nodiscard]] const std::vector<Ref<const JsonDocument>>& Documents() const;
     [[nodiscard]] std::string SchemaPath(std::string_view path) const;
