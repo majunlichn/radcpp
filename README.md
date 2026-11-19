@@ -35,6 +35,7 @@ A simple, practical C++20 foundational static library, exposed as the CMake targ
 
 - **System** (platform-specific Windows/POSIX behavior)
   - Application initialization, filesystem, and OS utilities.
+  - Shell-style path globbing with recursive `**`.
   - Process output capture and thread utilities.
   - Time, stopwatches, deadlines, and CPU feature detection.
 

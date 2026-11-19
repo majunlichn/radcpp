@@ -132,6 +132,7 @@ set(RAD_SOURCES
     src/rad/System/FileSystem.cpp
     src/rad/System/OS.h
     src/rad/System/OS.cpp
+    src/rad/System/PathGlob.cpp
     src/rad/System/Process.h
     src/rad/System/Process.cpp
     src/rad/System/Thread.h
@@ -179,6 +180,7 @@ set(RAD_TEST_SOURCES
     src/rad/System/Application.test.cpp
     src/rad/System/CpuInfo.test.cpp
     src/rad/System/OS.test.cpp
+    src/rad/System/PathGlob.test.cpp
     src/rad/System/Process.test.cpp
     src/rad/System/Thread.test.cpp
     src/rad/System/Time.test.cpp
