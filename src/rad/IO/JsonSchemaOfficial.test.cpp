@@ -35,8 +35,8 @@ TEST(JsonSchemaOfficial, ValidateSupportedDrafts)
             continue;
         }
         const auto text = rad::File::ReadAllText(entry.path());
-        ASSERT_TRUE(text) << entry.path().string();
-        const auto schema = rad::ParseJson(*text);
+        ASSERT_TRUE(text) << entry.path().string() << ": " << text.error().message();
+        const auto schema = rad::ParseJson(text.value());
         ASSERT_TRUE(schema) << entry.path().string();
         compileOptions.documents.push_back(MakeJsonDocument(
             schema.value(), "http://localhost:1234/" +
@@ -97,10 +97,10 @@ TEST(JsonSchemaOfficial, ValidateSupportedDrafts)
             const auto text = rad::File::ReadAllText(file);
             if (!text)
             {
-                ADD_FAILURE() << "Unable to read test file";
+                ADD_FAILURE() << "Unable to read test file: " << text.error().message();
                 continue;
             }
-            const auto document = rad::ParseJson(*text);
+            const auto document = rad::ParseJson(text.value());
             if (!document || !document.value().is_array())
             {
                 ADD_FAILURE() << "Unable to parse test file";

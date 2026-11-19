@@ -8,18 +8,10 @@ A simple, practical C++20 foundational static library, exposed as the CMake targ
 - Favor clear APIs, practical utility, and efficient implementations over a large framework.
 - Make resource ownership, memory control, and development diagnostics accessible.
 
-## Style
-
-- C++20 APIs in the `rad` namespace, with PascalCase naming and standard-library integration.
-- RAII and move semantics for owned resources; explicit allocation and alignment where needed.
-- Build on established libraries such as Boost, Eigen, Imath, and spdlog rather than
-  reimplementing every primitive.
-- Use results, optional values, exceptions, or structured diagnostics as appropriate to each API.
-
 ## Features
 
 - **Container**
-  - `SmallVector`, backed by Boost.Container.
+  - `SmallVector` for small sequences.
 
 - **Core**
   - Strings, Unicode, formatting, and Base64.
@@ -30,7 +22,9 @@ A simple, practical C++20 foundational static library, exposed as the CMake targ
   - Exceptions with source locations and captured stack traces.
 
 - **IO**
-  - Binary/text file I/O, JSON parsing and formatting.
+  - Binary and text file I/O, with configurable open modes and atomic whole-file replacement.
+  - `FileCleaner` for automatic file cleanup, with thread-safe registration.
+  - JSON parsing and formatting.
   - JSON Schema compilation and validation (Draft 7, 2019-09, and 2020-12 subsets).
   - Image loading, encoding, conversion, and resizing.
   - Logging.

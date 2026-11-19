@@ -99,6 +99,8 @@ set(RAD_SOURCES
     src/rad/Diagnostics/StackTrace.cpp
     src/rad/IO/File.h
     src/rad/IO/File.cpp
+    src/rad/IO/FileCleaner.h
+    src/rad/IO/FileCleaner.cpp
     src/rad/IO/Image.h
     src/rad/IO/Image.cpp
     src/rad/IO/Json.h
@@ -306,7 +308,7 @@ if(DEFINED RAD_ENABLE_MEMORY_TRACKING)
 endif()
 
 if(WIN32)
-    target_link_libraries(rad PRIVATE bcrypt advapi32)
+    target_link_libraries(rad PRIVATE bcrypt advapi32 pathcch)
     target_compile_definitions(rad
         PUBLIC NOMINMAX=1
         PUBLIC WIN32_LEAN_AND_MEAN=1
@@ -316,6 +318,8 @@ if(WIN32)
         PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
         PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor>"
     )
+elseif(UNIX)
+    target_compile_definitions(rad PRIVATE _FILE_OFFSET_BITS=64)
 endif()
 
 if(RAD_BUILD_TESTS)
