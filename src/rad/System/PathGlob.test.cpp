@@ -2,11 +2,11 @@
 
 #include <rad/Core/Platform.h>
 #include <rad/Core/String.h>
-#include <rad/IO/File.h>
 #include <rad/System/OS.h>
 
 #include <gtest/gtest.h>
 
+#include <fstream>
 #include <initializer_list>
 
 #if defined(RAD_OS_WINDOWS)
@@ -34,7 +34,7 @@ struct TestDirectory
     {
         const auto file = path / rad::MakeFilePath(relative);
         std::filesystem::create_directories(file.parent_path());
-        ASSERT_TRUE(rad::File::WriteText(file, {})) << file;
+        ASSERT_TRUE(std::ofstream(file)) << file;
     }
 };
 

@@ -1,6 +1,6 @@
 #include "JsonSchemaBenchmarkCases.h"
 
-#include <rad/System/Application.h>
+#include <rad/Application.h>
 
 #include <algorithm>
 #include <charconv>

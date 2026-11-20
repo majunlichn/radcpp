@@ -53,6 +53,8 @@ if(RAD_BUILD_TESTS)
 endif()
 
 set(RAD_SOURCES
+    src/rad/Application.h
+    src/rad/Application.cpp
     src/rad/Container/SmallVector.h
     src/rad/Math/Vector.h
     src/rad/Math/Matrix.h
@@ -64,6 +66,8 @@ set(RAD_SOURCES
     src/rad/Core/BFloat16.h
     src/rad/Core/BFloat16.cpp
     src/rad/Core/Crc.h
+    src/rad/Core/FilePath.h
+    src/rad/Core/FilePath.cpp
     src/rad/Core/Float.h
     src/rad/Core/Float.cpp
     src/rad/Core/Float16.h
@@ -99,8 +103,6 @@ set(RAD_SOURCES
     src/rad/Diagnostics/StackTrace.cpp
     src/rad/IO/File.h
     src/rad/IO/File.cpp
-    src/rad/IO/FileCleaner.h
-    src/rad/IO/FileCleaner.cpp
     src/rad/IO/Image.h
     src/rad/IO/Image.cpp
     src/rad/IO/Json.h
@@ -124,17 +126,20 @@ set(RAD_SOURCES
     src/rad/IO/Private/JsonSchema/JsonSchemaValues.cpp
     src/rad/IO/Logging.h
     src/rad/IO/Logging.cpp
-    src/rad/System/Application.h
-    src/rad/System/Application.cpp
     src/rad/System/CpuInfo.h
     src/rad/System/CpuInfo.cpp
+    src/rad/System/FileCleaner.h
+    src/rad/System/FileCleaner.cpp
     src/rad/System/FileSystem.h
     src/rad/System/FileSystem.cpp
     src/rad/System/OS.h
     src/rad/System/OS.cpp
     src/rad/System/PathGlob.cpp
+    src/rad/System/Private/Temporary/TemporaryPath.h
     src/rad/System/Process.h
     src/rad/System/Process.cpp
+    src/rad/System/TempDirectory.h
+    src/rad/System/TempDirectory.cpp
     src/rad/System/Thread.h
     src/rad/System/Thread.cpp
     src/rad/System/Time.h
@@ -143,6 +148,7 @@ set(RAD_SOURCES
 
 set(RAD_TEST_SOURCES
     src/rad/TestMain.cpp
+    src/rad/Application.test.cpp
     src/rad/Core/Base64.test.cpp
     src/rad/Core/BFloat16.test.cpp
     src/rad/Core/Crc.test.cpp
@@ -177,11 +183,12 @@ set(RAD_TEST_SOURCES
     src/rad/Math/Geometry3D.test.cpp
     src/rad/Math/Transform3D.test.cpp
     src/rad/Math/Vector.test.cpp
-    src/rad/System/Application.test.cpp
     src/rad/System/CpuInfo.test.cpp
+    src/rad/System/FileCleaner.test.cpp
     src/rad/System/OS.test.cpp
     src/rad/System/PathGlob.test.cpp
     src/rad/System/Process.test.cpp
+    src/rad/System/TempDirectory.test.cpp
     src/rad/System/Thread.test.cpp
     src/rad/System/Time.test.cpp
 )

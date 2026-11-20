@@ -1,14 +1,12 @@
 #include <rad/IO/File.h>
-#include <rad/IO/FileCleaner.h>
 
 #include <rad/Core/String.h>
+#include <rad/System/FileSystem.h>
 #include <rad/System/OS.h>
 
 #include <gtest/gtest.h>
 
 #include <iterator>
-#include <memory>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -39,6 +37,68 @@ void ExpectText(const rad::FilePath& path, std::string_view expected)
 
 } // namespace
 
+TEST(File, CreateTemporary)
+{
+    const TestDirectory directory;
+    ASSERT_TRUE(directory.created);
+    const auto parent = std::filesystem::absolute(directory.path);
+
+    // The file supports shared I/O and remains on disk after the handles close.
+    {
+        rad::FilePath path;
+        {
+            auto created = rad::File::CreateTemporary(directory.path);
+            ASSERT_TRUE(created) << created.error().message();
+            auto& file = created.value();
+            path = file.Path();
+            EXPECT_EQ(path.parent_path(), parent);
+#if !defined(RAD_OS_WINDOWS)
+            using std::filesystem::perms;
+            EXPECT_EQ(std::filesystem::status(path).permissions() & ~perms::owner_all, perms::none);
+#endif
+            ASSERT_TRUE(file.Write("test", 4));
+            ASSERT_TRUE(file.Flush());
+            ExpectText(path, "test");
+            ASSERT_TRUE(file.Seek(0));
+            char text[4]{};
+            const auto read = file.Read(text, sizeof(text));
+            ASSERT_TRUE(read) << read.error().message();
+            EXPECT_EQ(read.value(), sizeof(text));
+            EXPECT_EQ(std::string_view(text, sizeof(text)), "test");
+            auto another = rad::File::CreateTemporary(directory.path);
+            ASSERT_TRUE(another) << another.error().message();
+            EXPECT_NE(another.value().Path(), path);
+        }
+        ExpectText(path, "test");
+    }
+
+    // Omitting the parent uses the OS temporary directory.
+    {
+        const auto systemParent = rad::os::temp_directory_path();
+        auto file = rad::File::CreateTemporary();
+        ASSERT_TRUE(file) << file.error().message();
+        const auto path = file.value().Path();
+        EXPECT_TRUE(std::filesystem::equivalent(path.parent_path(), systemParent));
+        EXPECT_TRUE(file.value().Close());
+        EXPECT_TRUE(std::filesystem::remove(path));
+    }
+
+    // Creation does not create missing parents or accept a path truncated by the OS.
+    {
+        const auto missing = directory.path / "missing";
+        const auto file = rad::File::CreateTemporary(missing);
+        ASSERT_FALSE(file);
+        EXPECT_EQ(file.error(), std::errc::no_such_file_or_directory);
+        EXPECT_FALSE(std::filesystem::exists(missing));
+
+        auto invalid = directory.path.native();
+        invalid.push_back(rad::FilePath::value_type{});
+        const auto invalidFile = rad::File::CreateTemporary(invalid);
+        ASSERT_FALSE(invalidFile);
+        EXPECT_EQ(invalidFile.error(), std::errc::invalid_argument);
+    }
+}
+
 TEST(File, HashFunctions)
 {
     // Test hash functions.
@@ -53,7 +113,6 @@ TEST(File, HashFunctions)
         ASSERT_TRUE(sha256);
         EXPECT_EQ(rad::ToHexString(*sha256),
                   "15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225");
-        EXPECT_TRUE(rad::File::Remove(path));
     }
 }
 
@@ -135,7 +194,7 @@ TEST(File, WholeFileWritePreservesOpenHandle)
     const auto openedSize = opened.Size();
     ASSERT_TRUE(openedSize);
     EXPECT_EQ(openedSize.value(), 3u);
-    const auto pathSize = rad::File::Size(filePath);
+    const auto pathSize = rad::GetSize(filePath);
     ASSERT_TRUE(pathSize);
     EXPECT_EQ(pathSize.value(), 11u);
     std::string line;
@@ -144,178 +203,6 @@ TEST(File, WholeFileWritePreservesOpenHandle)
     ExpectText(filePath, "replacement");
 }
 #endif
-
-TEST(FileCleaner, RemovesOnlyRegisteredFiles)
-{
-    const TestDirectory directory;
-    ASSERT_TRUE(directory.created);
-    const auto remove = directory.path / "remove.txt";
-    const auto keep = directory.path / "keep.txt";
-    ASSERT_TRUE(rad::File::WriteText(remove, ""));
-    ASSERT_TRUE(rad::File::WriteText(keep, ""));
-    const auto link = directory.path / "keep-link.txt";
-    std::filesystem::create_hard_link(keep, link);
-
-    {
-        rad::FileCleaner cleaner;
-        cleaner.Register(remove);
-        cleaner.Register(link);
-        const auto absoluteKeep = std::filesystem::absolute(keep);
-        EXPECT_FALSE(cleaner.IsRegistered(keep));
-        cleaner.Register(keep);
-        EXPECT_TRUE(cleaner.IsRegistered(absoluteKeep));
-        cleaner.Register(absoluteKeep);
-        cleaner.Unregister(absoluteKeep);
-        EXPECT_FALSE(cleaner.IsRegistered(keep));
-        cleaner.Unregister(keep);
-        EXPECT_TRUE(std::filesystem::exists(remove));
-    }
-    EXPECT_FALSE(std::filesystem::exists(remove));
-    EXPECT_FALSE(std::filesystem::exists(link));
-    EXPECT_TRUE(std::filesystem::exists(keep));
-}
-
-#if defined(RAD_OS_WINDOWS)
-TEST(FileCleaner, CleanRetriesLockedFileAndRemovesOtherFiles)
-{
-    const TestDirectory directory;
-    ASSERT_TRUE(directory.created);
-    const auto lockedPath = directory.path / "a-locked";
-    const auto file = directory.path / "b-file";
-    const auto missing = directory.path / "c-missing";
-    ASSERT_TRUE(rad::File::WriteText(lockedPath, ""));
-    ASSERT_TRUE(rad::File::WriteText(file, ""));
-
-    rad::FileCleaner cleaner;
-    rad::File locked;
-    ASSERT_TRUE(locked.Open(lockedPath, rad::FileAccess::Read));
-    cleaner.Register(lockedPath);
-    cleaner.Register(file);
-    cleaner.Register(missing);
-    EXPECT_FALSE(cleaner.Clean());
-    EXPECT_TRUE(std::filesystem::exists(lockedPath));
-    EXPECT_FALSE(std::filesystem::exists(file));
-    EXPECT_TRUE(cleaner.IsRegistered(lockedPath));
-    EXPECT_FALSE(cleaner.IsRegistered(file));
-    EXPECT_FALSE(cleaner.IsRegistered(missing));
-    ASSERT_TRUE(locked.Close());
-    EXPECT_TRUE(cleaner.Clean());
-    EXPECT_FALSE(std::filesystem::exists(lockedPath));
-}
-#endif
-
-TEST(FileCleaner, LeavesDirectoriesIntact)
-{
-    const TestDirectory directory;
-    ASSERT_TRUE(directory.created);
-    const auto tree = directory.path / "tree";
-    const auto child = tree / "child.txt";
-    const auto empty = directory.path / "empty";
-    const auto missing = directory.path / "missing";
-    ASSERT_TRUE(rad::File::WriteText(tree, ""));
-    ASSERT_TRUE(std::filesystem::create_directory(empty));
-
-    rad::FileCleaner cleaner;
-    cleaner.Register(tree);
-    cleaner.Register(empty);
-    cleaner.Register(missing);
-    EXPECT_TRUE(cleaner.IsRegistered(missing));
-    // A file path can be replaced by a directory between registration and cleanup.
-    ASSERT_TRUE(std::filesystem::remove(tree));
-    ASSERT_TRUE(std::filesystem::create_directory(tree));
-    ASSERT_TRUE(rad::File::WriteText(child, ""));
-    EXPECT_FALSE(cleaner.Clean());
-    EXPECT_TRUE(std::filesystem::is_regular_file(child));
-    EXPECT_TRUE(std::filesystem::is_directory(empty));
-    EXPECT_FALSE(cleaner.IsRegistered(missing));
-    EXPECT_TRUE(cleaner.IsRegistered(tree));
-    EXPECT_TRUE(cleaner.IsRegistered(empty));
-    cleaner.Unregister(tree);
-    cleaner.Unregister(empty);
-}
-
-#if !defined(RAD_OS_WINDOWS)
-TEST(FileCleaner, UnlinksSymlinksWithoutFollowingThem)
-{
-    const TestDirectory directory;
-    ASSERT_TRUE(directory.created);
-    const auto target = directory.path / "target";
-    const auto link = directory.path / "link";
-    const auto dangling = directory.path / "dangling";
-    ASSERT_TRUE(std::filesystem::create_directory(target));
-    ASSERT_TRUE(rad::File::WriteText(target / "keep.txt", "keep"));
-    std::filesystem::create_directory_symlink(std::filesystem::absolute(target), link);
-    std::filesystem::create_symlink("missing.txt", dangling);
-
-    rad::FileCleaner cleaner;
-    cleaner.Register(link);
-    cleaner.Register(dangling);
-    EXPECT_TRUE(cleaner.Clean());
-    EXPECT_FALSE(std::filesystem::is_symlink(std::filesystem::symlink_status(link)));
-    EXPECT_FALSE(std::filesystem::is_symlink(std::filesystem::symlink_status(dangling)));
-    ExpectText(target / "keep.txt", "keep");
-}
-#endif
-
-TEST(FileCleaner, ConcurrentRegisterAndUnregister)
-{
-    const TestDirectory directory;
-    ASSERT_TRUE(directory.created);
-    const auto remove = directory.path / "remove.txt";
-    const auto keep = directory.path / "keep.txt";
-    ASSERT_TRUE(rad::File::WriteText(remove, ""));
-    ASSERT_TRUE(rad::File::WriteText(keep, ""));
-
-    {
-        rad::FileCleaner cleaner;
-        cleaner.Register(keep);
-        {
-            std::vector<std::jthread> workers;
-            for (int i = 0; i < 8; ++i)
-            {
-                workers.emplace_back([&]
-                {
-                    cleaner.Register(remove);
-                    cleaner.Unregister(keep);
-                });
-            }
-        }
-        EXPECT_TRUE(cleaner.IsRegistered(remove));
-        EXPECT_FALSE(cleaner.IsRegistered(keep));
-    }
-    EXPECT_FALSE(std::filesystem::exists(remove));
-    EXPECT_TRUE(std::filesystem::exists(keep));
-}
-
-TEST(FileCleaner, RejectsRootsAndDotEntries)
-{
-    const auto checkRejected = [](const rad::FilePath& path)
-    {
-        auto cleaner = std::make_unique<rad::FileCleaner>();
-        SCOPED_TRACE(path.string());
-        try
-        {
-            cleaner->Register(path);
-            // Never run cleanup on an unexpectedly accepted root or working directory.
-            static_cast<void>(cleaner.release());
-            ADD_FAILURE() << "Expected invalid_argument";
-        }
-        catch (const std::system_error& error)
-        {
-            EXPECT_EQ(error.code(), std::errc::invalid_argument);
-        }
-    };
-
-    checkRejected(".");
-    checkRejected(rad::FilePath("..") / "");
-    checkRejected(std::filesystem::current_path().root_path());
-#if defined(RAD_OS_WINDOWS)
-    checkRejected(LR"(\\server\share)");
-    checkRejected(LR"(\\?\UNC\server\share\)");
-    checkRejected(LR"(\\?\C:\)");
-    checkRejected(LR"(\\?\Volume{00000000-0000-0000-0000-000000000000}\)");
-#endif
-}
 
 TEST(File, OpenDispositionsAndErrors)
 {
@@ -572,7 +459,7 @@ TEST(File, ReadLineReportsErrors)
 #if defined(RAD_OS_LINUX)
 TEST(File, BufferedWriteReportsNoSpace)
 {
-    if (!rad::File::Exists("/dev/full"))
+    if (!rad::Exists("/dev/full"))
     {
         GTEST_SKIP() << "/dev/full is unavailable";
     }

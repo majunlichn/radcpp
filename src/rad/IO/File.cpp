@@ -1,8 +1,9 @@
 #include <rad/IO/File.h>
 
 #include <rad/Core/Crc.h>
-#include <rad/Core/String.h>
+#include <rad/Core/Platform.h>
 #include <rad/System/OS.h>
+#include <rad/System/Private/Temporary/TemporaryPath.h>
 
 #include <boost/hash2/sha2.hpp>
 #include <xxhash.h>
@@ -104,13 +105,30 @@ namespace
     return flags;
 }
 
+enum class DescriptorKind
+{
+    Regular,
+    Temporary,
+    AtomicReplacement,
+};
+
+void RemoveTemporaryFile(const FilePath& path) noexcept
+{
+#if defined(RAD_OS_WINDOWS)
+    DeleteFileW(path.c_str());
+#else
+    ::unlink(path.c_str());
+#endif
+}
+
 [[nodiscard]] Result<int> OpenDescriptor(const FilePath& path, int flags,
-                                         bool temporary = false) noexcept
+                                         DescriptorKind kind = DescriptorKind::Regular) noexcept
 {
 #if defined(RAD_OS_WINDOWS)
     int descriptor = -1;
+    const auto sharing = kind == DescriptorKind::AtomicReplacement ? _SH_DENYRW : _SH_DENYNO;
     const auto error = _wsopen_s(&descriptor, path.c_str(), flags | _O_BINARY | _O_NOINHERIT,
-                                 temporary ? _SH_DENYRW : _SH_DENYNO, _S_IREAD | _S_IWRITE);
+                                 sharing, _S_IREAD | _S_IWRITE);
     if (error != 0)
     {
         return Failure(IoError(error));
@@ -119,7 +137,8 @@ namespace
     int descriptor;
     do
     {
-        descriptor = ::open(path.c_str(), flags | O_CLOEXEC, temporary ? 0600 : 0666);
+        descriptor =
+            ::open(path.c_str(), flags | O_CLOEXEC, kind == DescriptorKind::Regular ? 0666 : 0600);
     } while (descriptor < 0 && errno == EINTR);
     if (descriptor < 0)
     {
@@ -144,23 +163,6 @@ namespace
 #endif
     return Success(descriptor);
 }
-
-[[nodiscard]] constexpr std::string MakeTemporaryFilename(std::string hex,
-                                                          FilePath::value_type targetDigit)
-{
-    const char first = hex.front();
-    if (targetDigit == first ||
-        (first >= 'a' && first <= 'f' && targetDigit == first - 'a' + 'A'))
-    {
-        hex.front() = first == '0' ? '1' : '0';
-    }
-    return "." + std::move(hex) + ".tmp";
-}
-
-static_assert(MakeTemporaryFilename("abcdef0123456789abcdef0123456789", 'A') ==
-              ".0bcdef0123456789abcdef0123456789.tmp");
-static_assert(MakeTemporaryFilename("0123456789abcdef0123456789abcdef", '0') ==
-              ".1123456789abcdef0123456789abcdef.tmp");
 
 template <typename F>
 [[nodiscard]] bool ProcessChunks(const FilePath& path, F&& process) noexcept
@@ -306,6 +308,46 @@ Result<void> File::Open(const FilePath& path, FileAccess access,
     {
         return Failure(std::errc::not_enough_memory);
     }
+}
+
+Result<File> File::CreateTemporary(const FilePath& parent) noexcept
+{
+    const auto resolved = detail::ResolveTemporaryParent(parent);
+    if (!resolved)
+    {
+        return Failure(resolved.error());
+    }
+    return CreateTemporaryAt(resolved.value(), /*forAtomicReplacement=*/false);
+}
+
+Result<File> File::CreateTemporaryAt(const FilePath& absoluteParent, bool forAtomicReplacement,
+                                     FilePath::value_type excludedDigit) noexcept
+{
+    const auto access = forAtomicReplacement ? FileAccess::Write : FileAccess::ReadWrite;
+    const auto kind =
+        forAtomicReplacement ? DescriptorKind::AtomicReplacement : DescriptorKind::Temporary;
+    return detail::CreateUniqueTemporary(
+        absoluteParent,
+        [access, kind](FilePath path) -> Result<File>
+        {
+            // Keep the original path available to unlink if adoption fails.
+            auto filePath = path;
+            const auto flags = GetOpenFlags(access, FileOpenDisposition::CreateNew).value();
+            const auto opened = OpenDescriptor(path, flags, kind);
+            if (!opened)
+            {
+                return Failure(opened.error());
+            }
+            File file;
+            const auto adopted = file.AdoptDescriptor(opened.value(), std::move(filePath), access);
+            if (!adopted)
+            {
+                RemoveTemporaryFile(path);
+                return Failure(adopted.error());
+            }
+            return Success(std::move(file));
+        },
+        excludedDigit);
 }
 
 Result<void> File::AdoptDescriptor(int descriptor, FilePath path, FileAccess access) noexcept
@@ -727,14 +769,13 @@ Result<void> File::WriteBytes(const FilePath& path, Span<const std::byte> conten
         {
             return Failure(error);
         }
-        if (status.type() != FileType::not_found && !std::filesystem::is_regular_file(status))
+        if (status.type() != std::filesystem::file_type::not_found &&
+            !std::filesystem::is_regular_file(status))
         {
             return Failure(std::filesystem::is_directory(status) ? std::errc::is_a_directory
                                                                  : std::errc::invalid_argument);
         }
 
-        constexpr int flags =
-            GetOpenFlags(FileAccess::Write, FileOpenDisposition::CreateNew).value();
         const auto parent = destination.parent_path();
         const auto filename = destination.filename();
         const auto& name = filename.native();
@@ -742,58 +783,38 @@ Result<void> File::WriteBytes(const FilePath& path, Span<const std::byte> conten
         const auto targetDigit =
             name.size() > 1 && name[0] == '.' ? name[1] : FilePath::value_type{};
 
-        for (int attempt = 0; attempt < 8; ++attempt)
+        auto temporary = CreateTemporaryAt(parent, /*forAtomicReplacement=*/true, targetDigit);
+        if (!temporary)
         {
-            const auto candidate =
-                parent / MakeTemporaryFilename(ToHexString(os::urandom(16)), targetDigit);
-            const auto descriptor = OpenDescriptor(candidate, flags, true);
-            if (!descriptor)
-            {
-                if (descriptor.error() == std::errc::file_exists)
-                {
-                    continue;
-                }
-                return Failure(descriptor.error());
-            }
-
-            // Only clean up a path we created. On failure, close the file before deleting it.
-            struct Cleaner
-            {
-                const FilePath* m_path;
-
-                ~Cleaner() noexcept
-                {
-                    if (m_path)
-                    {
-#if defined(RAD_OS_WINDOWS)
-                        DeleteFileW(m_path->c_str());
-#else
-                        ::unlink(m_path->c_str());
-#endif
-                    }
-                }
-            } cleaner{&candidate};
-
-            File file;
-            if (auto adopted = file.AdoptDescriptor(descriptor.value(), {}, FileAccess::Write);
-                !adopted)
-            {
-                return adopted;
-            }
-            if (auto written = file.Write(content); !written)
-            {
-                return written;
-            }
-            if (auto closed = file.Close(); !closed)
-            {
-                return closed;
-            }
-
-            os::replace(candidate, destination);
-            cleaner.m_path = nullptr;
-            return Success();
+            return Failure(temporary.error());
         }
-        return Failure(std::errc::file_exists);
+        auto& temp = temporary.value();
+        struct Cleanup
+        {
+            File* m_file;
+
+            ~Cleanup() noexcept
+            {
+                if (m_file)
+                {
+                    static_cast<void>(m_file->Close());
+                    RemoveTemporaryFile(m_file->Path());
+                }
+            }
+        } cleanup{&temp};
+
+        if (auto written = temp.Write(content); !written)
+        {
+            return written;
+        }
+        if (auto closed = temp.Close(); !closed)
+        {
+            return closed;
+        }
+
+        os::replace(temp.Path(), destination);
+        cleanup.m_file = nullptr;
+        return Success();
     }
     catch (const std::system_error& error)
     {
@@ -832,44 +853,6 @@ Result<void> File::AppendBytes(const FilePath& path, Span<const std::byte> conte
 Result<void> File::AppendText(const FilePath& path, std::string_view content) noexcept
 {
     return AppendBytes(path, std::as_bytes(std::span(content)));
-}
-
-bool File::Exists(const FilePath& path) noexcept
-{
-    std::error_code error;
-    return std::filesystem::exists(path, error) && !error;
-}
-
-bool File::IsRegularFile(const FilePath& path) noexcept
-{
-    std::error_code error;
-    return std::filesystem::is_regular_file(path, error) && !error;
-}
-
-Result<std::uint64_t> File::Size(const FilePath& path) noexcept
-{
-    if (!IsValidPath(path))
-    {
-        return Failure(std::errc::invalid_argument);
-    }
-    std::error_code error;
-    const auto size = std::filesystem::file_size(path, error);
-    if (error)
-    {
-        return Failure(error);
-    }
-    if (size > std::numeric_limits<std::uint64_t>::max())
-    {
-        return Failure(std::errc::value_too_large);
-    }
-    return Success(static_cast<std::uint64_t>(size));
-}
-
-std::optional<FileTime> File::LastWriteTime(const FilePath& path) noexcept
-{
-    std::error_code error;
-    const auto time = std::filesystem::last_write_time(path, error);
-    return error ? std::nullopt : std::optional{time};
 }
 
 std::optional<std::uint32_t> File::Crc32(const FilePath& path) noexcept
@@ -921,27 +904,6 @@ std::optional<Sha256Digest> File::Sha256(const FilePath& path) noexcept
     std::transform(digest.begin(), digest.end(), result.begin(),
                    [](unsigned char value) { return static_cast<std::byte>(value); });
     return result;
-}
-
-bool File::Remove(const FilePath& path) noexcept
-{
-    std::error_code error;
-    return std::filesystem::remove(path, error) && !error;
-}
-
-bool File::Copy(const FilePath& source, const FilePath& destination, bool overwrite) noexcept
-{
-    const auto options = overwrite ? std::filesystem::copy_options::overwrite_existing
-                                   : std::filesystem::copy_options::none;
-    std::error_code error;
-    return std::filesystem::copy_file(source, destination, options, error) && !error;
-}
-
-bool File::Move(const FilePath& source, const FilePath& destination) noexcept
-{
-    std::error_code error;
-    std::filesystem::rename(source, destination, error);
-    return !error;
 }
 
 } // namespace rad

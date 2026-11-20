@@ -1,23 +1,42 @@
 #pragma once
 
+#include <rad/Core/FilePath.h>
 #include <rad/Core/Result.h>
 
-#include <filesystem>
-#include <string>
+#include <cstdint>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 namespace rad
 {
 
-using FilePath = std::filesystem::path;
 using FileTime = std::filesystem::file_time_type;
 using FileType = std::filesystem::file_type;
 using FilePermissions = std::filesystem::perms;
 
-// std::string paths are UTF-8 at this boundary and are converted to the platform-native encoding.
-[[nodiscard]] FilePath MakeFilePath(std::string_view utf8Path);
-[[nodiscard]] std::string ToUtf8(const FilePath& path);
+// Follow symlinks. Return false if the path is missing or the type does not match.
+// The error-reporting overloads clear ec on a valid query, including a negative result.
+// On error they return false and set ec; the single-argument overloads discard the error.
+[[nodiscard]] bool Exists(const FilePath& path) noexcept;
+[[nodiscard]] bool Exists(const FilePath& path, std::error_code& ec) noexcept;
+[[nodiscard]] bool IsRegularFile(const FilePath& path) noexcept;
+[[nodiscard]] bool IsRegularFile(const FilePath& path, std::error_code& ec) noexcept;
+
+// For these metadata and mutation operations, an empty path or embedded NUL is invalid_argument.
+// Size of the regular file currently at path. Follows symlinks and reports query errors.
+[[nodiscard]] Result<std::uint64_t> GetSize(const FilePath& path) noexcept;
+// Queries the modification time, following symlinks.
+[[nodiscard]] Result<FileTime> LastWriteTime(const FilePath& path) noexcept;
+
+// Removes a file, a symlink without following it, or an empty directory.
+// If the entry is already absent, returns no_such_file_or_directory.
+[[nodiscard]] Result<void> Remove(const FilePath& path) noexcept;
+// Copies a regular file, following symlinks. Does not overwrite by default.
+[[nodiscard]] Result<void> Copy(const FilePath& source, const FilePath& destination,
+                                bool overwrite = false) noexcept;
+// Renames using std::filesystem::rename semantics, without a cross-filesystem copy fallback.
+[[nodiscard]] Result<void> Rename(const FilePath& source, const FilePath& destination) noexcept;
 
 struct PathGlobOptions
 {

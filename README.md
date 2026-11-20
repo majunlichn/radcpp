@@ -10,6 +10,9 @@ A simple, practical C++20 foundational static library, exposed as the CMake targ
 
 ## Features
 
+- **Application**
+  - Startup initialization, including UTF-8 arguments, logging, and default error handlers.
+
 - **Container**
   - `SmallVector` for small sequences.
 
@@ -21,9 +24,9 @@ A simple, practical C++20 foundational static library, exposed as the CMake targ
 - **Diagnostics**
   - Exceptions with source locations and captured stack traces.
 
-- **IO**
+- **IO** (stream I/O and data formats; may depend on System)
   - Binary and text file I/O, with configurable open modes and atomic whole-file replacement.
-  - `FileCleaner` for automatic file cleanup, with thread-safe registration.
+  - Exclusive creation of temporary files.
   - JSON parsing and formatting.
   - JSON Schema compilation and validation (Draft 7, 2019-09, and 2020-12 subsets).
   - Image loading, encoding, conversion, and resizing.
@@ -33,8 +36,9 @@ A simple, practical C++20 foundational static library, exposed as the CMake targ
   - Vectors, matrices, quaternions, and geometry helpers.
   - 3D transforms and projections.
 
-- **System** (platform-specific Windows/POSIX behavior)
-  - Application initialization, filesystem, and OS utilities.
+- **System** (cross-platform OS and filesystem services; independent of IO)
+  - File metadata queries, copying, renaming, and removal.
+  - RAII temporary directories and automatic cleanup of registered files.
   - Shell-style path globbing with recursive `**`.
   - Process output capture and thread utilities.
   - Time, stopwatches, deadlines, and CPU feature detection.

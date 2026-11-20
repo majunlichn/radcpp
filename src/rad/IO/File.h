@@ -1,8 +1,8 @@
 #pragma once
 
+#include <rad/Core/FilePath.h>
 #include <rad/Core/Result.h>
 #include <rad/Core/Span.h>
-#include <rad/System/FileSystem.h>
 
 #include <array>
 #include <cstddef>
@@ -59,6 +59,12 @@ public:
 
     File(File&& other) noexcept;
     File& operator=(File&& other) noexcept;
+
+    // Exclusively creates a randomly named read/write file in an existing parent directory.
+    // An empty parent uses the system temporary directory. Path() is absolute. Uses at most
+    // 0600 on POSIX and inherited permissions on Windows. The caller is responsible for deleting
+    // the file; Close() and destruction do not delete it.
+    [[nodiscard]] static Result<File> CreateTemporary(const FilePath& parent = {}) noexcept;
 
     // Always binary. Read requires OpenExisting; Append does not allow truncation.
     // An empty path, embedded NUL, or invalid access/disposition returns invalid_argument
@@ -137,20 +143,10 @@ public:
     [[nodiscard]] static Result<void> AppendText(const FilePath& path,
                                                  std::string_view content) noexcept;
 
-    [[nodiscard]] static bool Exists(const FilePath& path) noexcept;
-    [[nodiscard]] static bool IsRegularFile(const FilePath& path) noexcept;
-    // Size in bytes of the file currently at path. An empty path or embedded NUL returns
-    // invalid_argument; an unrepresentable size returns value_too_large.
-    [[nodiscard]] static Result<std::uint64_t> Size(const FilePath& path) noexcept;
-    [[nodiscard]] static std::optional<FileTime> LastWriteTime(const FilePath& path) noexcept;
     // Fast checksums for comparison and integrity checks; neither is cryptographically secure.
     [[nodiscard]] static std::optional<std::uint32_t> Crc32(const FilePath& path) noexcept;
     [[nodiscard]] static std::optional<std::uint64_t> XxHash64(const FilePath& path) noexcept;
     [[nodiscard]] static std::optional<Sha256Digest> Sha256(const FilePath& path) noexcept;
-    [[nodiscard]] static bool Remove(const FilePath& path) noexcept;
-    [[nodiscard]] static bool Copy(const FilePath& source, const FilePath& destination,
-                                   bool overwrite = false) noexcept;
-    [[nodiscard]] static bool Move(const FilePath& source, const FilePath& destination) noexcept;
 
 private:
     enum class StreamDirection
@@ -160,6 +156,9 @@ private:
         Write,
     };
 
+    [[nodiscard]] static Result<File> CreateTemporaryAt(
+        const FilePath& absoluteParent, bool forAtomicReplacement,
+        FilePath::value_type excludedDigit = {}) noexcept;
     // Requires a closed File. Takes ownership of the descriptor even on failure.
     [[nodiscard]] Result<void> AdoptDescriptor(int descriptor, FilePath path,
                                                FileAccess access) noexcept;

@@ -1,4 +1,4 @@
-#include <rad/System/Application.h>
+#include <rad/Application.h>
 
 #include <rad/Core/Memory.h>
 #include <rad/Core/Platform.h>
